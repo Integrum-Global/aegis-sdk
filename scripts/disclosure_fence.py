@@ -63,6 +63,16 @@ is worse than no gate
     blind spot is visible at the bottom of every clean result instead of being
     something a reader has to already know. Screenshots must be reviewed by
     LOOKING at them.
+  * **IT GUARDS THIS BOUNDARY ONLY, AND THE UPSTREAM ONE IS OPEN.** This
+    material originates in the platform repository and is copied here. The
+    platform's capture-time de-sensitisation gate checks the rendered DOM for a
+    loopback URL, a production hostname, a non-reserved email domain and a
+    JWT-shaped token — it has **no name predicate at all**, which is why it
+    passed the images that caused this. So a fresh capture run re-emits the
+    same disclosure, and this fence is the LAST checkpoint rather than the
+    first. It catches a re-introduced name on the way out; it cannot stop one
+    being produced. The durable fix is a name predicate at the capture step,
+    and it does not live in this repository.
   * **IT ONLY KNOWS THE TOKENS IT IS GIVEN.** A client absent from the
     configured source is invisible. The platform derivation (source 3) is the
     only one that stays current on its own.

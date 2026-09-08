@@ -102,7 +102,7 @@ The orange summary banner that regular users see across the top does not appear
 until you actually have something pending or completed. Its absence is normal on
 day one.
 
-![The Work Home screen: a greeting reading "Good afternoon, Rowan Dalton", a large box asking "What would you like to accomplish?", a trust selector reading Supervised, and panels for Recent Activity and Pending Your Action.](../assets/screenshots/work-home-field-service.png)
+![The Work Home screen: a greeting reading "Good afternoon, Rowan Calder", a large box asking "What would you like to accomplish?", a trust selector reading Supervised, and panels for Recent Activity and Pending Your Action.](../assets/screenshots/work-home-field-service.png)
 
 *Home, for a seeded demo user. Four things worth finding: the **greeting** with
 your role beneath it (`Member`, `L1 - Task Performer`) and `No agent assigned`;
