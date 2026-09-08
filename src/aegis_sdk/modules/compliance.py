@@ -36,7 +36,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from .._http import encode_path_param
+from .._http import HTTPClient, encode_path_param
 
 
 class AuditVerificationResult(BaseModel):
@@ -297,7 +297,7 @@ class ComplianceModule:
         >>> print(f"Evidence items: {evidence.summary.total_evidence_items}")
     """
 
-    def __init__(self, http_client):
+    def __init__(self, http_client: HTTPClient) -> None:
         """Initialize compliance module."""
         self._http = http_client
 
@@ -365,7 +365,7 @@ class ComplianceModule:
             >>> with open("audit.csv", "wb") as f:
             ...     f.write(data)
         """
-        response = await self._http.request(
+        response: bytes = await self._http.request(
             "POST",
             "/api/v1/compliance/audit/export",
             json_data={
@@ -555,7 +555,7 @@ class ComplianceModule:
         Returns:
             bytes: JSON file content
         """
-        response = await self._http.request(
+        response: bytes = await self._http.request(
             "GET",
             "/api/v1/compliance/soc2/evidence/export",
             params={
@@ -817,7 +817,7 @@ class ComplianceModule:
         Example:
             >>> frameworks = (await client.compliance.list_frameworks())["frameworks"]
         """
-        response = await self._http.request("GET", "/api/v1/compliance/frameworks")
+        response: dict[str, Any] = await self._http.request("GET", "/api/v1/compliance/frameworks")
         return response
 
     async def get_framework(self, framework_id: str) -> dict[str, Any]:
@@ -834,7 +834,7 @@ class ComplianceModule:
         Raises:
             NotFoundError: ``404`` — unknown framework key.
         """
-        response = await self._http.request(
+        response: dict[str, Any] = await self._http.request(
             "GET", f"/api/v1/compliance/frameworks/{encode_path_param(framework_id)}"
         )
         return response
@@ -856,7 +856,7 @@ class ComplianceModule:
         Raises:
             NotFoundError: ``404`` — unknown framework key.
         """
-        response = await self._http.request(
+        response: dict[str, Any] = await self._http.request(
             "GET", f"/api/v1/compliance/frameworks/{encode_path_param(framework_id)}/controls"
         )
         return response
@@ -877,7 +877,7 @@ class ComplianceModule:
             >>> status = await client.compliance.get_soc2_status()
             >>> print(status["compliancePercentage"], status["isCompliant"])
         """
-        response = await self._http.request("GET", "/api/v1/compliance/soc2/status")
+        response: dict[str, Any] = await self._http.request("GET", "/api/v1/compliance/soc2/status")
         return response
 
     async def get_score(self) -> dict[str, Any]:
@@ -894,7 +894,7 @@ class ComplianceModule:
             >>> score = await client.compliance.get_score()
             >>> print(score["overall"], score["trend"])
         """
-        response = await self._http.request("GET", "/api/v1/compliance/score")
+        response: dict[str, Any] = await self._http.request("GET", "/api/v1/compliance/score")
         return response
 
     async def list_events(
@@ -930,7 +930,7 @@ class ComplianceModule:
             params["framework"] = framework
         if event_type is not None:
             params["type"] = event_type
-        response = await self._http.request(
+        response: dict[str, Any] = await self._http.request(
             "GET", "/api/v1/compliance/events", params=params
         )
         return response
@@ -962,7 +962,7 @@ class ComplianceModule:
             >>> result = await client.compliance.run_assessment(framework="soc2")
         """
         body: dict[str, Any] = {"framework": framework} if framework is not None else {}
-        response = await self._http.request(
+        response: dict[str, Any] = await self._http.request(
             "POST", "/api/v1/compliance/assess", json_data=body
         )
         return response
@@ -1010,7 +1010,7 @@ class ComplianceModule:
         ):
             if value is not None:
                 params[key] = value
-        response = await self._http.request(
+        response: dict[str, Any] = await self._http.request(
             "GET", "/api/v1/compliance/violations", params=params
         )
         return response
@@ -1037,7 +1037,7 @@ class ComplianceModule:
         Example:
             >>> await client.compliance.acknowledge_alert("alert-123")
         """
-        response = await self._http.request(
+        response: dict[str, Any] = await self._http.request(
             "POST", f"/api/v1/compliance/alerts/{encode_path_param(alert_id)}/acknowledge"
         )
         return response
@@ -1063,7 +1063,7 @@ class ComplianceModule:
         Example:
             >>> summary = await client.compliance.get_report_summary(period="2026-Q1")
         """
-        response = await self._http.request(
+        response: dict[str, Any] = await self._http.request(
             "GET", "/api/v1/compliance/report/summary", params={"period": period}
         )
         return response
@@ -1082,7 +1082,7 @@ class ComplianceModule:
         Example:
             >>> report = await client.compliance.get_report("2026-05")
         """
-        response = await self._http.request(
+        response: dict[str, Any] = await self._http.request(
             "GET", "/api/v1/compliance/reports", params={"period": period}
         )
         return response
@@ -1102,7 +1102,7 @@ class ComplianceModule:
             >>> with open("compliance-2026-05.pdf", "wb") as f:
             ...     f.write(pdf)
         """
-        response = await self._http.request(
+        response: bytes = await self._http.request(
             "GET",
             f"/api/v1/compliance/reports/{encode_path_param(period)}.pdf",
             raw_response=True,
@@ -1150,7 +1150,7 @@ class ComplianceModule:
             body["startDate"] = start_date
         if end_date is not None:
             body["endDate"] = end_date
-        response = await self._http.request(
+        response: dict[str, Any] = await self._http.request(
             "POST", "/api/v1/compliance/reports", json_data=body
         )
         return response
@@ -1202,7 +1202,7 @@ class ComplianceModule:
         if filter is not None:
             body["filter"] = filter
         params = {"mask_level": mask_level} if mask_level is not None else None
-        response = await self._http.request(
+        response: bytes = await self._http.request(
             "POST",
             "/api/v1/compliance/export",
             json_data=body,

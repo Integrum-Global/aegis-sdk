@@ -28,7 +28,7 @@ there and re-run `node scripts/project_coc.mjs`; `--check` reds on drift.
 
 | | |
 | --- | --- |
-| `src/aegis_sdk/` | the client — 114 Python modules, version 1.0.0 |
+| `src/aegis_sdk/` | the client — 154 Python modules, version 1.0.0 |
 | `src/aegis_sdk/handbook/` | how the platform **behaves** — 27 chapters in 5 parts, screenshots included |
 | `src/aegis_sdk/coc/` | what to **do** about it — 2 agent briefs, 6 task skills, 7 guardrails, one probe |
 | `src/aegis_sdk/docs/` | reference: quickstart, authentication, configuration, errors, streaming |
@@ -78,18 +78,20 @@ node scripts/project_coc.mjs --check        # CLI overlays match their neutral s
 python -m aegis_sdk.coc.probe --transports-only   # which client paths are real (offline)
 ```
 
-⛔ **This repository carries NO tests.** `harness.py tests` and `harness.py all`
-will report a broken selector rather than a pass — that is the harness refusing to
-call an empty sweep a clean one, not a fault in your setup. `lint`, `typecheck` and
-`build` do run. The client's tests were written for an internal audience and cite
-internal source coordinates in their assertions, so they were withheld rather than
-rewritten. `python -m aegis_sdk.coc.probe` checks this client against your own
-deployment and is the substitute available today.
+This repository carries **40 test files**, and `harness.py tests` runs them.
+They are the ones that could be published. Others exist that pin this client
+against the platform's own server routes; those name internal source coordinates
+in their assertions and stay behind. **So a green run means the client behaves —
+it does not re-verify the wire contract against a live deployment.**
+`python -m aegis_sdk.coc.probe` is how you check that against your own.
 
-⛔ **`harness.py all` is RED on arrival, on the `typecheck` step only** — an
-inherited type-error budget, not anything you did and not anything about your
-environment. `docs/UNRESOLVED.md` § 3b has the numbers and says why it was left
-red rather than re-baselined into silence.
+`harness.py all` is **green on arrival** — all four steps. If it is not, that is
+a finding about this build and worth reporting; it is not a state you inherited.
+
+The `typecheck` step is a per-file ratchet against a banked budget, not a
+zero-error claim: the SDK carries type debt, and the budget records exactly how
+much, per file, so it can only shrink. A file may improve and may never regress.
+`docs/UNRESOLVED.md` § 3b has the current numbers and what remains unfixed.
 
 ## Accountability
 

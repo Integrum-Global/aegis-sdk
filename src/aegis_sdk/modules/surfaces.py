@@ -84,7 +84,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from .._http import encode_path_param
+from .._http import HTTPClient, encode_path_param
 
 #: Navigation sections a surface may join. Closed server-side — an architect
 #: cannot invent a section, so a registration can never create a new region of
@@ -256,7 +256,7 @@ class SurfacesModule:
         ... )
     """
 
-    def __init__(self, http_client):
+    def __init__(self, http_client: HTTPClient) -> None:
         """
         Initialize the surfaces module.
 

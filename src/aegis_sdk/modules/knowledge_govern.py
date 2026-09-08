@@ -103,6 +103,15 @@ Rows verified-and-corrected against the TRACK-C-FILL-MANIFEST.md manifest:
 
 from __future__ import annotations
 
+# Imported so the class body below can say `builtins.list[...]`. It has a public
+# method named `list`, and a bare `list[...]` in a method SIGNATURE resolves
+# against the class namespace, where that method -- not the builtin -- is what
+# the name is bound to. This module only survives today because the `__future__`
+# import above makes annotations strings that `get_type_hints` later evaluates
+# against module globals; delete that line and every such signature raises
+# `TypeError: 'function' object is not subscriptable` at import. Annotations
+# inside a function BODY resolve against the function scope and are left bare.
+import builtins
 from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field
@@ -375,9 +384,9 @@ class KnowledgeGovernModule:
         q: str,
         knowledge_type: str | None = None,
         classification: str | None = None,
-        tags: list[str] | None = None,
+        tags: builtins.list[str] | None = None,
         limit: int = 50,
-    ) -> list[KnowledgeItem]:
+    ) -> builtins.list[KnowledgeItem]:
         """
         Full-text search across knowledge items.
 
@@ -590,7 +599,7 @@ class KnowledgeGovernModule:
         )
         return KnowledgeReviewResult(**response)
 
-    async def list_review_queue(self, status: str | None = None) -> list[dict[str, Any]]:
+    async def list_review_queue(self, status: str | None = None) -> builtins.list[dict[str, Any]]:
         """
         List the org-wide knowledge review queue (ReviewQueueWidget).
 
@@ -608,7 +617,7 @@ class KnowledgeGovernModule:
         params: dict[str, Any] = {}
         if status:
             params["status"] = status
-        response = await self._http.request("GET", "/api/v1/knowledge-reviews", params=params)
+        response: list[dict[str, Any]] = await self._http.request("GET", "/api/v1/knowledge-reviews", params=params)
         return response
 
     # ------------------------------------------------------------------
@@ -680,9 +689,9 @@ class KnowledgeGovernModule:
         target_entity_type: str,
         target_entity_id: str,
         granted_by_role_id: str,
-        shared_paths: list[str] | None = None,
-        shared_classifications: list[str] | None = None,
-        shared_types: list[str] | None = None,
+        shared_paths: builtins.list[str] | None = None,
+        shared_classifications: builtins.list[str] | None = None,
+        shared_types: builtins.list[str] | None = None,
         min_authority_level: int = 1,
         conditions: dict[str, Any] | None = None,
         review_at: str | None = None,
@@ -828,7 +837,7 @@ class KnowledgeGovernModule:
     # Knowledge categories
     # ------------------------------------------------------------------
 
-    async def list_categories(self, status: str | None = None) -> list[KnowledgeCategory]:
+    async def list_categories(self, status: str | None = None) -> builtins.list[KnowledgeCategory]:
         """
         List knowledge categories for the current user's organization.
 
@@ -1104,8 +1113,8 @@ class KnowledgeGovernModule:
         description: str | None = None,
         body: str = "",
         template_format: str = "text",
-        variables: list[Any] | None = None,
-        tags: list[Any] | None = None,
+        variables: builtins.list[Any] | None = None,
+        tags: builtins.list[Any] | None = None,
         status: str = "active",
     ) -> dict[str, Any]:
         """
@@ -1583,7 +1592,7 @@ class KnowledgeGovernModule:
         return response
 
     async def validate_policy_conditions(
-        self, conditions: dict[str, Any] | list[Any]
+        self, conditions: dict[str, Any] | builtins.list[Any]
     ) -> dict[str, Any]:
         """
         Check that a condition expression is well-formed before saving it.
@@ -1632,7 +1641,7 @@ class KnowledgeGovernModule:
         )
         return response
 
-    async def validate_policy_conflicts(self, policy_ids: list[str]) -> dict[str, Any]:
+    async def validate_policy_conflicts(self, policy_ids: builtins.list[str]) -> dict[str, Any]:
         """
         Find contradictions among a set of policies.
 

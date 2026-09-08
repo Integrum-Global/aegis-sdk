@@ -9,14 +9,23 @@ to an **unrelated third-party package** ("on-premise PII detection and masking
 for AI applications", published by a different company). Installing it gets you
 the wrong software under a right-sounding name.
 
-Build the SDK distribution from a checkout. This wheel contains `aegis_sdk` and
-**nothing else** — it does not carry the platform:
+Install from your checkout of this repository. Either form gives you `aegis_sdk`
+and **nothing else** — neither carries the platform:
 
 ```bash
+# editable, for working in the repo
+pip install -e .
+
+# or a wheel, if you want the artifact
 pip install build hatchling
-python -m build --wheel packaging/aegis-sdk
-pip install packaging/aegis-sdk/dist/agentic_os_sdk-*.whl
+python -m build --wheel .
+pip install dist/agentic_os_sdk-*.whl
 ```
+
+Both read the `pyproject.toml` at the ROOT of this repository. If you have seen
+an older instruction naming a path under `packaging/`, it does not apply here:
+that directory ships the test harness and its type baseline, not a build
+descriptor, and the command would fail on a fresh clone.
 
 Verify what you installed:
 

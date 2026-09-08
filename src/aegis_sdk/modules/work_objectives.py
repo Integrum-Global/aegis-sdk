@@ -203,9 +203,10 @@ class WorkObjectivesModule:
         Returns:
             ``{"success": bool, "objective_id": str, "status": "executing"}``
         """
-        return await self._http.request(
+        result: dict[str, Any] = await self._http.request(
             "POST", f"/api/v1/objectives/{encode_path_param(objective_id)}/confirm-implementation"
         )
+        return result
 
     async def decide(
         self,
@@ -238,11 +239,12 @@ class WorkObjectivesModule:
         if additional_notes is not None:
             json_data["additional_notes"] = additional_notes
 
-        return await self._http.request(
+        result: dict[str, Any] = await self._http.request(
             "POST",
             f"/api/v1/objectives/{encode_path_param(objective_id)}/decide",
             json_data=json_data,
         )
+        return result
 
     async def get_progress(self, objective_id: str) -> dict[str, Any]:
         """
@@ -257,9 +259,10 @@ class WorkObjectivesModule:
             ``steps``, ``graph_nodes``, ``elapsed_ms``,
             ``estimated_remaining_ms``, ``cost``, ``constraint_dimensions``.
         """
-        return await self._http.request(
+        result: dict[str, Any] = await self._http.request(
             "GET", f"/api/v1/objectives/{encode_path_param(objective_id)}/progress"
         )
+        return result
 
     async def stream_progress(
         self, objective_id: str, token: str | None = None
@@ -326,7 +329,7 @@ class WorkObjectivesModule:
         Returns:
             ``{"status": "processing", "message": str}``
         """
-        return await self._http.request(
+        result: dict[str, Any] = await self._http.request(
             "POST",
             f"/api/v1/objectives/{encode_path_param(objective_id)}/clarify",
             json_data={
@@ -334,6 +337,7 @@ class WorkObjectivesModule:
                 "answers": answers,
             },
         )
+        return result
 
     async def trigger_clarification(
         self,
@@ -440,12 +444,19 @@ class WorkObjectivesModule:
             merely recording an answer -- it closes clarification and starts
             the next stage of work.
         """
-        response: dict[str, Any] = await self._http.request(
+        # Bound to `result`, NOT `response`: `response` is this method's own
+        # public keyword argument. Rebinding it worked only because Python
+        # evaluates the call's arguments before the assignment lands, so the
+        # free-text answer reached the wire by a hair's breadth -- and every
+        # reader after the assignment saw a name whose declared type was `str`
+        # and whose value was a dict. The parameter name is API surface and is
+        # deliberately unchanged; the local is what moves.
+        result: dict[str, Any] = await self._http.request(
             "POST",
             f"/api/v1/objectives/{encode_path_param(objective_id)}/clarify/respond-freeform",
             json_data={"response": response},
         )
-        return response
+        return result
 
     async def get_task_graph(self, objective_id: str) -> dict[str, Any]:
         """
@@ -458,9 +469,10 @@ class WorkObjectivesModule:
             Raw dict — ``objective_id``, ``nodes``, ``edges``, ``progress``,
             ``estimated_total_minutes``, ``estimated_total_cost``.
         """
-        return await self._http.request(
+        result: dict[str, Any] = await self._http.request(
             "GET", f"/api/v1/objectives/{encode_path_param(objective_id)}/task-graph"
         )
+        return result
 
     # =======================================================================
     # Work Units
@@ -615,9 +627,10 @@ class WorkObjectivesModule:
         Returns:
             ``{"message": str}``
         """
-        return await self._http.request(
+        result: dict[str, Any] = await self._http.request(
             "DELETE", f"/api/v1/work-units/{encode_path_param(work_unit_id)}"
         )
+        return result
 
     async def run_work_unit(
         self, work_unit_id: str, inputs: dict[str, Any] | None = None
@@ -689,11 +702,12 @@ class WorkObjectivesModule:
         Returns:
             ``{"message": str}``
         """
-        return await self._http.request(
+        result: dict[str, Any] = await self._http.request(
             "POST",
             f"/api/v1/work-units/{encode_path_param(work_unit_id)}/execute/cancel",
             params={"run_id": run_id},
         )
+        return result
 
     async def get_execution_config(self, work_unit_id: str) -> ExecutionConfig:
         """
@@ -944,9 +958,10 @@ class WorkObjectivesModule:
             task_description, objective_id, objective_title,
             parent_request_id, parent_chain}}``
         """
-        return await self._http.request(
+        result: dict[str, Any] = await self._http.request(
             "POST", "/api/v1/sessions/from-task", params={"request_id": request_id}
         )
+        return result
 
     async def initialize_agent(
         self,
@@ -979,9 +994,10 @@ class WorkObjectivesModule:
         if trust_chain_id is not None:
             json_data["trust_chain_id"] = trust_chain_id
 
-        return await self._http.request(
+        result: dict[str, Any] = await self._http.request(
             "POST", "/api/v1/sessions/initialize-agent", json_data=json_data
         )
+        return result
 
     async def get_my_sessions(
         self, page_size: int = 10, sort: str = "-created_at"
@@ -994,9 +1010,10 @@ class WorkObjectivesModule:
         Returns:
             ``{"records": [...], "total": int}``
         """
-        return await self._http.request(
+        result: dict[str, Any] = await self._http.request(
             "GET", "/api/v1/sessions/my", params={"page_size": page_size, "sort": sort}
         )
+        return result
 
     async def list_sessions(
         self,
@@ -1025,7 +1042,8 @@ class WorkObjectivesModule:
         if search:
             params["search"] = search
 
-        return await self._http.request("GET", "/api/v1/sessions", params=params)
+        result: dict[str, Any] = await self._http.request("GET", "/api/v1/sessions", params=params)
+        return result
 
     # =======================================================================
     # Directives
@@ -1174,9 +1192,10 @@ class WorkObjectivesModule:
         Returns:
             ``{"message": str}``
         """
-        return await self._http.request(
+        result: dict[str, Any] = await self._http.request(
             "DELETE", f"/api/v1/directives/{encode_path_param(directive_id)}", params={"hard": hard}
         )
+        return result
 
     async def publish_directive(self, directive_id: str) -> Directive:
         """
@@ -1302,7 +1321,8 @@ class WorkObjectivesModule:
         if status:
             params["status"] = status
 
-        return await self._http.request("GET", "/api/v1/change-requests", params=params)
+        result: dict[str, Any] = await self._http.request("GET", "/api/v1/change-requests", params=params)
+        return result
 
     async def create_change_request(
         self,
@@ -1320,7 +1340,7 @@ class WorkObjectivesModule:
         Verified route: ``POST /api/v1/change-requests`` with
         ``CreateChangeRequestBody`` (121-147``).
         """
-        return await self._http.request(
+        result: dict[str, Any] = await self._http.request(
             "POST",
             "/api/v1/change-requests",
             json_data={
@@ -1332,6 +1352,7 @@ class WorkObjectivesModule:
                 "justification": justification,
             },
         )
+        return result
 
     async def get_change_request(self, request_id: str) -> dict[str, Any]:
         """
@@ -1339,9 +1360,10 @@ class WorkObjectivesModule:
 
         Verified route: ``GET /api/v1/change-requests/{request_id}``.
         """
-        return await self._http.request(
+        result: dict[str, Any] = await self._http.request(
             "GET", f"/api/v1/change-requests/{encode_path_param(request_id)}"
         )
+        return result
 
     async def submit_change_request(self, request_id: str) -> dict[str, Any]:
         """
@@ -1349,9 +1371,10 @@ class WorkObjectivesModule:
 
         Verified route: ``PATCH /api/v1/change-requests/{request_id}/submit``.
         """
-        return await self._http.request(
+        result: dict[str, Any] = await self._http.request(
             "PATCH", f"/api/v1/change-requests/{encode_path_param(request_id)}/submit"
         )
+        return result
 
     async def approve_change_request(self, request_id: str) -> dict[str, Any]:
         """
@@ -1360,9 +1383,10 @@ class WorkObjectivesModule:
 
         Verified route: ``PATCH /api/v1/change-requests/{request_id}/approve``.
         """
-        return await self._http.request(
+        result: dict[str, Any] = await self._http.request(
             "PATCH", f"/api/v1/change-requests/{encode_path_param(request_id)}/approve"
         )
+        return result
 
     async def deny_change_request(self, request_id: str, reason: str = "") -> dict[str, Any]:
         """
@@ -1371,11 +1395,12 @@ class WorkObjectivesModule:
         Verified route: ``PATCH /api/v1/change-requests/{request_id}/deny``
         with ``DenyChangeRequestBody`` (234-258``).
         """
-        return await self._http.request(
+        result: dict[str, Any] = await self._http.request(
             "PATCH",
             f"/api/v1/change-requests/{encode_path_param(request_id)}/deny",
             json_data={"reason": reason},
         )
+        return result
 
     async def counter_propose_change_request(
         self, request_id: str, counter_value: str, counter_note: str
@@ -1386,11 +1411,12 @@ class WorkObjectivesModule:
         Verified route: ``PATCH /api/v1/change-requests/{request_id}/counter-propose``
         with ``CounterProposeBody`` (261-285``).
         """
-        return await self._http.request(
+        result: dict[str, Any] = await self._http.request(
             "PATCH",
             f"/api/v1/change-requests/{encode_path_param(request_id)}/counter-propose",
             json_data={"counter_value": counter_value, "counter_note": counter_note},
         )
+        return result
 
     async def accept_counter_change_request(self, request_id: str) -> dict[str, Any]:
         """
@@ -1398,9 +1424,10 @@ class WorkObjectivesModule:
 
         Verified route: ``PATCH /api/v1/change-requests/{request_id}/accept-counter``.
         """
-        return await self._http.request(
+        result: dict[str, Any] = await self._http.request(
             "PATCH", f"/api/v1/change-requests/{encode_path_param(request_id)}/accept-counter"
         )
+        return result
 
     async def apply_change_request(self, request_id: str) -> dict[str, Any]:
         """
@@ -1409,9 +1436,10 @@ class WorkObjectivesModule:
 
         Verified route: ``PATCH /api/v1/change-requests/{request_id}/apply``.
         """
-        return await self._http.request(
+        result: dict[str, Any] = await self._http.request(
             "PATCH", f"/api/v1/change-requests/{encode_path_param(request_id)}/apply"
         )
+        return result
 
     # =======================================================================
     # Escalation (pool-based configuration + manual escalation)
@@ -1426,9 +1454,10 @@ class WorkObjectivesModule:
         dict (default config synthesized when none is configured yet), so
         this returns the raw dict.
         """
-        return await self._http.request(
+        result: dict[str, Any] = await self._http.request(
             "GET", f"/api/v1/escalation/config/{encode_path_param(pool_id)}"
         )
+        return result
 
     async def update_escalation_config(self, pool_id: str, **fields: Any) -> dict[str, Any]:
         """
@@ -1445,9 +1474,10 @@ class WorkObjectivesModule:
                 ``poolTimeoutMinutes``, ``escalationChain`` (list of
                 ``{targetType, targetId, targetName, timeoutMinutes}``)
         """
-        return await self._http.request(
+        result: dict[str, Any] = await self._http.request(
             "PUT", f"/api/v1/escalation/config/{encode_path_param(pool_id)}", json_data=fields
         )
+        return result
 
     async def list_pending_escalations(
         self,
@@ -1481,7 +1511,8 @@ class WorkObjectivesModule:
         if priority:
             params["priority"] = priority
 
-        return await self._http.request("GET", "/api/v1/escalation/pending", params=params)
+        result: dict[str, Any] = await self._http.request("GET", "/api/v1/escalation/pending", params=params)
+        return result
 
     async def manual_escalate_task(
         self,
@@ -1503,11 +1534,12 @@ class WorkObjectivesModule:
         if target_type is not None:
             json_data["targetType"] = target_type
 
-        return await self._http.request(
+        result: dict[str, Any] = await self._http.request(
             "POST",
             f"/api/v1/escalation/tasks/{encode_path_param(task_id)}/escalate",
             json_data=json_data,
         )
+        return result
 
     async def acknowledge_escalation(self, task_id: str) -> dict[str, Any]:
         """
@@ -1519,9 +1551,10 @@ class WorkObjectivesModule:
         Returns:
             ``{"success": true}``
         """
-        return await self._http.request(
+        result: dict[str, Any] = await self._http.request(
             "POST", f"/api/v1/escalation/tasks/{encode_path_param(task_id)}/acknowledge"
         )
+        return result
 
     async def get_escalation_stats(
         self,
@@ -1544,7 +1577,8 @@ class WorkObjectivesModule:
         if period_end:
             params["periodEnd"] = period_end
 
-        return await self._http.request("GET", "/api/v1/escalation/stats", params=params)
+        result: dict[str, Any] = await self._http.request("GET", "/api/v1/escalation/stats", params=params)
+        return result
 
     # =======================================================================
     # Interventions (mid-execution session control)

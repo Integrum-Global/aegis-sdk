@@ -94,28 +94,43 @@ and the `⛔ DRAFT` blocks are removed as part of that sign-off — not as tidyi
 
 ---
 
-## 3b. The type ratchet is RED on arrival — deliberately not silenced
+## 3b. The type ratchet is green — but it is a budget, not a zero
 
-`python packaging/aegis-sdk/harness.py all` reports `FAILED: typecheck`. `lint`,
-`build` and `tests` (1131 passing) are green; only this step is red.
+`python packaging/aegis-sdk/harness.py all` is green on all four steps. This
+section stays because the green is a *budget* being met, and a reader who takes
+it for "no type errors" would be wrong by 262.
 
-Measured 2026-09-08: **320 type errors across 58 files against a banked budget of
-269 across 52.** It splits in two, and the split is the point:
+It was red when this tree was first assembled. Measured 2026-09-08: **320 errors
+across 58 files against a banked budget of 269 across 52**, which split three
+ways rather than the two first reported:
 
 - **7 files were never in the baseline at all** (34 errors) — they landed after
-  it was banked and nothing forced it forward. That is a ratchet nobody ran, not
-  code that got worse.
+  it was banked and nothing forced it forward. A ratchet nobody ran, not code
+  that got worse.
 - **3 files genuinely regressed** (+18): `modules/compliance.py` 3 → 17,
   `modules/work_objectives.py` 27 → 29, `modules/knowledge_govern.py` 10 → 12.
+- **1 file had quietly improved** (−1), which is why 269 + 34 + 18 came to 321
+  against a measured 320.
 
-`harness.py typecheck --update-baseline` would make this green in one command.
-It was NOT run. Banking 52 errors to turn a gate green is the single disposition
-that gate exists to prevent, and you would inherit a budget nobody chose.
+`--update-baseline` would have greened all of it in one command, and that was
+refused: it banks the regressions with the omissions and you would inherit a
+budget nobody chose. Instead the 3 regressions were FIXED — to zero, not to
+their old budgets — and only then were the 7 omissions banked at their true
+counts. The 3 regressions were: a local variable shadowing its own method's
+public parameter; a public method named `list` shadowing the builtin in every
+signature in its class; and `Returning Any` at sites whose declared return type
+was never asserted onto the local.
 
-**Closes when:** the 3 regressions are fixed and the 7 unbaselined files are
-brought to a deliberate budget. Note `py.typed` promises consumers that these
-annotations are meaningful, and that promise is currently backed by a budget
-rather than by zero.
+Current state: **262 errors across 55 files against a 262 budget.** Every entry
+is inherited debt with a number on it, and the ratchet only goes down — a file
+may improve and may never regress.
+
+**Not closed.** `py.typed` promises consumers these annotations are meaningful,
+and that promise is backed by a budget rather than by zero. The largest holdings
+are `nexus/plugins_module.py` (33), `nexus/sessions_module.py` (27),
+`nexus/workflows_module.py` (17), `core/agents.py` (13) and `modules/promotions.py`
+(11). Most are the same `Returning Any` shape the three fixed files carried, and
+the same remedy applies.
 
 ---
 
