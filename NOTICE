@@ -1,0 +1,56 @@
+NOTICE — Aegis / Agentic OS
+
+⛔ DRAFT — founder and legal sign-off required before distribution. The entity
+   name and copyright years are unconfirmed; see the block at the top of
+   LICENSE, which owns both questions.
+
+Copyright (c) 2024-2026 Integrum. All rights reserved.
+Distributed under LICENSE (SPDX: LicenseRef-Proprietary).
+
+
+STANDARDS ATTRIBUTION
+---------------------
+
+Aegis is Integrum's commercial implementation of four open standards published
+by the Terrene Foundation under the Creative Commons Attribution 4.0
+International license (CC BY 4.0):
+
+  CARE  Collaborative Autonomous Reflective Enterprise
+  PACT  Principled Architecture for Constrained Trust
+  EATP  Enterprise Agent Trust Protocol
+  CO    Cognitive Orchestration
+
+Aegis implements them; it does not own them. The specifications remain the
+Terrene Foundation's, under CC BY 4.0. This attribution is a condition of that
+license, which is why it appears here and not only in the documentation.
+
+
+THIRD-PARTY COMPONENTS
+----------------------
+
+This software requires the following third-party packages. It does not
+redistribute their source; each is resolved from a package index at install
+time and remains under its own license, whose authoritative text ships with
+that package.
+
+  Required by the client:
+    httpx           BSD-3-Clause
+    pydantic        MIT
+
+  Required only by the optional `nexus` extra:
+    SQLAlchemy      MIT
+    redis-py        MIT
+
+The license identifiers above were read from the installed distributions'
+metadata, not transcribed from memory. They are accurate for the versions
+resolved on 2026-09-08 and are not pinned; re-derive them before relying on
+this list for a compliance filing.
+
+No third-party source is vendored into this repository.
+
+
+TRADEMARKS
+----------
+
+"Aegis", "Agentic OS" and "Integrum" are marks of their owner. Nothing in
+LICENSE or in this file grants any right to use them.

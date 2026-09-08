@@ -1,0 +1,27 @@
+{
+  "_doc": [
+    "Per-chapter MINIMUM anchor count for the architect working material.",
+    "Keys keep their `coc/` prefix so a key still names its root if these",
+    "files are ever read together.",
+    "It only RISES. Falling below a floor fails the gate: the failure mode being",
+    "fenced is deleting a claim to make a gate pass, so removal is what has to be",
+    "expensive. See check.py for what this gate structurally cannot catch."
+  ],
+  "floors": {
+    "coc/README.md": 0,
+    "coc/agents/aegis-operator.md": 1,
+    "coc/agents/aegis-sdk-specialist.md": 4,
+    "coc/guardrails/billing-integrity.md": 1,
+    "coc/guardrails/client-model-fidelity.md": 2,
+    "coc/guardrails/credential-reachability.md": 2,
+    "coc/guardrails/error-taxonomy.md": 7,
+    "coc/guardrails/reading-a-measurement.md": 4,
+    "coc/guardrails/sentinels-and-defaults.md": 2,
+    "coc/skills/day-two-operations.md": 3,
+    "coc/skills/diagnosing-a-refusal.md": 4,
+    "coc/skills/reading-trust-and-governance.md": 6,
+    "coc/skills/registering-a-tool-or-agent.md": 6,
+    "coc/skills/running-an-objective.md": 2,
+    "coc/skills/working-against-a-deployment.md": 1
+  }
+}

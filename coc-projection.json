@@ -1,0 +1,262 @@
+{
+  "_doc": [
+    "Provenance for every projected COC artifact in this repository.",
+    "",
+    "THE SOURCE OF TRUTH IS src/aegis_sdk/coc/ (and coc-context.md for the three",
+    "root context files). The .claude/, .codex/ and .gemini/ trees are PROJECTIONS.",
+    "Edit the source and re-run `node scripts/project_coc.mjs`; editing a projection",
+    "is silently reverted by the next run and is reported by `--check`.",
+    "",
+    "`source_sha256_16` is the digest of the SOURCE at projection time, so a source",
+    "edit that was never re-projected is visible here rather than only in a diff."
+  ],
+  "projected_on": "2026-09-08",
+  "counts": {
+    "agents": 2,
+    "skills": 6,
+    "guardrails": 7,
+    "projected_files": 48
+  },
+  "projected": [
+    {
+      "dest": ".claude/agents/aegis-operator.md",
+      "source": "src/aegis_sdk/coc/agents/aegis-operator.md",
+      "source_sha256_16": "a628f42aaa831b82"
+    },
+    {
+      "dest": ".claude/agents/aegis-sdk-specialist.md",
+      "source": "src/aegis_sdk/coc/agents/aegis-sdk-specialist.md",
+      "source_sha256_16": "68069a69dfd764ec"
+    },
+    {
+      "dest": ".claude/skills/billing-integrity/SKILL.md",
+      "source": "src/aegis_sdk/coc/guardrails/billing-integrity.md",
+      "source_sha256_16": "aefceaccade793b9"
+    },
+    {
+      "dest": ".claude/skills/client-model-fidelity/SKILL.md",
+      "source": "src/aegis_sdk/coc/guardrails/client-model-fidelity.md",
+      "source_sha256_16": "7cb3b0f21e666022"
+    },
+    {
+      "dest": ".claude/skills/credential-reachability/SKILL.md",
+      "source": "src/aegis_sdk/coc/guardrails/credential-reachability.md",
+      "source_sha256_16": "d42316ed7afaf4aa"
+    },
+    {
+      "dest": ".claude/skills/day-two-operations/SKILL.md",
+      "source": "src/aegis_sdk/coc/skills/day-two-operations.md",
+      "source_sha256_16": "82667279e4657a14"
+    },
+    {
+      "dest": ".claude/skills/diagnosing-a-refusal/SKILL.md",
+      "source": "src/aegis_sdk/coc/skills/diagnosing-a-refusal.md",
+      "source_sha256_16": "69a1303ac78178ad"
+    },
+    {
+      "dest": ".claude/skills/domain-surfaces/SKILL.md",
+      "source": "src/aegis_sdk/coc/guardrails/domain-surfaces.md",
+      "source_sha256_16": "5d00a26836afc68a"
+    },
+    {
+      "dest": ".claude/skills/error-taxonomy/SKILL.md",
+      "source": "src/aegis_sdk/coc/guardrails/error-taxonomy.md",
+      "source_sha256_16": "31a9addbbed5841f"
+    },
+    {
+      "dest": ".claude/skills/reading-a-measurement/SKILL.md",
+      "source": "src/aegis_sdk/coc/guardrails/reading-a-measurement.md",
+      "source_sha256_16": "bab46b2252db9aca"
+    },
+    {
+      "dest": ".claude/skills/reading-trust-and-governance/SKILL.md",
+      "source": "src/aegis_sdk/coc/skills/reading-trust-and-governance.md",
+      "source_sha256_16": "bc9f3dae1c3a899a"
+    },
+    {
+      "dest": ".claude/skills/registering-a-tool-or-agent/SKILL.md",
+      "source": "src/aegis_sdk/coc/skills/registering-a-tool-or-agent.md",
+      "source_sha256_16": "3060485d91c1089e"
+    },
+    {
+      "dest": ".claude/skills/running-an-objective/SKILL.md",
+      "source": "src/aegis_sdk/coc/skills/running-an-objective.md",
+      "source_sha256_16": "4c691e7fc40939ab"
+    },
+    {
+      "dest": ".claude/skills/sentinels-and-defaults/SKILL.md",
+      "source": "src/aegis_sdk/coc/guardrails/sentinels-and-defaults.md",
+      "source_sha256_16": "e50123e2afca0d5a"
+    },
+    {
+      "dest": ".claude/skills/working-against-a-deployment/SKILL.md",
+      "source": "src/aegis_sdk/coc/skills/working-against-a-deployment.md",
+      "source_sha256_16": "5297f65326a35f12"
+    },
+    {
+      "dest": ".codex/prompts/specialist-aegis-operator.md",
+      "source": "src/aegis_sdk/coc/agents/aegis-operator.md",
+      "source_sha256_16": "a628f42aaa831b82"
+    },
+    {
+      "dest": ".codex/prompts/specialist-aegis-sdk-specialist.md",
+      "source": "src/aegis_sdk/coc/agents/aegis-sdk-specialist.md",
+      "source_sha256_16": "68069a69dfd764ec"
+    },
+    {
+      "dest": ".codex/skills/billing-integrity/SKILL.md",
+      "source": "src/aegis_sdk/coc/guardrails/billing-integrity.md",
+      "source_sha256_16": "aefceaccade793b9"
+    },
+    {
+      "dest": ".codex/skills/client-model-fidelity/SKILL.md",
+      "source": "src/aegis_sdk/coc/guardrails/client-model-fidelity.md",
+      "source_sha256_16": "7cb3b0f21e666022"
+    },
+    {
+      "dest": ".codex/skills/credential-reachability/SKILL.md",
+      "source": "src/aegis_sdk/coc/guardrails/credential-reachability.md",
+      "source_sha256_16": "d42316ed7afaf4aa"
+    },
+    {
+      "dest": ".codex/skills/day-two-operations/SKILL.md",
+      "source": "src/aegis_sdk/coc/skills/day-two-operations.md",
+      "source_sha256_16": "82667279e4657a14"
+    },
+    {
+      "dest": ".codex/skills/diagnosing-a-refusal/SKILL.md",
+      "source": "src/aegis_sdk/coc/skills/diagnosing-a-refusal.md",
+      "source_sha256_16": "69a1303ac78178ad"
+    },
+    {
+      "dest": ".codex/skills/domain-surfaces/SKILL.md",
+      "source": "src/aegis_sdk/coc/guardrails/domain-surfaces.md",
+      "source_sha256_16": "5d00a26836afc68a"
+    },
+    {
+      "dest": ".codex/skills/error-taxonomy/SKILL.md",
+      "source": "src/aegis_sdk/coc/guardrails/error-taxonomy.md",
+      "source_sha256_16": "31a9addbbed5841f"
+    },
+    {
+      "dest": ".codex/skills/reading-a-measurement/SKILL.md",
+      "source": "src/aegis_sdk/coc/guardrails/reading-a-measurement.md",
+      "source_sha256_16": "bab46b2252db9aca"
+    },
+    {
+      "dest": ".codex/skills/reading-trust-and-governance/SKILL.md",
+      "source": "src/aegis_sdk/coc/skills/reading-trust-and-governance.md",
+      "source_sha256_16": "bc9f3dae1c3a899a"
+    },
+    {
+      "dest": ".codex/skills/registering-a-tool-or-agent/SKILL.md",
+      "source": "src/aegis_sdk/coc/skills/registering-a-tool-or-agent.md",
+      "source_sha256_16": "3060485d91c1089e"
+    },
+    {
+      "dest": ".codex/skills/running-an-objective/SKILL.md",
+      "source": "src/aegis_sdk/coc/skills/running-an-objective.md",
+      "source_sha256_16": "4c691e7fc40939ab"
+    },
+    {
+      "dest": ".codex/skills/sentinels-and-defaults/SKILL.md",
+      "source": "src/aegis_sdk/coc/guardrails/sentinels-and-defaults.md",
+      "source_sha256_16": "e50123e2afca0d5a"
+    },
+    {
+      "dest": ".codex/skills/working-against-a-deployment/SKILL.md",
+      "source": "src/aegis_sdk/coc/skills/working-against-a-deployment.md",
+      "source_sha256_16": "5297f65326a35f12"
+    },
+    {
+      "dest": ".gemini/agents/aegis-operator.md",
+      "source": "src/aegis_sdk/coc/agents/aegis-operator.md",
+      "source_sha256_16": "a628f42aaa831b82"
+    },
+    {
+      "dest": ".gemini/agents/aegis-sdk-specialist.md",
+      "source": "src/aegis_sdk/coc/agents/aegis-sdk-specialist.md",
+      "source_sha256_16": "68069a69dfd764ec"
+    },
+    {
+      "dest": ".gemini/skills/billing-integrity/SKILL.md",
+      "source": "src/aegis_sdk/coc/guardrails/billing-integrity.md",
+      "source_sha256_16": "aefceaccade793b9"
+    },
+    {
+      "dest": ".gemini/skills/client-model-fidelity/SKILL.md",
+      "source": "src/aegis_sdk/coc/guardrails/client-model-fidelity.md",
+      "source_sha256_16": "7cb3b0f21e666022"
+    },
+    {
+      "dest": ".gemini/skills/credential-reachability/SKILL.md",
+      "source": "src/aegis_sdk/coc/guardrails/credential-reachability.md",
+      "source_sha256_16": "d42316ed7afaf4aa"
+    },
+    {
+      "dest": ".gemini/skills/day-two-operations/SKILL.md",
+      "source": "src/aegis_sdk/coc/skills/day-two-operations.md",
+      "source_sha256_16": "82667279e4657a14"
+    },
+    {
+      "dest": ".gemini/skills/diagnosing-a-refusal/SKILL.md",
+      "source": "src/aegis_sdk/coc/skills/diagnosing-a-refusal.md",
+      "source_sha256_16": "69a1303ac78178ad"
+    },
+    {
+      "dest": ".gemini/skills/domain-surfaces/SKILL.md",
+      "source": "src/aegis_sdk/coc/guardrails/domain-surfaces.md",
+      "source_sha256_16": "5d00a26836afc68a"
+    },
+    {
+      "dest": ".gemini/skills/error-taxonomy/SKILL.md",
+      "source": "src/aegis_sdk/coc/guardrails/error-taxonomy.md",
+      "source_sha256_16": "31a9addbbed5841f"
+    },
+    {
+      "dest": ".gemini/skills/reading-a-measurement/SKILL.md",
+      "source": "src/aegis_sdk/coc/guardrails/reading-a-measurement.md",
+      "source_sha256_16": "bab46b2252db9aca"
+    },
+    {
+      "dest": ".gemini/skills/reading-trust-and-governance/SKILL.md",
+      "source": "src/aegis_sdk/coc/skills/reading-trust-and-governance.md",
+      "source_sha256_16": "bc9f3dae1c3a899a"
+    },
+    {
+      "dest": ".gemini/skills/registering-a-tool-or-agent/SKILL.md",
+      "source": "src/aegis_sdk/coc/skills/registering-a-tool-or-agent.md",
+      "source_sha256_16": "3060485d91c1089e"
+    },
+    {
+      "dest": ".gemini/skills/running-an-objective/SKILL.md",
+      "source": "src/aegis_sdk/coc/skills/running-an-objective.md",
+      "source_sha256_16": "4c691e7fc40939ab"
+    },
+    {
+      "dest": ".gemini/skills/sentinels-and-defaults/SKILL.md",
+      "source": "src/aegis_sdk/coc/guardrails/sentinels-and-defaults.md",
+      "source_sha256_16": "e50123e2afca0d5a"
+    },
+    {
+      "dest": ".gemini/skills/working-against-a-deployment/SKILL.md",
+      "source": "src/aegis_sdk/coc/skills/working-against-a-deployment.md",
+      "source_sha256_16": "5297f65326a35f12"
+    },
+    {
+      "dest": "AGENTS.md",
+      "source": "coc-context.md",
+      "source_sha256_16": "bb62f26827030a55"
+    },
+    {
+      "dest": "CLAUDE.md",
+      "source": "coc-context.md",
+      "source_sha256_16": "bb62f26827030a55"
+    },
+    {
+      "dest": "GEMINI.md",
+      "source": "coc-context.md",
+      "source_sha256_16": "bb62f26827030a55"
+    }
+  ]
+}

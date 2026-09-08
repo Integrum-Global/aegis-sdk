@@ -1,0 +1,43 @@
+{
+  "_doc": [
+    "Per-chapter MINIMUM anchor count for the SDK-shipped handbook.",
+    "It only RISES. Falling below a floor fails the gate: the failure mode being",
+    "fenced is deleting a claim to make a gate pass, so removal is what has to be",
+    "expensive. See check.py for what this gate structurally cannot catch."
+  ],
+  "floors": {
+    "01-orientation/01-what-you-were-given.md": 2,
+    "01-orientation/02-the-mental-model.md": 1,
+    "01-orientation/03-your-first-session.md": 10,
+    "01-orientation/README.md": 0,
+    "02-working-through-the-harness/01-the-two-surfaces.md": 0,
+    "02-working-through-the-harness/02-standing-up-an-organization.md": 17,
+    "02-working-through-the-harness/03-envelopes-clearance-and-knowledge.md": 26,
+    "02-working-through-the-harness/04-trust-chains-and-postures.md": 25,
+    "02-working-through-the-harness/05-objectives-and-the-work-loop.md": 27,
+    "02-working-through-the-harness/06-approvals-holds-and-evidence.md": 22,
+    "02-working-through-the-harness/README.md": 0,
+    "03-extending-the-platform/01-writing-a-tool.md": 12,
+    "03-extending-the-platform/02-agents-skills-and-pipelines.md": 75,
+    "03-extending-the-platform/03-the-tool-agent-lifecycle.md": 19,
+    "03-extending-the-platform/04-applications-grants-and-policy.md": 32,
+    "03-extending-the-platform/05-testing-an-extension.md": 22,
+    "03-extending-the-platform/06-choosing-between-them.md": 27,
+    "03-extending-the-platform/README.md": 0,
+    "04-the-api-surface/01-calling-the-api.md": 7,
+    "04-the-api-surface/02-errors-and-refusals.md": 28,
+    "04-the-api-surface/03-credentials-and-keys.md": 17,
+    "04-the-api-surface/04-lists-and-pagination.md": 7,
+    "04-the-api-surface/05-concurrency-and-streams.md": 11,
+    "04-the-api-surface/06-reading-a-response-honestly.md": 12,
+    "04-the-api-surface/README.md": 3,
+    "05-the-web-console/01-first-login.md": 0,
+    "05-the-web-console/02-submitting-an-objective.md": 0,
+    "05-the-web-console/03-your-inbox.md": 0,
+    "05-the-web-console/04-when-something-is-held.md": 0,
+    "05-the-web-console/05-what-you-can-see.md": 0,
+    "05-the-web-console/06-the-rest-of-your-workspace.md": 0,
+    "05-the-web-console/README.md": 0,
+    "README.md": 0
+  }
+}

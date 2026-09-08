@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+
+# Environment — the client reads AGENTIC_OS_* from the environment.
+# A partner's deployment URL and credential are theirs; they never travel.
+.env
+.env.*
+!.env.example
+
+# Editors / OS
+.DS_Store
+.idea/
+*.swp
+
+# ⛔ NOT ignored, deliberately: .claude/ .codex/ .gemini/ CLAUDE.md AGENTS.md
+# GEMINI.md coc-projection.json — the CLI wiring is the point of this repository
+# and must travel with the clone. Ignoring it would leave a partner with a
+# clone that opens into an empty CLI, which is the failure this repository
+# exists to fix.

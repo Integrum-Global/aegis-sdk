@@ -1,0 +1,102 @@
+# DERIVED FILE — do not hand-edit; regenerate from the platform repository.
+#
+# Every declaration below is carried byte-for-byte from the platform's SDK
+# packaging descriptor, except three paths: this repository holds the package at
+# `src/aegis_sdk` directly, where the packaging build reaches it through a
+# symlink. Maintainer commentary is not carried.
+#
+# TWO FACTS THAT COMMENTARY CARRIED, PRESERVED HERE BECAUSE THEY ARE LOAD-BEARING:
+#
+#   1. THE DISTRIBUTION NAME IS PROVISIONAL. It is a product decision, not a
+#      packaging one. It is deliberately NOT `aegis-sdk`: that name on PyPI
+#      belongs to an unrelated third-party package, and installing it gets you
+#      the wrong software under a right-sounding name. Confirm availability on
+#      the target index before any publish. See docs/UNRESOLVED.md § 2.
+#
+#   2. THE VERSION IS READ FROM THE SOURCE and never restated here
+#      (`src/aegis_sdk/_version.py` is the single anchor). A second literal
+#      version in this file is the split-version failure mode.
+#
+# The dependency list is AST-derived from the package with stdlib subtracted,
+# then confirmed against the `sys.modules` delta of a real `import aegis_sdk`.
+# It is not hand-listed: `import aegis_sdk` needs httpx and pydantic, nothing
+# else. Do not add a web-server dependency here.
+#
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "agentic-os-sdk"
+description = "Python client SDK for the Aegis / Agentic OS platform"
+readme = "README.md"
+license = { text = "LicenseRef-Proprietary" }
+requires-python = ">=3.12"
+authors = [{ name = "Integrum", email = "team@kaizen.dev" }]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: Other/Proprietary License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Typing :: Typed",
+]
+
+dynamic = ["version"]
+
+dependencies = [
+    "httpx>=0.27",
+    "pydantic>=2.7",
+]
+
+[project.optional-dependencies]
+nexus = [
+    "sqlalchemy[asyncio]>=2.0",
+    "redis>=5.0",
+]
+
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.24",
+    "pytest-xdist>=3.5",
+    "respx>=0.21",
+    "aiosqlite>=0.20",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "C4", "UP"]
+ignore = ["E501", "B008", "B904", "E402", "B007"]
+
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+asyncio_mode = "auto"
+markers = [
+    "unit: in-process, no external service",
+    "regression: pins a fixed defect",
+    "timeout(seconds): per-test wall-clock budget",
+]
+
+[project.urls]
+Documentation = "https://github.com/esperie-enterprise/aegis/tree/main/src/aegis_sdk/docs"
+
+[tool.hatch.version]
+path = "src/aegis_sdk/_version.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/aegis_sdk"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/aegis_sdk"]

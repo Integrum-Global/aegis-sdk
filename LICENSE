@@ -1,0 +1,49 @@
+Aegis / Agentic OS — Proprietary License
+SPDX-License-Identifier: LicenseRef-Proprietary
+
+===============================================================================
+⛔ DRAFT — NOT APPROVED FOR DISTRIBUTION. FOUNDER AND LEGAL SIGN-OFF REQUIRED
+   BEFORE THIS REPOSITORY OR ANY BUILD OF IT IS HANDED TO A PARTY OUTSIDE THE
+   COMPANY.
+
+   This file MATERIALISES the license this software already declares — both
+   `pyproject.toml` files in this repository carry
+   `license = { text = "LicenseRef-Proprietary" }`, and until now no file
+   delivered it. The license was NOT chosen here and no alternative was
+   considered; that decision is not an engineering one.
+
+   Counsel has not reviewed this text. Two facts in it were carried from the
+   repository rather than settled, and each must be confirmed before sign-off:
+
+     1. THE LEGAL ENTITY NAME. This file says "Integrum", which is what the
+        SDK packaging descriptor declares (`authors = [{ name = "Integrum" }]`)
+        and what the platform documentation uses. Internal drafting notes
+        elsewhere in this repository instead use "Agentic OS, Inc." The two are
+        not interchangeable in a legal instrument and only counsel can say
+        which entity holds the copyright.
+
+     2. THE COPYRIGHT YEARS. "2024-2026" is carried from the notice template in
+        those same internal notes; it was not derived from first publication.
+
+   Removing this block is part of sign-off, not part of tidying up.
+===============================================================================
+
+Copyright (c) 2024-2026 Integrum. All rights reserved.
+
+This software, including its source code, documentation and accompanying
+materials, is proprietary and confidential to Integrum.
+
+NO LICENSE IS GRANTED BY THIS FILE. Rights to use, copy, modify, merge,
+publish, distribute, sublicense or sell this software, in whole or in part, are
+granted only by a separate written agreement between Integrum and the
+recipient. Absent such an agreement no rights are granted, and any use,
+reproduction, modification or distribution — by any medium — is prohibited.
+
+Where such an agreement exists, that agreement governs the recipient's use,
+including its terms on warranties, liability, indemnity and support. This file
+deliberately states none of those terms and neither modifies, extends nor
+limits them.
+
+Third-party components required by or distributed with this software are listed
+in NOTICE. Each remains under its own license; nothing here relicenses any of
+them.
