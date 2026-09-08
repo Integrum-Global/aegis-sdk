@@ -90,7 +90,11 @@ markers = [
 ]
 
 [project.urls]
-Documentation = "https://github.com/esperie-enterprise/aegis/tree/main/src/aegis_sdk/docs"
+# This repository's own docs. It previously pointed into the platform
+# repository, which no reader of this package can open — and which this package
+# deliberately does not name. The docs ship inside the wheel and the clone, so
+# the reachable destination is here.
+Documentation = "https://github.com/esperie-enterprise/aegis-sdk/tree/main/src/aegis_sdk/docs"
 
 [tool.hatch.version]
 path = "src/aegis_sdk/_version.py"

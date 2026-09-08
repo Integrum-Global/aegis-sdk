@@ -15,8 +15,8 @@ published to PyPI either. Install from source:
 # From a local checkout of this repo
 pip install -e .
 
-# Or directly from git (requires repo access)
-pip install "git+https://github.com/esperie-enterprise/aegis.git"
+# Or directly from git
+pip install "git+https://github.com/esperie-enterprise/aegis-sdk.git"
 ```
 
 The SDK requires Python 3.10+ and depends on `httpx` and `pydantic`.
