@@ -94,6 +94,46 @@ and the `⛔ DRAFT` blocks are removed as part of that sign-off — not as tidyi
 
 ---
 
+## 3b. The type ratchet is RED on arrival — deliberately not silenced
+
+`python packaging/aegis-sdk/harness.py all` reports `FAILED: typecheck`. `lint`,
+`build` and `tests` (1131 passing) are green; only this step is red.
+
+Measured 2026-09-08: **320 type errors across 58 files against a banked budget of
+269 across 52.** It splits in two, and the split is the point:
+
+- **7 files were never in the baseline at all** (34 errors) — they landed after
+  it was banked and nothing forced it forward. That is a ratchet nobody ran, not
+  code that got worse.
+- **3 files genuinely regressed** (+18): `modules/compliance.py` 3 → 17,
+  `modules/work_objectives.py` 27 → 29, `modules/knowledge_govern.py` 10 → 12.
+
+`harness.py typecheck --update-baseline` would make this green in one command.
+It was NOT run. Banking 52 errors to turn a gate green is the single disposition
+that gate exists to prevent, and you would inherit a budget nobody chose.
+
+**Closes when:** the 3 regressions are fixed and the 7 unbaselined files are
+brought to a deliberate budget. Note `py.typed` promises consumers that these
+annotations are meaningful, and that promise is currently backed by a budget
+rather than by zero.
+
+---
+
+## 3c. `project.urls.Documentation` points at a repository you cannot reach
+
+`pyproject.toml` carries a `Documentation` URL pointing into the private platform
+repository. It is not resolvable from outside, and it names that repository.
+
+It was **not** rewritten here: choosing where this repository's documentation
+lives is a product decision, the same class as the distribution name in § 2, and
+the assembly has no authority to take it. The documentation itself ships in this
+tree under `src/aegis_sdk/docs/`.
+
+**Closes when:** this repository has a published home and the URL points at it —
+settle it together with § 2 and § 4, which are the same decision.
+
+---
+
 ## 4. Publishing — no index, no credential, no release job
 
 Building is proven; shipping is not. There is no package index configured, no

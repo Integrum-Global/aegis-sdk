@@ -2,40 +2,31 @@ Aegis / Agentic OS — Proprietary License
 SPDX-License-Identifier: LicenseRef-Proprietary
 
 ===============================================================================
-⛔ DRAFT — NOT APPROVED FOR DISTRIBUTION. FOUNDER AND LEGAL SIGN-OFF REQUIRED
-   BEFORE THIS REPOSITORY OR ANY BUILD OF IT IS HANDED TO A PARTY OUTSIDE THE
-   COMPANY.
+⚠ The entity and the copyright years below were CONFIRMED by the founder on
+  2026-09-08: "license entity name is Integrum Pte Ltd, copyright years
+  2025-2026". The two facts this file previously carried unresolved are
+  therefore settled, and the earlier "Agentic OS, Inc." wording found in
+  internal drafting notes does NOT apply to this software.
 
-   This file MATERIALISES the license this software already declares — both
-   `pyproject.toml` files in this repository carry
-   `license = { text = "LicenseRef-Proprietary" }`, and until now no file
-   delivered it. The license was NOT chosen here and no alternative was
-   considered; that decision is not an engineering one.
+  This file MATERIALISES the license this software already declares — both
+  `pyproject.toml` files carry `license = { text = "LicenseRef-Proprietary" }`,
+  and until now no file delivered it. The license was NOT chosen here; that
+  decision is not an engineering one and was not made here.
 
-   Counsel has not reviewed this text. Two facts in it were carried from the
-   repository rather than settled, and each must be confirmed before sign-off:
-
-     1. THE LEGAL ENTITY NAME. This file says "Integrum", which is what the
-        SDK packaging descriptor declares (`authors = [{ name = "Integrum" }]`)
-        and what the platform documentation uses. Internal drafting notes
-        elsewhere in this repository instead use "Agentic OS, Inc." The two are
-        not interchangeable in a legal instrument and only counsel can say
-        which entity holds the copyright.
-
-     2. THE COPYRIGHT YEARS. "2024-2026" is carried from the notice template in
-        those same internal notes; it was not derived from first publication.
-
-   Removing this block is part of sign-off, not part of tidying up.
+  COUNSEL HAS STILL NOT REVIEWED THIS TEXT. What the founder settled is WHO and
+  WHEN, not whether the operative wording below is adequate. A review before
+  wide external distribution remains outstanding — this note records the limit
+  rather than implying the whole instrument is cleared.
 ===============================================================================
 
-Copyright (c) 2024-2026 Integrum. All rights reserved.
+Copyright (c) 2025-2026 Integrum Pte Ltd. All rights reserved.
 
 This software, including its source code, documentation and accompanying
-materials, is proprietary and confidential to Integrum.
+materials, is proprietary and confidential to Integrum Pte Ltd.
 
 NO LICENSE IS GRANTED BY THIS FILE. Rights to use, copy, modify, merge,
 publish, distribute, sublicense or sell this software, in whole or in part, are
-granted only by a separate written agreement between Integrum and the
+granted only by a separate written agreement between Integrum Pte Ltd and the
 recipient. Absent such an agreement no rights are granted, and any use,
 reproduction, modification or distribution — by any medium — is prohibited.
 

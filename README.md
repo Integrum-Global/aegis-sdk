@@ -28,7 +28,7 @@ there and re-run `node scripts/project_coc.mjs`; `--check` reds on drift.
 
 | | |
 | --- | --- |
-| `src/aegis_sdk/` | the client — 152 Python modules, version 1.0.0 |
+| `src/aegis_sdk/` | the client — 114 Python modules, version 1.0.0 |
 | `src/aegis_sdk/handbook/` | how the platform **behaves** — 27 chapters in 5 parts, screenshots included |
 | `src/aegis_sdk/coc/` | what to **do** about it — 2 agent briefs, 6 task skills, 7 guardrails, one probe |
 | `src/aegis_sdk/docs/` | reference: quickstart, authentication, configuration, errors, streaming |
@@ -71,10 +71,25 @@ python -c "from aegis_sdk.handbook.check import declared_operations as d; print(
 ## Repository checks
 
 ```bash
+pip install -e ".[dev,nexus]"               # test tooling, with ruff and mypy pinned
+python packaging/aegis-sdk/harness.py all   # lint + types + wheel + tests
 python -m aegis_sdk.handbook.check          # handbook + coc anchors resolve in this build
 node scripts/project_coc.mjs --check        # CLI overlays match their neutral source
 python -m aegis_sdk.coc.probe --transports-only   # which client paths are real (offline)
 ```
+
+⛔ **This repository carries NO tests.** `harness.py tests` and `harness.py all`
+will report a broken selector rather than a pass — that is the harness refusing to
+call an empty sweep a clean one, not a fault in your setup. `lint`, `typecheck` and
+`build` do run. The client's tests were written for an internal audience and cite
+internal source coordinates in their assertions, so they were withheld rather than
+rewritten. `python -m aegis_sdk.coc.probe` checks this client against your own
+deployment and is the substitute available today.
+
+⛔ **`harness.py all` is RED on arrival, on the `typecheck` step only** — an
+inherited type-error budget, not anything you did and not anything about your
+environment. `docs/UNRESOLVED.md` § 3b has the numbers and says why it was left
+red rather than re-baselined into silence.
 
 ## Accountability
 

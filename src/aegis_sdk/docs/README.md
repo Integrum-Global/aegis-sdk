@@ -15,7 +15,7 @@ published to PyPI either. Install from source:
 # From a local checkout of this repo
 pip install -e .
 
-# Or directly from git
+# Or directly from git (requires repo access)
 pip install "git+https://github.com/esperie-enterprise/aegis-sdk.git"
 ```
 

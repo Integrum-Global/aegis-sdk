@@ -44,6 +44,7 @@ from .modules import (
     RolesModule,
     SettingsModule,
     SpecialistSystemModule,
+    SurfacesModule,
     TaskAgentsModule,
     ToolAgentsModule,
     ToolsModule,
@@ -353,6 +354,11 @@ class AgenticOSClient:
         self.auth_users = AuthUsersModule(self._http)
         self.org_standup = OrgStandupModule(self._http)
         self.integrations = IntegrationsModule(self._http)
+
+        # Architect-tier surface registry. The manifest read is open to every
+        # persona; every authoring route additionally requires an
+        # architect/admin/executive persona AND a surfaces:<verb> permission.
+        self.surfaces = SurfacesModule(self._http)
 
     @classmethod
     def from_env(cls) -> "AgenticOSClient":

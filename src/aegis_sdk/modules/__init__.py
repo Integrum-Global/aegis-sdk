@@ -39,6 +39,14 @@ from .pseudo_agents import PseudoAgentsModule
 from .roles import RolesModule
 from .settings import SettingsModule
 from .specialist_system import SpecialistSystemModule
+from .surfaces import (
+    SurfaceDeleteResult,
+    SurfaceManifest,
+    SurfaceManifestEntry,
+    SurfaceRegistration,
+    SurfaceRegistrationListResult,
+    SurfacesModule,
+)
 from .task_agents import TaskAgentsModule
 from .tool_agents import ToolAgentsModule
 from .tools import ToolList, ToolsModule, ToolValidation
@@ -99,6 +107,12 @@ __all__ = [
     "ObserveAuditModule",
     "SettingsModule",
     "SpecialistSystemModule",
+    "SurfaceDeleteResult",
+    "SurfaceManifest",
+    "SurfaceManifestEntry",
+    "SurfaceRegistration",
+    "SurfaceRegistrationListResult",
+    "SurfacesModule",
     "TaskAgentsModule",
     "ToolAgentsModule",
     #s
