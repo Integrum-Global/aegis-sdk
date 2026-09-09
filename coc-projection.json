@@ -10,12 +10,30 @@
     "`source_sha256_16` is the digest of the SOURCE at projection time, so a source",
     "edit that was never re-projected is visible here rather than only in a diff."
   ],
-  "projected_on": "2026-09-08",
+  "projected_on": "2026-09-09",
   "counts": {
     "agents": 2,
     "skills": 6,
     "guardrails": 7,
-    "projected_files": 48
+    "hooks": 6,
+    "hook_scripts": 8,
+    "projected_files": 59
+  },
+  "enforcement": {
+    "src/aegis_sdk/coc/guardrails/billing-integrity.md": "PROSE ONLY — no hook enforces this",
+    "src/aegis_sdk/coc/guardrails/client-model-fidelity.md": [
+      "source-absence-boundary"
+    ],
+    "src/aegis_sdk/coc/guardrails/credential-reachability.md": [
+      "deployment-blast-radius",
+      "client-credential-containment"
+    ],
+    "src/aegis_sdk/coc/guardrails/domain-surfaces.md": "PROSE ONLY — no hook enforces this",
+    "src/aegis_sdk/coc/guardrails/error-taxonomy.md": "PROSE ONLY — no hook enforces this",
+    "src/aegis_sdk/coc/guardrails/reading-a-measurement.md": [
+      "probe-before-claim"
+    ],
+    "src/aegis_sdk/coc/guardrails/sentinels-and-defaults.md": "PROSE ONLY — no hook enforces this"
   },
   "projected": [
     {
@@ -27,6 +45,51 @@
       "dest": ".claude/agents/aegis-sdk-specialist.md",
       "source": "src/aegis_sdk/coc/agents/aegis-sdk-specialist.md",
       "source_sha256_16": "68069a69dfd764ec"
+    },
+    {
+      "dest": ".claude/hooks/anchor-integrity.js",
+      "source": "src/aegis_sdk/coc/hooks/anchor-integrity.js",
+      "source_sha256_16": "716461220ffc3576"
+    },
+    {
+      "dest": ".claude/hooks/client-credential-containment.js",
+      "source": "src/aegis_sdk/coc/hooks/client-credential-containment.js",
+      "source_sha256_16": "97d732a6ab19c398"
+    },
+    {
+      "dest": ".claude/hooks/deployment-blast-radius.js",
+      "source": "src/aegis_sdk/coc/hooks/deployment-blast-radius.js",
+      "source_sha256_16": "c3a2aaea87b0e6cc"
+    },
+    {
+      "dest": ".claude/hooks/lib/coc-hook.js",
+      "source": "src/aegis_sdk/coc/hooks/lib/coc-hook.js",
+      "source_sha256_16": "0dbaab35f91df87d"
+    },
+    {
+      "dest": ".claude/hooks/lib/codex-hook-runtime.js",
+      "source": "src/aegis_sdk/coc/hooks/lib/codex-hook-runtime.js",
+      "source_sha256_16": "97acf3a3a9b95381"
+    },
+    {
+      "dest": ".claude/hooks/lib/resolve_anchors.py",
+      "source": "src/aegis_sdk/coc/hooks/lib/resolve_anchors.py",
+      "source_sha256_16": "941460ea1aba4e56"
+    },
+    {
+      "dest": ".claude/hooks/probe-before-claim.js",
+      "source": "src/aegis_sdk/coc/hooks/probe-before-claim.js",
+      "source_sha256_16": "5e5178b86f0e0411"
+    },
+    {
+      "dest": ".claude/hooks/source-absence-boundary.js",
+      "source": "src/aegis_sdk/coc/hooks/source-absence-boundary.js",
+      "source_sha256_16": "2956fe4394dee390"
+    },
+    {
+      "dest": ".claude/settings.json",
+      "source": "src/aegis_sdk/coc/hooks/hooks.manifest.json",
+      "source_sha256_16": "d20e2e65086adc6d"
     },
     {
       "dest": ".claude/skills/billing-integrity/SKILL.md",
@@ -56,7 +119,7 @@
     {
       "dest": ".claude/skills/domain-surfaces/SKILL.md",
       "source": "src/aegis_sdk/coc/guardrails/domain-surfaces.md",
-      "source_sha256_16": "5d00a26836afc68a"
+      "source_sha256_16": "6d8a1aa8e430bd60"
     },
     {
       "dest": ".claude/skills/error-taxonomy/SKILL.md",
@@ -92,6 +155,11 @@
       "dest": ".claude/skills/working-against-a-deployment/SKILL.md",
       "source": "src/aegis_sdk/coc/skills/working-against-a-deployment.md",
       "source_sha256_16": "5297f65326a35f12"
+    },
+    {
+      "dest": ".codex/hooks.json",
+      "source": "src/aegis_sdk/coc/hooks/hooks.manifest.json",
+      "source_sha256_16": "d20e2e65086adc6d"
     },
     {
       "dest": ".codex/prompts/specialist-aegis-operator.md",
@@ -131,7 +199,7 @@
     {
       "dest": ".codex/skills/domain-surfaces/SKILL.md",
       "source": "src/aegis_sdk/coc/guardrails/domain-surfaces.md",
-      "source_sha256_16": "5d00a26836afc68a"
+      "source_sha256_16": "6d8a1aa8e430bd60"
     },
     {
       "dest": ".codex/skills/error-taxonomy/SKILL.md",
@@ -179,6 +247,11 @@
       "source_sha256_16": "68069a69dfd764ec"
     },
     {
+      "dest": ".gemini/settings.json",
+      "source": "src/aegis_sdk/coc/hooks/hooks.manifest.json",
+      "source_sha256_16": "d20e2e65086adc6d"
+    },
+    {
       "dest": ".gemini/skills/billing-integrity/SKILL.md",
       "source": "src/aegis_sdk/coc/guardrails/billing-integrity.md",
       "source_sha256_16": "aefceaccade793b9"
@@ -206,7 +279,7 @@
     {
       "dest": ".gemini/skills/domain-surfaces/SKILL.md",
       "source": "src/aegis_sdk/coc/guardrails/domain-surfaces.md",
-      "source_sha256_16": "5d00a26836afc68a"
+      "source_sha256_16": "6d8a1aa8e430bd60"
     },
     {
       "dest": ".gemini/skills/error-taxonomy/SKILL.md",
@@ -246,17 +319,17 @@
     {
       "dest": "AGENTS.md",
       "source": "coc-context.md",
-      "source_sha256_16": "151c7c30f935a8ea"
+      "source_sha256_16": "9b6d8f609cdb1334"
     },
     {
       "dest": "CLAUDE.md",
       "source": "coc-context.md",
-      "source_sha256_16": "151c7c30f935a8ea"
+      "source_sha256_16": "9b6d8f609cdb1334"
     },
     {
       "dest": "GEMINI.md",
       "source": "coc-context.md",
-      "source_sha256_16": "151c7c30f935a8ea"
+      "source_sha256_16": "9b6d8f609cdb1334"
     }
   ]
 }

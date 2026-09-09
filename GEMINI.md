@@ -19,7 +19,7 @@ inferring, and say what would settle it.
 
 | | |
 | --- | --- |
-| `src/aegis_sdk/` | the Python client — 154 modules, version 1.0.0 |
+| `src/aegis_sdk/` | the Python client — 155 modules, version 1.0.0 |
 | `src/aegis_sdk/handbook/` | how the platform **behaves** — 27 chapters in 5 parts |
 | `src/aegis_sdk/coc/` | what to **do** about it — 2 agent briefs, 6 skills, 7 guardrails |
 | .gemini/agents/ · .gemini/skills/ | the same material, projected for Gemini CLI |

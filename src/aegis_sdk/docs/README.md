@@ -8,15 +8,16 @@ A Python SDK for programmatic access to the Agentic OS platform. Provides async-
 
 **Not on PyPI.** `pip install aegis-sdk` installs an unrelated third-party
 package (a different company's on-premise PII detection tool), not this SDK.
-This SDK ships as part of `agentic-os` (`pyproject.toml`), which is not yet
-published to PyPI either. Install from source:
+The distribution name in `pyproject.toml` is `agentic-os-sdk`, it is
+**PROVISIONAL**, and it is not published to any index either. Install from
+source:
 
 ```bash
-# From a local checkout of this repo
+# From a local checkout of the SDK repository
 pip install -e .
 
-# Or directly from git (requires repo access)
-pip install "git+https://github.com/Integrum-Global/aegis-sdk.git"
+# Or directly from git (requires repository access)
+pip install "git+https://github.com/esperie-enterprise/aegis-sdk.git"
 ```
 
 The SDK requires Python 3.10+ and depends on `httpx` and `pydantic`.

@@ -1,0 +1,105 @@
+{
+  "_doc": [
+    "The NEUTRAL registration for every enforcing hook in this repository.",
+    "",
+    "ONE SOURCE, THREE REGISTRATIONS. The hook SCRIPTS live once, at",
+    "`.claude/hooks/<name>.js`, and all three CLIs invoke that same path — what",
+    "differs is only the manifest each one reads, and the event names each one",
+    "uses. `scripts/project_coc.mjs` derives all three from this file, so adding",
+    "a hook is one entry here rather than three hand-edited settings files that",
+    "drift silently and each look authoritative.",
+    "",
+    "`matchers` are CC tool names. Gemini renames the EVENTS (BeforeTool /",
+    "AfterTool) but not the tools; Codex fires on the Bash lane only, which is",
+    "recorded per-hook in `codex_coverage` rather than left for a reader to",
+    "discover when a guard turns out not to fire.",
+    "",
+    "`timeout_ms` is the HARNESS timeout and is deliberately GREATER than each",
+    "hook's own internal budget, so a slow hook reaches its own fail-open path",
+    "and emits `{continue:true}` rather than being killed mid-check. A harness",
+    "timeout at or below the internal budget makes the fail-open branch",
+    "unreachable, which is the opposite of what it is for."
+  ],
+  "hooks": [
+    {
+      "name": "deployment-blast-radius",
+      "event": "PreToolUse",
+      "matchers": ["Bash"],
+      "severity": "block",
+      "timeout_ms": 6000,
+      "budget_env": "COC_BLAST_RADIUS_BUDGET_MS",
+      "enforces": [
+        "src/aegis_sdk/coc/skills/working-against-a-deployment.md",
+        "src/aegis_sdk/coc/guardrails/credential-reachability.md"
+      ],
+      "codex_coverage": "full — the surface it guards IS the Bash lane",
+      "exceeds_core": "core has no concept of a live client deployment; a core developer's blast radius is a branch"
+    },
+    {
+      "name": "client-credential-containment",
+      "event": "PreToolUse",
+      "matchers": ["Bash", "Write", "Edit", "NotebookEdit"],
+      "severity": "block",
+      "timeout_ms": 6000,
+      "budget_env": "COC_CREDENTIAL_BUDGET_MS",
+      "enforces": [
+        "src/aegis_sdk/coc/guardrails/credential-reachability.md",
+        "src/aegis_sdk/coc/skills/working-against-a-deployment.md"
+      ],
+      "codex_coverage": "PARTIAL — Codex hooks fire on Bash only, so the Write/Edit arm does not fire there. Named rather than assumed.",
+      "exceeds_core": "core's secret scanning is about THIS repo's secrets; this is about a client's, compared against live environment values rather than shapes"
+    },
+    {
+      "name": "source-absence-boundary",
+      "event": "PreToolUse",
+      "matchers": ["Write", "Edit", "NotebookEdit", "Bash"],
+      "severity": "halt-and-report",
+      "timeout_ms": 6000,
+      "budget_env": "COC_SOURCE_ABSENCE_BUDGET_MS",
+      "enforces": [
+        "coc-context.md",
+        "src/aegis_sdk/coc/guardrails/client-model-fidelity.md"
+      ],
+      "codex_coverage": "PARTIAL — Bash lane only under Codex; the Write/Edit arm needs the MCP-guard surface.",
+      "exceeds_core": "core's evidence-first rule assumes the source is readable. Here it is not, and the narrower position needs the stronger guard.",
+      "rollback_candidate": true
+    },
+    {
+      "name": "probe-before-claim",
+      "event": "PreToolUse",
+      "matchers": ["Write", "Edit", "NotebookEdit", "Bash"],
+      "severity": "halt-and-report",
+      "timeout_ms": 6000,
+      "budget_env": "COC_PROBE_CLAIM_BUDGET_MS",
+      "enforces": ["src/aegis_sdk/coc/guardrails/reading-a-measurement.md"],
+      "codex_coverage": "PARTIAL — Bash lane only under Codex.",
+      "exceeds_core": "core can only advise 'cite the endpoint'; this repository ships the instrument, so the obligation has something to bind to"
+    },
+    {
+      "name": "probe-before-claim",
+      "event": "PostToolUse",
+      "matchers": ["Bash"],
+      "severity": "advisory",
+      "timeout_ms": 6000,
+      "budget_env": "COC_PROBE_CLAIM_BUDGET_MS",
+      "enforces": ["src/aegis_sdk/coc/guardrails/reading-a-measurement.md"],
+      "codex_coverage": "full — probe invocations are Bash",
+      "note": "the RECORD half. It writes a receipt from the probe's own output, so the receipt is an observation by the harness rather than a claim by the agent."
+    },
+    {
+      "name": "anchor-integrity",
+      "event": "PreToolUse",
+      "matchers": ["Write", "Edit", "NotebookEdit"],
+      "severity": "block",
+      "timeout_ms": 12000,
+      "budget_env": "COC_ANCHOR_BUDGET_MS",
+      "enforces": [
+        "src/aegis_sdk/coc/anchors.json",
+        "src/aegis_sdk/handbook/anchors.json"
+      ],
+      "codex_coverage": "NONE on the Codex Bash lane — its whole surface is file writes, which Codex hooks do not see. This is a real gap and is recorded here rather than discovered later.",
+      "exceeds_core": "core's citation gate was measured blind to 25% of its corpus and silent about its denominator; this reports examined-vs-skipped on every emission",
+      "rollback_candidate": true
+    }
+  ]
+}

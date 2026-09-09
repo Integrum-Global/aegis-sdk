@@ -283,7 +283,11 @@ class ObserveAuditModule:
             start_date: Start date (ISO 8601)
             end_date: End date (ISO 8601)
             limit: Maximum results for export (1-5000, default 1000)
-            mask_level: PII masking level — none, betriebsrat, or gdpr_export
+            mask_level: PII masking level — none, betriebsrat, or gdpr_export.
+                The server derives a floor from the caller's role and this
+                value may only TIGHTEN it; a request for less masking than
+                the caller's role allows is clamped server-side, so the
+                returned records may be masked more than asked.
 
         Returns:
             list[dict]: Exported audit log records (JSON-parsed)

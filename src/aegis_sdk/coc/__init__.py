@@ -1,12 +1,18 @@
 """Architect-facing working material, shipped with the client it describes.
 
 The handbook (:mod:`aegis_sdk.handbook`) tells you how the platform behaves.
-This package is the *working* half: two agent briefs, six task skills, six
+This package is the *working* half: two agent briefs, six task skills, seven
 guardrails, and one probe you run against your own deployment.
 
 The counts are stated because a reader works from them — an undercount here is
-how someone never finds the skill that answers their question. They were wrong
-until this was corrected: the corpus grew and this sentence did not.
+how someone never finds the skill that answers their question. This sentence has
+now been wrong TWICE, each time because the corpus grew and the prose did not,
+and the second time while carrying a note claiming it had been corrected. Prose
+saying it is current is not a mechanism. So it is now pinned against the
+directories it describes by a test in the platform repository, which fails when
+a file is added or removed and this sentence is not updated in the same change.
+If you are reading a count here that disagrees with the directories beside it,
+trust the directories: they are the corpus, this sentence only describes it.
 
 The distinction that decides what belongs here: the handbook states what is
 true, and this package states what to DO about it — including the cases where

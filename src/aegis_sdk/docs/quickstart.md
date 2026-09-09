@@ -9,8 +9,9 @@ to an **unrelated third-party package** ("on-premise PII detection and masking
 for AI applications", published by a different company). Installing it gets you
 the wrong software under a right-sounding name.
 
-Install from your checkout of this repository. Either form gives you `aegis_sdk`
-and **nothing else** — neither carries the platform:
+Install from your checkout of the **SDK repository**,
+`esperie-enterprise/aegis-sdk`. Either form gives you `aegis_sdk` and **nothing
+else** — neither carries the platform:
 
 ```bash
 # editable, for working in the repo
@@ -19,13 +20,13 @@ pip install -e .
 # or a wheel, if you want the artifact
 pip install build hatchling
 python -m build --wheel .
-pip install dist/agentic_os_sdk-*.whl
+pip install dist/agentic_os_sdk-*.whl     # the distribution is `agentic-os-sdk`
 ```
 
-Both read the `pyproject.toml` at the ROOT of this repository. If you have seen
-an older instruction naming a path under `packaging/`, it does not apply here:
-that directory ships the test harness and its type baseline, not a build
-descriptor, and the command would fail on a fresh clone.
+Both read the `pyproject.toml` at the ROOT of the SDK repository. If you have
+seen an older instruction naming a path under `packaging/`, it does not apply
+there: in the SDK repository that directory ships the test harness and its type
+baseline, not a build descriptor, and the command would fail on a fresh clone.
 
 Verify what you installed:
 
@@ -41,9 +42,12 @@ python -c "import aegis_sdk; print(aegis_sdk.__version__)"
 <details>
 <summary>Installing the whole platform instead (maintainers only)</summary>
 
-`pip install -e .` from the repo root installs the umbrella distribution, which
-ships the SDK **and the full server codebase**. That is the right thing when you
-are developing the platform and the wrong thing when you want a client.
+⛔ This applies **only** inside the private platform repository, which is a
+different repository and is not the one you cloned; if you do not have it, this
+paragraph is not about you. There, `pip install -e .` from the repo root
+installs the umbrella distribution, which ships the SDK **and the full server
+codebase**. That is the right thing when you are developing the platform and the
+wrong thing when you want a client.
 
 </details>
 

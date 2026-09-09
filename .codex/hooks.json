@@ -1,0 +1,43 @@
+{
+  "_doc": [
+    "PROJECTED FILE — do not edit here. Source: src/aegis_sdk/coc/hooks/hooks.manifest.json",
+    "Regenerate: node scripts/project_coc.mjs",
+    "",
+    "CODEX FIRES HOOKS ON THE BASH LANE ONLY. A guard whose surface is file",
+    "writes is absent from this file BY CONSTRUCTION, not by omission — see",
+    "each entry's `_coverage`, and the manifest's `codex_coverage` for the",
+    "hooks that do not appear here at all."
+  ],
+  "hooks": [
+    {
+      "event": "PreToolUse",
+      "command": "node ./.claude/hooks/lib/codex-hook-runtime.js ./.claude/hooks/deployment-blast-radius.js",
+      "timeout_ms": 6000,
+      "_coverage": "full — the surface it guards IS the Bash lane"
+    },
+    {
+      "event": "PreToolUse",
+      "command": "node ./.claude/hooks/lib/codex-hook-runtime.js ./.claude/hooks/client-credential-containment.js",
+      "timeout_ms": 6000,
+      "_coverage": "PARTIAL — Codex hooks fire on Bash only, so the Write/Edit arm does not fire there. Named rather than assumed."
+    },
+    {
+      "event": "PreToolUse",
+      "command": "node ./.claude/hooks/lib/codex-hook-runtime.js ./.claude/hooks/source-absence-boundary.js",
+      "timeout_ms": 6000,
+      "_coverage": "PARTIAL — Bash lane only under Codex; the Write/Edit arm needs the MCP-guard surface."
+    },
+    {
+      "event": "PreToolUse",
+      "command": "node ./.claude/hooks/lib/codex-hook-runtime.js ./.claude/hooks/probe-before-claim.js",
+      "timeout_ms": 6000,
+      "_coverage": "PARTIAL — Bash lane only under Codex."
+    },
+    {
+      "event": "PostToolUse",
+      "command": "node ./.claude/hooks/lib/codex-hook-runtime.js ./.claude/hooks/probe-before-claim.js",
+      "timeout_ms": 6000,
+      "_coverage": "full — probe invocations are Bash"
+    }
+  ]
+}

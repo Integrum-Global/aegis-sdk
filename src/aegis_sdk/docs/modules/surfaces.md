@@ -17,27 +17,31 @@ This is the capability that lets an architect compose a domain area of the produ
 
 ---
 
-## Read Before You Build: Two Limits
+## Read Before You Build
 
-These are stated first because both change what the module is useful for today.
+### `classification` is a clearance gate
 
-### `classification` is declarative and gates nothing
+The caller's clearance is compared against `classification`. An entry the caller is not cleared for is omitted from their manifest and its route refuses to resolve.
 
-The field is stored, returned, and validated against a closed vocabulary. It is **not** consulted when the server decides who sees a surface. Visibility resolves on organization, status, vocabulary, persona, and each entry's own `required_permission` — the caller's clearance is never compared against `classification`.
+It is one of **three independent per-entry gates**. `personas`, `required_permission` and `classification` are conjunctive: an entry is served only when the caller satisfies all three, so widening one does not relax the others.
 
-A surface registered `confidential` is shown to every persona its registration names, exactly as a `public` one is.
+The ladder is `public` < `restricted` < `confidential` < `secret` < `top_secret`. Reaching a level admits everything at or below it. `internal` is an accepted spelling of `restricted`.
 
-**To restrict who sees a surface, use `personas` and `required_permission`.** Treating `classification` as an access control will not produce the restriction you intend.
+The caller's clearance is resolved server-side from their active, vetted role clearances. It is not a token claim, and no request field sets it — a caller cannot raise their own. **A clearance the server cannot resolve denies every entry**, including `public` ones, rather than falling back to the bottom of the ladder.
 
-Levels above `confidential` are refused on write. The stored record carries no compartment, so admitting a higher level would offer a protection tier with nothing behind it.
+⚠ **This changed.** An earlier revision of this guide said the field was declarative and gated nothing. That was true when written and is now wrong — a surface classified above its readers' clearance will disappear for them, which the earlier text said would not happen.
+
+Writes are still capped at `confidential`: the stored record carries no compartment, so admitting a higher level would advertise a protection tier with nothing behind it. That cap is on what may be **registered** — a caller cleared to `secret` or `top_secret` reads normally.
+
+Entries above your clearance are **absent** from the response rather than reported as forbidden, so the manifest cannot be used to detect that a more sensitive surface exists.
 
 ### A `record_list` surface has no supported API to populate it yet
 
 `record_list` is the only shipped renderer, and the governed object layer beneath it — the record types and the records themselves — is schema-only today. It has no route and no client method, here or anywhere else in this package.
 
-So a registered surface mounts, appears in navigation for the personas you name, enforces its permission, resolves its route, and renders its configured empty state. What it cannot yet do is list records, because nothing can create them.
+So a registered surface mounts, appears in navigation for the personas you name, enforces its permission and its classification, resolves its route, and renders its configured empty state. What it cannot yet do is list records, because nothing can create them.
 
-Registering surfaces now is still real work — the navigation entry, the permission gate and the route are live and enforced — but do not plan a data-bearing screen around it in this release.
+Registering surfaces now is still real work — the navigation entry, the permission and clearance gates, and the route are live and enforced — but do not plan a data-bearing screen around it in this release.
 
 ---
 
@@ -68,7 +72,7 @@ Disabled registrations are excluded. So are registrations whose stored values no
 | `view_kind`       | `str`            | `record_list`                                                    |
 | `view_config`     | `dict`           | Configuration for the renderer                                   |
 | `personas`        | `list[str]`      | Personas the entry is offered to                                 |
-| `classification`  | `str`            | Declarative label — see above; does not restrict visibility      |
+| `classification`  | `str`            | Clearance required to see the entry — see above                  |
 
 `organization_id`, provenance and `required_permission` are deliberately absent. The manifest is already filtered to entries this caller may see, so echoing the gate that admitted them tells the client nothing it can act on.
 
@@ -184,7 +188,7 @@ A key belonging to another organization returns 404, identically to a key that d
 | `view_config`         | `dict`            | Renderer configuration                                              |
 | `required_permission` | `str \| None`     | Permission a caller must hold to see the entry and resolve its route |
 | `personas`            | `list[str]`       | Personas the entry is offered to                                    |
-| `classification`      | `str`             | Declarative label — does not restrict visibility                    |
+| `classification`      | `str`             | Clearance required to see the entry and resolve its route           |
 | `status`              | `str`             | `disabled` or `enabled`                                             |
 | `derived_scopes`      | `dict[str, str]`  | Descriptive labels only — see below                                 |
 | `created_by`          | `str \| None`     | Author                                                              |

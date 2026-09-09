@@ -47,20 +47,31 @@ path, so path traversal, scheme injection and route shadowing are
 unrepresentable rather than filtered. ``route_path`` is returned on reads;
 supplying it on a write is refused.
 
-⚠ ``classification`` IS DECLARATIVE AND GATES NOTHING TODAY
-===========================================================
-The field is stored, returned, and validated against a closed vocabulary —
-and it is NOT consulted when deciding who sees a surface. Server-side
-visibility resolves on tenant, status, vocabulary, persona and
-``required_permission`` only; the caller's clearance is never compared
-against this value. A surface registered ``confidential`` is shown to every
-persona its registration names, exactly as a ``public`` one is. Use
-``personas`` and ``required_permission`` to restrict who sees a surface.
-This is recorded rather than implied because a field named
-``classification`` on a governance product otherwise reads as an access
-control it does not perform. Levels above ``confidential`` are refused by
-the writer for the same reason: the model carries no compartment column, so
-admitting them would offer a protection level with nothing behind it.
+``classification`` IS A CLEARANCE GATE
+=====================================
+The caller's clearance is compared against this value, and an entry the
+caller is not cleared for is omitted from their manifest AND refused by its
+route. It is one of THREE independent per-entry gates — ``personas``,
+``required_permission`` and ``classification`` are conjunctive, so raising
+one does not relax another.
+
+The caller's clearance is resolved by the server from their active, vetted
+role clearances. It is not a token claim and there is no request field that
+sets it; a caller cannot raise their own. A clearance the server cannot
+resolve denies every entry rather than falling back to the lowest level, so
+an entry classified ``public`` is not a way around an unresolved caller.
+
+The ladder is ``public`` < ``restricted`` < ``confidential`` < ``secret`` <
+``top_secret``, and reaching a level admits everything at or below it.
+``internal`` is an accepted spelling of ``restricted``. WRITES are capped at
+``confidential``: the stored record carries no compartment, and a level whose
+only backing is a rank comparison would advertise more protection than runs.
+A caller cleared ABOVE that cap is unaffected — the cap is on what may be
+registered, not on who may read.
+
+Entries above your clearance are ABSENT from the response rather than
+reported as forbidden, so the manifest cannot be used to detect that a more
+sensitive surface exists.
 
 ⚠ A ``record_list`` SURFACE HAS NO SUPPORTED API TO POPULATE IT YET
 ===================================================================
@@ -396,9 +407,10 @@ class SurfacesModule:
                 ``"organizations:read"``.
             personas: Personas that may see the entry. An empty list means the
                 entry is visible to nobody (fail-closed).
-            classification: Declarative label only — it does NOT restrict who
-                sees the surface. See the module docstring. Defaults server-side
-                to ``"restricted"``.
+            classification: The clearance a caller must reach to see this
+                surface. Enforced — see the module docstring. Writable levels
+                are ``public``, ``restricted`` and ``confidential``; higher
+                levels are refused. Defaults server-side to ``"restricted"``.
             status: ``"disabled"`` (default) or ``"enabled"``
 
         Returns:
@@ -485,8 +497,10 @@ class SurfacesModule:
             required_permission: New required permission, from the platform
                 catalogue
             personas: Replacement persona list
-            classification: New declarative classification — still gates
-                nothing; see the module docstring
+            classification: New required clearance for this surface. Takes
+                effect on the next manifest read — a caller who no longer
+                reaches it stops seeing the entry and its route stops
+                resolving. See the module docstring
             status: ``"enabled"`` to publish, ``"disabled"`` to withdraw
 
         Returns:

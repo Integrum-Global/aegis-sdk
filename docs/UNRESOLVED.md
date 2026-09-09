@@ -1,6 +1,6 @@
 # Unresolved — what this repository does not settle
 
-Assembled 2026-09-08. Each entry names what is open, who decides, and what
+Assembled 2026-09-09. Each entry names what is open, who decides, and what
 would close it. Nothing here is a placeholder for work that was skipped; each is
 a decision that was deliberately not taken by the assembly.
 
@@ -134,18 +134,20 @@ the same remedy applies.
 
 ---
 
-## 3c. `project.urls.Documentation` points at a repository you cannot reach
+## 3c. `project.urls.Documentation` — CLOSED
 
-`pyproject.toml` carries a `Documentation` URL pointing into the private platform
-repository. It is not resolvable from outside, and it names that repository.
+This repository has a published home — `esperie-enterprise/aegis-sdk` — and
+`pyproject.toml`'s `Documentation` URL points at it:
+`https://github.com/esperie-enterprise/aegis-sdk/tree/main/src/aegis_sdk/docs`.
 
-It was **not** rewritten here: choosing where this repository's documentation
-lives is a product decision, the same class as the distribution name in § 2, and
-the assembly has no authority to take it. The documentation itself ships in this
+It previously pointed into the private platform repository, which was neither
+resolvable from outside nor a name that belonged in a partner-facing descriptor.
+Kept here as a closed entry rather than deleted, so the next reader does not
+re-open a decision that has been taken. The documentation itself ships in this
 tree under `src/aegis_sdk/docs/`.
 
-**Closes when:** this repository has a published home and the URL points at it —
-settle it together with § 2 and § 4, which are the same decision.
+**Still open, and separate:** the distribution NAME (§ 2) and the publishing
+path (§ 4). A published home is not a published package.
 
 ---
 

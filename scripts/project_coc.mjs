@@ -5,9 +5,15 @@
  * ONE SOURCE, THREE OVERLAYS
  * --------------------------
  * `src/aegis_sdk/coc/` is the SINGLE source of truth for the architect-facing
- * working material: two agent briefs, six task skills, six guardrails. It ships
- * inside the installed package, so it travels with the client whether or not
- * anyone clones this repository.
+ * working material: agent briefs, task skills and guardrails. It ships inside
+ * the installed package, so it travels with the client whether or not anyone
+ * clones this repository.
+ *
+ * No count is written here on purpose. This file SHIPS, and a hand-typed total
+ * in a shipped comment goes stale against the directory it describes with
+ * nothing to catch it — this line said "six guardrails" while the tree carried
+ * seven, disagreeing with the derived counts in the same repository's README.
+ * The run prints the live figures; read those.
  *
  * Three CLIs read three different layouts, and none of them reads that one.
  * This script projects the neutral source into all three:
@@ -207,9 +213,11 @@ const PROVENANCE = (rel) =>
   `     Regenerate: node scripts/project_coc.mjs   ·   Verify: node scripts/project_coc.mjs --check -->\n\n`;
 
 const files = new Map(); // repo-relative path -> content
+const sources = new Map(); // repo-relative dest -> repo-relative source
 
-function put(rel, content) {
+function put(rel, content, source) {
   files.set(rel, content);
+  if (source) sources.set(rel, source);
 }
 
 function skillDoc(entry) {
@@ -284,6 +292,212 @@ if (fs.existsSync(CONTEXT)) {
   }
 }
 
+// ───────────────────────────── hooks ─────────────────────────────────────────
+//
+// THE HOOKS ARE PROJECTED DIFFERENTLY FROM THE PROSE, AND THE DIFFERENCE IS
+// DELIBERATE. A skill is projected as THREE COPIES because each CLI reads its
+// own tree and the content is what matters. A hook is EXECUTABLE: three copies
+// of a script is three programs that can diverge in behaviour, and a behavioural
+// divergence between CLI overlays is not a drift a diff makes obvious. So the
+// scripts land ONCE, under `.claude/hooks/`, and all three CLIs invoke that same
+// path. What is projected three times is only the REGISTRATION.
+//
+// `hooks.manifest.json` is the single source for all three registrations.
+// Hand-maintaining `.claude/settings.json`, `.codex/hooks.json` and
+// `.gemini/settings.json` was never going to hold: each looks authoritative, and
+// a hook missing from one of them does not fail — it simply never fires, which
+// is indistinguishable from a hook that found nothing.
+
+const HOOKS_DIR = path.join(COC, "hooks");
+const MANIFEST = path.join(HOOKS_DIR, "hooks.manifest.json");
+
+/** CC event name -> Gemini event name. Gemini renames events, not tools. */
+const CC_TO_GEMINI_EVENT = {
+  PreToolUse: "BeforeTool",
+  PostToolUse: "AfterTool",
+  SessionStart: "SessionStart",
+  Stop: "SessionEnd",
+};
+
+let hookEntries = [];
+let hookScripts = [];
+
+if (fs.existsSync(MANIFEST)) {
+  let manifest;
+  try {
+    manifest = JSON.parse(fs.readFileSync(MANIFEST, "utf8"));
+  } catch (e) {
+    problems.push(`src/aegis_sdk/coc/hooks/hooks.manifest.json: not valid JSON (${e.message})`);
+    manifest = { hooks: [] };
+  }
+  hookEntries = Array.isArray(manifest.hooks) ? manifest.hooks : [];
+
+  // Every script under hooks/, including `lib/`. Walked rather than listed: a
+  // hand-written file list is the defect this whole projector exists to avoid,
+  // and it would drift the moment a guard grew a helper.
+  const walkScripts = (dir, prefix = "") => {
+    for (const e of fs.readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+      const p = path.join(dir, e.name);
+      const relName = prefix ? `${prefix}/${e.name}` : e.name;
+      if (e.isDirectory()) {
+        walkScripts(p, relName);
+        continue;
+      }
+      if (!/\.(js|cjs|mjs|py)$/.test(e.name)) continue;
+      hookScripts.push({ relName, abs: p, src: `src/aegis_sdk/coc/hooks/${relName}` });
+    }
+  };
+  walkScripts(HOOKS_DIR);
+
+  // Every manifest entry must name a script that exists, and vice versa. Both
+  // directions, because each failure is silent in its own way: a registered
+  // hook with no script never runs, and a script no manifest registers is dead
+  // code that reads as enforcement.
+  const scriptNames = new Set(hookScripts.filter((s) => !s.relName.includes("/")).map((s) => s.relName.replace(/\.js$/, "")));
+  for (const h of hookEntries) {
+    if (!scriptNames.has(h.name)) {
+      problems.push(`hooks.manifest.json: '${h.name}' is registered but src/aegis_sdk/coc/hooks/${h.name}.js does not exist`);
+    }
+    if (!h.event || !Array.isArray(h.matchers) || !h.matchers.length) {
+      problems.push(`hooks.manifest.json: '${h.name}' needs an 'event' and a non-empty 'matchers'`);
+    }
+    if (!Array.isArray(h.enforces) || !h.enforces.length) {
+      // A guard that cannot name the obligation it enforces has not
+      // established that it enforces one — the same contract `emit()` applies
+      // at runtime, applied here at projection time so it cannot be skipped.
+      problems.push(`hooks.manifest.json: '${h.name}' must name the guardrail(s) it enforces`);
+    }
+  }
+  for (const name of scriptNames) {
+    if (!hookEntries.some((h) => h.name === name)) {
+      problems.push(`src/aegis_sdk/coc/hooks/${name}.js exists but hooks.manifest.json registers no event for it — it would never fire`);
+    }
+  }
+
+  const HOOK_PROVENANCE = (src) =>
+    `// PROJECTED FILE — do not edit here.\n` +
+    `// Source of truth: ${src}\n` +
+    `// Regenerate: node scripts/project_coc.mjs   ·   Verify: node scripts/project_coc.mjs --check\n`;
+
+  for (const s of hookScripts) {
+    const body = fs.readFileSync(s.abs, "utf8");
+    if (s.relName.endsWith(".py")) {
+      // A `#` comment banner would sit above the module docstring and silently
+      // stop it being the docstring. Python scripts are projected verbatim.
+      put(`.claude/hooks/${s.relName}`, body, s.src);
+      continue;
+    }
+    const shebang = body.startsWith("#!") ? body.slice(0, body.indexOf("\n") + 1) : "";
+    put(`.claude/hooks/${s.relName}`, shebang + HOOK_PROVENANCE(s.src) + body.slice(shebang.length), s.src);
+  }
+
+  // ── CC: `.claude/settings.json`, hooks block grouped by event then matcher.
+  //
+  // The `hooks` key is OWNED by this projector; every other key in an existing
+  // file is preserved. A partner will have their own permissions and env in
+  // there, and a projector that flattened them would be reverted by hand within
+  // a day — after which nothing regenerates and the three registrations drift
+  // again, which is the failure this replaces.
+  const byEvent = new Map();
+  for (const h of hookEntries) {
+    if (!byEvent.has(h.event)) byEvent.set(h.event, []);
+    byEvent.get(h.event).push(h);
+  }
+  const ccHooks = {};
+  for (const [event, entries] of [...byEvent].sort()) {
+    ccHooks[event] = entries
+      .map((h) => ({
+        matcher: h.matchers.join("|"),
+        hooks: [
+          {
+            type: "command",
+            command: `node "$CLAUDE_PROJECT_DIR/.claude/hooks/${h.name}.js"`,
+            timeout: Math.ceil(h.timeout_ms / 1000),
+          },
+        ],
+      }))
+      .sort((a, b) => a.matcher.localeCompare(b.matcher) || JSON.stringify(a).localeCompare(JSON.stringify(b)));
+  }
+  let ccSettings = {};
+  const ccPath = path.join(ROOT, ".claude", "settings.json");
+  if (fs.existsSync(ccPath)) {
+    try {
+      ccSettings = JSON.parse(fs.readFileSync(ccPath, "utf8"));
+    } catch {
+      problems.push(".claude/settings.json exists but is not valid JSON — fix or remove it before projecting");
+    }
+  }
+  put(".claude/settings.json", JSON.stringify({ ...ccSettings, hooks: ccHooks }, null, 2) + "\n", "src/aegis_sdk/coc/hooks/hooks.manifest.json");
+
+  // ── Codex: `.codex/hooks.json`. Bash lane only — the manifest records that
+  //    per hook in `codex_coverage`, and the note is carried into the emitted
+  //    file so the gap is visible where someone would look for it rather than
+  //    only in the source.
+  const codexHooks = [];
+  for (const h of hookEntries) {
+    if (!h.matchers.includes("Bash")) continue;
+    codexHooks.push({
+      event: h.event,
+      // The wrapper form, cwd-relative. `$CODEX_PROJECT_DIR` does not exist and
+      // expands to empty, producing `node /.claude/hooks/…` and a silent
+      // MODULE_NOT_FOUND — a hook that never runs and never says so.
+      command: `node ./.claude/hooks/lib/codex-hook-runtime.js ./.claude/hooks/${h.name}.js`,
+      timeout_ms: h.timeout_ms,
+      _coverage: h.codex_coverage || "unstated",
+    });
+  }
+  put(
+    ".codex/hooks.json",
+    JSON.stringify(
+      {
+        _doc: [
+          "PROJECTED FILE — do not edit here. Source: src/aegis_sdk/coc/hooks/hooks.manifest.json",
+          "Regenerate: node scripts/project_coc.mjs",
+          "",
+          "CODEX FIRES HOOKS ON THE BASH LANE ONLY. A guard whose surface is file",
+          "writes is absent from this file BY CONSTRUCTION, not by omission — see",
+          "each entry's `_coverage`, and the manifest's `codex_coverage` for the",
+          "hooks that do not appear here at all.",
+        ],
+        hooks: codexHooks,
+      },
+      null,
+      2
+    ) + "\n",
+    "src/aegis_sdk/coc/hooks/hooks.manifest.json"
+  );
+
+  // ── Gemini: `.gemini/settings.json`, with the event names translated. A
+  //    `PreToolUse` key here is silently ignored and the hook never fires.
+  const gemHooks = {};
+  for (const h of hookEntries) {
+    const ev = CC_TO_GEMINI_EVENT[h.event];
+    if (!ev) {
+      problems.push(`hooks.manifest.json: '${h.name}' event '${h.event}' has no Gemini equivalent`);
+      continue;
+    }
+    if (!gemHooks[ev]) gemHooks[ev] = [];
+    gemHooks[ev].push({
+      matcher: h.matchers.join("|"),
+      command: `node "$GEMINI_PROJECT_DIR/.claude/hooks/${h.name}.js"`,
+      timeout_ms: h.timeout_ms,
+    });
+  }
+  for (const k of Object.keys(gemHooks)) {
+    gemHooks[k].sort((a, b) => a.matcher.localeCompare(b.matcher) || a.command.localeCompare(b.command));
+  }
+  let gemSettings = {};
+  const gemPath = path.join(ROOT, ".gemini", "settings.json");
+  if (fs.existsSync(gemPath)) {
+    try {
+      gemSettings = JSON.parse(fs.readFileSync(gemPath, "utf8"));
+    } catch {
+      problems.push(".gemini/settings.json exists but is not valid JSON — fix or remove it before projecting");
+    }
+  }
+  put(".gemini/settings.json", JSON.stringify({ ...gemSettings, hooks: gemHooks }, null, 2) + "\n", "src/aegis_sdk/coc/hooks/hooks.manifest.json");
+}
+
 // ───────────────────────────── write or check ────────────────────────────────
 
 if (problems.length) {
@@ -308,15 +522,40 @@ const ledger = {
     agents: agents.length,
     skills: skills.length,
     guardrails: guardrails.length,
+    hooks: hookEntries.length,
+    hook_scripts: hookScripts.length,
     projected_files: files.size,
   },
+  // EVERY GUARDRAIL, AND WHETHER ANYTHING ENFORCES IT.
+  //
+  // Derived from the manifest's `enforces` lists against the guardrail files on
+  // disk — never hand-listed, so it cannot claim coverage that is not there.
+  // A guardrail with no hook is not a defect by itself; a guardrail with no hook
+  // that nobody NOTICED is, and this is the line that makes the difference
+  // visible on every projection.
+  enforcement: (() => {
+    const enforced = new Set(hookEntries.flatMap((h) => h.enforces || []));
+    const rows = {};
+    for (const g of guardrails) {
+      const names = hookEntries.filter((h) => (h.enforces || []).includes(g.rel)).map((h) => h.name);
+      rows[g.rel] = names.length ? [...new Set(names)] : "PROSE ONLY — no hook enforces this";
+    }
+    for (const e of enforced) {
+      if (!rows[e] && !fs.existsSync(path.join(ROOT, e))) {
+        rows[e] = "REGISTERED BUT MISSING — a hook names a guardrail that does not exist";
+      }
+    }
+    return rows;
+  })(),
   projected: [...files.keys()]
     .sort()
     .map((dest) => {
       const src =
+        sources.get(dest) ??
         [...agents, ...allSkills].find(
           (e) => dest.includes(`/${e.name}/`) || dest.endsWith(`/${e.name}.md`) || dest.endsWith(`specialist-${e.name}.md`)
-        )?.rel ?? "coc-context.md";
+        )?.rel ??
+        "coc-context.md";
       return { dest, source: src, source_sha256_16: sha(fs.readFileSync(path.join(ROOT, src), "utf8")) };
     }),
 };
@@ -354,7 +593,16 @@ if (CHECK) {
   }
   console.log(
     `coc projection in sync — ${files.size} file(s) across .claude/.codex/.gemini ` +
-      `from ${agents.length} agent(s), ${skills.length} skill(s), ${guardrails.length} guardrail(s)`
+      `from ${agents.length} agent(s), ${skills.length} skill(s), ${guardrails.length} guardrail(s), ` +
+      `${hookEntries.length} hook registration(s) over ${hookScripts.length} script(s)`
+  );
+  // Printed on every --check, green or not. A guardrail nobody enforces is the
+  // finding this whole workstream started from — 15 artifacts, zero hooks — and
+  // it stayed invisible because nothing ever printed the pairing.
+  const unenforced = Object.entries(ledger.enforcement).filter(([, v]) => typeof v === "string");
+  console.log(
+    `guardrails with a hook  : ${guardrails.length - unenforced.length}/${guardrails.length}` +
+      (unenforced.length ? `\nPROSE ONLY (no hook)    : ${unenforced.map(([k]) => path.basename(k)).join(", ")}` : "")
   );
   process.exit(0);
 }

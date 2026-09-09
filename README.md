@@ -7,7 +7,7 @@ This is the repository a **delivery partner** clones to construct an Aegis
 deployment for a client.
 
 ```bash
-git clone <this-repo> && cd aegis-sdk
+git clone https://github.com/esperie-enterprise/aegis-sdk.git && cd aegis-sdk
 python -m venv .venv && . .venv/bin/activate
 pip install -e .
 python -m aegis_sdk.handbook.check          # verify the build has what the prose names
@@ -28,7 +28,7 @@ there and re-run `node scripts/project_coc.mjs`; `--check` reds on drift.
 
 | | |
 | --- | --- |
-| `src/aegis_sdk/` | the client — 154 Python modules, version 1.0.0 |
+| `src/aegis_sdk/` | the client — 155 Python modules, version 1.0.0 |
 | `src/aegis_sdk/handbook/` | how the platform **behaves** — 27 chapters in 5 parts, screenshots included |
 | `src/aegis_sdk/coc/` | what to **do** about it — 2 agent briefs, 6 task skills, 7 guardrails, one probe |
 | `src/aegis_sdk/docs/` | reference: quickstart, authentication, configuration, errors, streaming |
@@ -109,4 +109,4 @@ Aegis is Integrum's commercial implementation of four open standards — CARE,
 PACT, EATP and CO — published by the Terrene Foundation under CC BY 4.0. Aegis
 implements them; it does not own them.
 
-Assembled 2026-09-08 · see `docs/UNRESOLVED.md` for what is not settled.
+Assembled 2026-09-09 · see `docs/UNRESOLVED.md` for what is not settled.

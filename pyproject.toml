@@ -94,7 +94,7 @@ markers = [
 ]
 
 [project.urls]
-Documentation = "https://github.com/Integrum-Global/aegis-sdk/tree/main/src/aegis_sdk/docs"
+Documentation = "https://github.com/esperie-enterprise/aegis-sdk/tree/main/src/aegis_sdk/docs"
 
 [tool.hatch.version]
 path = "src/aegis_sdk/_version.py"

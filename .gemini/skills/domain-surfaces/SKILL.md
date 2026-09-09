@@ -98,21 +98,32 @@ relevant surface permission. A `developer` persona deliberately does **not** hol
 surface permissions. If you are surprised by that, re-read the tier table — it is
 the tier split, working.
 
-## ⛔ Two things that are NOT true, however they read
+## Classification IS a clearance gate
 
-**1. Setting a classification does not restrict who sees the surface.**
+Setting a classification **does** restrict who sees the surface. Visibility
+resolves on tenant, status, vocabulary, persona and permission, **and** on a
+comparison between the caller's clearance and the surface's classification: a
+caller whose clearance does not reach the classification is not shown the row.
 
-The classification field is **declarative and gates nothing today**. Surface
-visibility resolves on tenant, status, vocabulary, persona and permission — and
-never compares the value against the caller's clearance. The platform pins this
-as a named absence in its own security tests rather than leaving it to be
-discovered.
+The comparison is fail-closed in both directions. A caller whose clearance cannot
+be established sees **nothing** — it does not fall back to the lowest level and
+serve you every public surface on a clearance nobody resolved. A classification
+value the platform does not recognise is likewise refused rather than admitted.
 
-So: do **not** put a sensitive surface behind a classification value and treat it
-as protected. Use the persona and permission gates, which are the ones that
-actually resolve. Read the field as documentation of intent, not as a control.
+The menu and the router cannot diverge on this: the route resolver reads through
+the same visibility path, so a surface hidden from the navigation is not reachable
+by typing its address either.
 
-**2. The governed-object layer beneath a surface is not reachable yet.**
+⚠ **This changed.** An earlier revision of this guardrail said the field was
+declarative and gated nothing, and told you to rely on persona and permission
+instead. That advice was correct when written and is now wrong. Persona and
+permission still gate — classification is an additional constraint, not a
+replacement — but a surface you classified above your readers' clearance will now
+disappear for them, which the earlier text told you would not happen.
+
+## ⛔ One thing that is NOT true, however it reads
+
+**The governed-object layer beneath a surface is not reachable yet.**
 
 Two sibling models — the domain object *type* (the shape) and the governed object
 *record* (its rows) — ship as **schema only**. No handler, no service, no route,

@@ -1,0 +1,38 @@
+{
+  "hooks": {
+    "BeforeTool": [
+      {
+        "matcher": "Bash",
+        "command": "node \"$GEMINI_PROJECT_DIR/.claude/hooks/deployment-blast-radius.js\"",
+        "timeout_ms": 6000
+      },
+      {
+        "matcher": "Bash|Write|Edit|NotebookEdit",
+        "command": "node \"$GEMINI_PROJECT_DIR/.claude/hooks/client-credential-containment.js\"",
+        "timeout_ms": 6000
+      },
+      {
+        "matcher": "Write|Edit|NotebookEdit",
+        "command": "node \"$GEMINI_PROJECT_DIR/.claude/hooks/anchor-integrity.js\"",
+        "timeout_ms": 12000
+      },
+      {
+        "matcher": "Write|Edit|NotebookEdit|Bash",
+        "command": "node \"$GEMINI_PROJECT_DIR/.claude/hooks/probe-before-claim.js\"",
+        "timeout_ms": 6000
+      },
+      {
+        "matcher": "Write|Edit|NotebookEdit|Bash",
+        "command": "node \"$GEMINI_PROJECT_DIR/.claude/hooks/source-absence-boundary.js\"",
+        "timeout_ms": 6000
+      }
+    ],
+    "AfterTool": [
+      {
+        "matcher": "Bash",
+        "command": "node \"$GEMINI_PROJECT_DIR/.claude/hooks/probe-before-claim.js\"",
+        "timeout_ms": 6000
+      }
+    ]
+  }
+}
