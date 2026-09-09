@@ -26,7 +26,17 @@
  *                                             ->  .gemini/skills/<name>/SKILL.md
  *     src/aegis_sdk/coc/guardrails/<name>.md  ->  the same three skill paths,
  *                                                 with DERIVED frontmatter
+ *     src/aegis_sdk/coc/commands/<name>.md    ->  .claude/commands/<name>.md
+ *                                             ->  .codex/prompts/<name>.md
+ *                                             ->  .gemini/commands/<name>.toml
  *     coc-context.md                          ->  CLAUDE.md / AGENTS.md / GEMINI.md
+ *
+ * THE COMMAND SET IS NOT LISTED HERE, AND MUST NOT BE. It is derived from the
+ * handbook's part structure by `src/aegis_sdk/coc/lifecycle.mjs`, and each
+ * command declares the stage it serves in its own frontmatter. This script
+ * REFUSES when the two disagree in either direction — a drivable stage with no
+ * command, or a command naming a stage that is not drivable. A list here would
+ * be the hand-written completeness claim that derivation exists to replace.
  *
  * WHY A PROJECTOR RATHER THAN THREE HAND-MAINTAINED COPIES
  * --------------------------------------------------------
@@ -58,9 +68,15 @@
 import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+
+// The derivation SHIPS, so the projector and the fixtures run the identical
+// code rather than two implementations that agree until they do not.
+const { auditLifecycle, overlayPaths, frontmatter: splitCommandFm } = await import(
+  pathToFileURL(path.join(ROOT, "src", "aegis_sdk", "coc", "lifecycle.mjs")).href
+);
 const COC = path.join(ROOT, "src", "aegis_sdk", "coc");
 const CONTEXT = path.join(ROOT, "coc-context.md");
 const LEDGER = path.join(ROOT, "coc-projection.json");
@@ -270,6 +286,81 @@ for (const a of agents) {
       PROVENANCE(a.rel) +
       a.body
   );
+}
+
+// ───────────────────────────── commands ──────────────────────────────────────
+//
+// THREE LAYOUTS, NOT THREE COPIES OF ONE LAYOUT. Claude Code reads a command
+// file; Codex has no command registry at all and takes a PROMPT — the same
+// asymmetry the agent projection above already handles, applied again rather
+// than invented; Gemini reads TOML, not Markdown.
+//
+// The failure this shape exists to prevent is silent: a command written into a
+// layout its CLI does not read produces no error. The file is there, the
+// command simply never appears, and that is indistinguishable from a command
+// nobody wrote. `lifecycle.mjs`'s `overlayPaths` is the single statement of
+// which path each CLI actually reads, and both this projection and the
+// post-projection check are keyed off it, so they cannot disagree.
+
+const lifecycle = auditLifecycle(ROOT);
+for (const p of lifecycle.problems) problems.push(p);
+
+const commandDir = path.join(COC, "commands");
+const commands = [];
+for (const f of mdIn(commandDir)) {
+  const rel = `src/aegis_sdk/coc/commands/${f}`;
+  const raw = fs.readFileSync(path.join(commandDir, f), "utf8");
+  const { fm, body } = splitCommandFm(raw);
+  // `lifecycle.mjs` has already refused a command missing either field; this
+  // guard is for the case where these two ever disagree about what "missing"
+  // means, so the projector cannot emit a nameless file on a technicality.
+  if (!fm?.name || !fm?.description) continue;
+  commands.push({ rel, name: fm.name, description: fm.description, stage: fm.stage, body });
+}
+
+for (const c of commands) {
+  const paths = overlayPaths(c.name);
+
+  put(paths.claude, renderFrontmatter({ name: c.name, description: JSON.stringify(c.description) }) + PROVENANCE(c.rel) + c.body, c.rel);
+
+  put(
+    paths.codex,
+    renderFrontmatter({ name: c.name, description: JSON.stringify(c.description) }) + PROVENANCE(c.rel) + c.body,
+    c.rel
+  );
+
+  // TOML multi-line literal strings do not process escapes, which is what makes
+  // them right for a Markdown body — and also what makes an embedded `'''`
+  // unrepresentable. Refuse rather than emit a file that parses as something
+  // other than what was written.
+  if (c.body.includes("'''")) {
+    problems.push(`${c.rel}: body contains ''' and cannot be carried in a TOML literal string for Gemini`);
+    continue;
+  }
+  put(
+    paths.gemini,
+    `# PROJECTED FILE — do not edit here.\n` +
+      `# Source of truth: ${c.rel}\n` +
+      `# Regenerate: node scripts/project_coc.mjs   ·   Verify: node scripts/project_coc.mjs --check\n\n` +
+      `name = ${JSON.stringify(c.name)}\n` +
+      `description = ${JSON.stringify(c.description)}\n` +
+      `prompt = '''\n${c.body.replace(/\n+$/, "")}\n'''\n`,
+    c.rel
+  );
+}
+
+// THE REACH CHECK — the half that a source-side gate structurally cannot do.
+//
+// `lifecycle.mjs` establishes that every drivable stage has a command. It
+// cannot establish that the command was PROJECTED, because at the moment it
+// runs nothing has been. This asserts the other direction, against the map this
+// script is about to write: three overlays per command, no exceptions. Without
+// it a command can satisfy every source-side check and reach no CLI at all —
+// which is the way an artifact ships inert while every gate stays green.
+for (const c of commands) {
+  for (const [cli, rel] of Object.entries(overlayPaths(c.name))) {
+    if (!files.has(rel)) problems.push(`${c.rel}: would not reach ${cli} — nothing was projected to ${rel}`);
+  }
 }
 
 // The three root context files. One neutral body, three names, because each CLI
@@ -522,10 +613,18 @@ const ledger = {
     agents: agents.length,
     skills: skills.length,
     guardrails: guardrails.length,
+    commands: commands.length,
     hooks: hookEntries.length,
     hook_scripts: hookScripts.length,
     projected_files: files.size,
   },
+  // THE DERIVED LIFECYCLE, AND WHICH COMMAND SERVES EACH STAGE.
+  //
+  // Recorded on every projection for the same reason the enforcement map below
+  // is: a stage that arrived with nothing to drive it is invisible in a diff
+  // and obvious in a table. `reason` is present only where no command is
+  // warranted, and it is the derivation's own words, not a note kept beside it.
+  lifecycle: lifecycle.coverage,
   // EVERY GUARDRAIL, AND WHETHER ANYTHING ENFORCES IT.
   //
   // Derived from the manifest's `enforces` lists against the guardrail files on
@@ -594,7 +693,7 @@ if (CHECK) {
   console.log(
     `coc projection in sync — ${files.size} file(s) across .claude/.codex/.gemini ` +
       `from ${agents.length} agent(s), ${skills.length} skill(s), ${guardrails.length} guardrail(s), ` +
-      `${hookEntries.length} hook registration(s) over ${hookScripts.length} script(s)`
+      `${commands.length} command(s), ${hookEntries.length} hook registration(s) over ${hookScripts.length} script(s)`
   );
   // Printed on every --check, green or not. A guardrail nobody enforces is the
   // finding this whole workstream started from — 15 artifacts, zero hooks — and
@@ -614,5 +713,13 @@ for (const [rel, content] of files) {
 }
 fs.writeFileSync(LEDGER, JSON.stringify(ledger, null, 2) + "\n");
 
-console.log(`projected ${files.size} file(s) from ${agents.length} agent(s), ${skills.length} skill(s), ${guardrails.length} guardrail(s)`);
+console.log(
+  `projected ${files.size} file(s) from ${agents.length} agent(s), ${skills.length} skill(s), ` +
+    `${guardrails.length} guardrail(s), ${commands.length} command(s)`
+);
+console.log(
+  `  lifecycle: ${lifecycle.stages.filter((s) => s.warranted).length}/${lifecycle.stages.length} stage(s) drivable, ` +
+    `each with a command; ` +
+    lifecycle.coverage.filter((c) => !c.warranted).map((c) => `${c.stage} needs none`).join(", ")
+);
 console.log(`  .claude/  .codex/  .gemini/  +  CLAUDE.md  AGENTS.md  GEMINI.md`);

@@ -13,13 +13,45 @@ pip install -e .
 python -m aegis_sdk.handbook.check          # verify the build has what the prose names
 ```
 
+## Start here — the handbook
+
+**The handbook is at `src/aegis_sdk/handbook/` — 33 chapters in 5 parts.** It is
+four levels down inside a Python package because it ships with the installed
+client rather than only with this clone, so you will not stumble across it.
+
+**Day one, read this first:**
+
+```
+src/aegis_sdk/handbook/05-the-web-console/01-first-login.md
+```
+
+That is the first thing your client will see, so it is the first thing you should.
+From there the parts run in order: `01-orientation` (what the platform is and what
+it refuses), `02-working-through-the-harness` (driving it from a CLI),
+`03-extending-the-platform` (adding tools, agents and surfaces),
+`04-the-api-surface` (the wire contract), `05-the-web-console` (what the client
+touches).
+
+**Four commands drive that lifecycle.** They are derived from the handbook's own
+part structure, not hand-listed, and they are wired in all three CLIs:
+
+| command | what it does |
+| --- | --- |
+| `/orient` | Name the deployment and the credential, run the probe, and record what it could **not** tell you — before touching anything. |
+| `/construct` | Stand up the client's organisation, roles and trust structure against a deployment you cannot read the source of. |
+| `/extend` | Add tools, agents and surfaces, and check they are actually reachable rather than merely registered. |
+| `/diagnose` | Work out why the platform refused something — separating a governance decision from a defect. |
+
+`node scripts/project_coc.mjs` prints the live stage-to-command mapping; it is the
+authority if this table and the tree ever disagree.
+
 Then open your CLI in the repository root. All three are wired:
 
 | CLI | reads | you get |
 | --- | --- | --- |
-| Claude Code | `CLAUDE.md`, `.claude/agents/`, `.claude/skills/` | 2 agents, 13 skills |
-| Codex | `AGENTS.md`, `.codex/prompts/`, `.codex/skills/` | 2 personas via `/prompts:specialist-<name>`, 13 skills |
-| Gemini CLI | `GEMINI.md`, `.gemini/agents/`, `.gemini/skills/` | 2 agents, 13 skills |
+| Claude Code | `CLAUDE.md`, `.claude/agents/`, `.claude/skills/`, `.claude/commands/` | 2 agents, 13 skills, 4 commands |
+| Codex | `AGENTS.md`, `.codex/prompts/`, `.codex/skills/` | 2 personas via `/prompts:specialist-<name>`, 13 skills, 4 commands via `/prompts:<name>` |
+| Gemini CLI | `GEMINI.md`, `.gemini/agents/`, `.gemini/skills/`, `.gemini/commands/` | 2 agents, 13 skills, 4 commands |
 
 All three are **projections of one neutral source**, `src/aegis_sdk/coc/`. Edit
 there and re-run `node scripts/project_coc.mjs`; `--check` reds on drift.
@@ -29,8 +61,8 @@ there and re-run `node scripts/project_coc.mjs`; `--check` reds on drift.
 | | |
 | --- | --- |
 | `src/aegis_sdk/` | the client — 155 Python modules, version 1.0.0 |
-| `src/aegis_sdk/handbook/` | how the platform **behaves** — 27 chapters in 5 parts, screenshots included |
-| `src/aegis_sdk/coc/` | what to **do** about it — 2 agent briefs, 6 task skills, 7 guardrails, one probe |
+| `src/aegis_sdk/handbook/` | how the platform **behaves** — 33 chapters in 5 parts, screenshots included |
+| `src/aegis_sdk/coc/` | what to **do** about it — 2 agent briefs, 6 task skills, 7 guardrails, 4 commands, one probe |
 | `src/aegis_sdk/docs/` | reference: quickstart, authentication, configuration, errors, streaming |
 | `src/aegis_sdk/examples/` | five runnable examples |
 
