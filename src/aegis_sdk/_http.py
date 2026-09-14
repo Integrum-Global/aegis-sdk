@@ -565,10 +565,26 @@ class HTTPClient:
         try:
             body = response.json()
             if isinstance(body, dict):
+                # The platform nests EVERY handled error under a single "error"
+                # key -- code, message, details and request_id all live inside
+                # it. Reading those keys at the top level therefore yielded the
+                # whole nested dict as "message" and None for the code, on every
+                # error this server emits. Unwrap the envelope when present.
+                envelope = body.get("error")
+                nested = envelope if isinstance(envelope, dict) else None
+                source = nested if nested is not None else body
+
+                message = source.get("message") or source.get("detail")
+                if message is None and nested is None:
+                    # Flat shapes: FastAPI's own {"detail": ...}, or a server
+                    # that puts a bare string under "error".
+                    message = body.get("detail") or body.get("error")
+
                 return {
-                    "message": body.get("detail") or body.get("message") or body.get("error"),
-                    "code": body.get("code"),
-                    "details": body.get("details"),
+                    "message": message,
+                    "code": source.get("code"),
+                    "details": source.get("details"),
+                    "request_id": source.get("request_id"),
                     "status_code": response.status_code,
                 }
             return {"message": str(body), "status_code": response.status_code}
