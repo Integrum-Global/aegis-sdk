@@ -625,6 +625,25 @@ class User(BaseModel):
     created_at: str | None = None
     email_verified: bool = False
 
+    # Mirrors the server's ``UserResponse``, which gained these three fields so
+    # that ``GET /auth/me`` could serve TWO principal kinds -- a human session
+    # and an API key -- from one route, with ``auth_type`` as the authoritative
+    # discriminator. The server change was additive and safe (pydantic ignores
+    # unknown fields), which is exactly what let this model fall silently
+    # behind: ``User(**response)`` kept succeeding while DROPPING the
+    # discriminator, so an SDK caller holding an API key could not tell which
+    # credential kind it was holding -- the one question the route exists to
+    # answer, and the reason its handbook points integrators at it.
+    #
+    # ``auth_type`` defaults to "user" to match the server default, so every
+    # existing emitter (``/auth/login``, ``/auth/register``, the JWT ``/auth/me``
+    # path) keeps its current meaning with no call-site change. The other two
+    # stay None/empty for a user session -- an API key is the only principal
+    # that has them, and this response never describes another principal's key.
+    auth_type: str = "user"
+    api_key_id: str | None = None
+    api_key_scopes: list[str] = Field(default_factory=list)
+
     @property
     def full_name(self) -> str:
         """Deprecated alias for :attr:`name` (backward-compat shim).
@@ -657,7 +676,22 @@ class AuthToken(BaseModel):
 
 
 class APIKey(BaseModel):
-    """API key model."""
+    """API key model.
+
+    Mirrors the server's ``APIKeyResponse``.
+
+    ``status`` IS THE FIELD THAT MAKES THIS MODEL SAFE TO ACT ON. Pydantic
+    ignores response fields a model does not declare, so while ``status`` was
+    absent a REVOKED key and a live one parsed into byte-identical objects --
+    a caller auditing its own keys through this model could not tell a dead
+    credential from a working one, and nothing about the result looked
+    partial. The same silence dropped ``organization_id`` and ``rate_limit``.
+
+    The four fields added for that reason are OPTIONAL, and deliberately so:
+    the server has two API-key response shapes and only one carries every
+    field (``CreateAPIKeyResponse`` omits ``last_used_at`` and ``created_by``).
+    Requiring them would turn a successful create into a parse error.
+    """
 
     id: str
     name: str
@@ -666,6 +700,39 @@ class APIKey(BaseModel):
     created_at: datetime
     expires_at: datetime | None = None
     last_used_at: datetime | None = None
+    # --- present on the server's responses; dropped by this model until #C1 ---
+    organization_id: str | None = None
+    rate_limit: int | None = None
+    status: str | None = None  # e.g. "active" / "revoked" -- see class docstring
+    # The principal the key's liveness is BOUND to, not merely its creator:
+    # validate() denies on owner_inactive / owner_not_member_of_key_org against
+    # THIS id, and #3605 made regenerate RE-ANCHOR it to the rotating caller, so
+    # on a rotated key it names the last rotator. update() never rewrites it.
+    created_by: str | None = None
+
+
+class APIKeyCreated(APIKey):
+    """An API key as returned by CREATION, carrying the one-time secret.
+
+    ``key`` is the full credential and the server emits it EXACTLY ONCE, in
+    the create response; it is not retrievable afterwards. Parsing that
+    response into the plain :class:`APIKey` therefore discarded the only copy
+    of the secret the caller was ever going to see -- the create call appeared
+    to succeed and left the caller with nothing to store.
+
+    A SUBCLASS, NOT A NEW FIELD ON ``APIKey``. Putting ``key`` on the shared
+    model would make it ``None`` on every list/get result, which invites
+    callers to log or forward a field that is a live credential whenever it is
+    not None. Keeping it on the type that ALWAYS has it means the secret
+    exists only where it is real, and ``isinstance(x, APIKey)`` still holds
+    for callers written against the old return type.
+
+    ``repr=False`` matches :class:`AuthToken`'s treatment of bearer
+    credentials (H1): the value is returned to the caller and never rendered
+    into a repr, a log line, or a traceback.
+    """
+
+    key: str = Field(repr=False)  # full secret, shown once -- never log this
 
 
 class APIKeyCreate(BaseModel):
@@ -1316,7 +1383,7 @@ class LicenseGenerate(BaseModel):
     machine_binding: bool = False
     # REQUIRED by the server when machine_binding is true: a license that
     # declares binding but names no machine is unenforceable and the verifier
-    # rejects it, so /licenses/generate returns 400 without it.
+    # rejects it, so /api/v1/licenses/generate returns 400 without it.
     machine_id: str | None = None
     domain_restriction: list[str] | None = None
     phone_home_required: bool = True

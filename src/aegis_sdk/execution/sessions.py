@@ -500,6 +500,13 @@ class SessionsModule:
                 stacklevel=2,
             )
 
+        # aegis-wire-exempt: DELIBERATE envelope passthrough. The endpoint wraps
+        # its payload as {"data": [...]}, and this method returns that envelope
+        # UNCHANGED, on purpose -- the docstring above, the `-> dict[str, Any]`
+        # annotation and the behaviour all say the same thing, and callers read
+        # `["data"]` themselves. Unwrapping it here would be a breaking change
+        # to a documented return shape, not a fix. Delete this method and this
+        # exemption goes with it.
         return await self._http.request(
             "GET",
             f"/api/v1/sessions/{encode_path_param(session_id)}/memory",

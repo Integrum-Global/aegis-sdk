@@ -9,7 +9,7 @@ Provides pipeline management operations including:
 import builtins
 from typing import TYPE_CHECKING, Any
 
-from .._http import encode_path_param
+from .._http import encode_path_param, unwrap_envelope
 from .models import (
     PaginatedResponse,
     Pipeline,
@@ -93,7 +93,8 @@ class PipelinesModule:
 
         response = await self._http.request("GET", "/api/v1/pipelines", params=params)
 
-        # Handle both array and paginated response formats
+        # Bare array — no pagination metadata to read from. Retained for any
+        # endpoint or older build that answers this way.
         if isinstance(response, list):
             return PaginatedResponse[Pipeline](
                 items=[Pipeline(**item) for item in response],
@@ -103,9 +104,20 @@ class PipelinesModule:
                 has_next=False,
             )
 
+        # The endpoint answers ``{"data": [...], "total": N}``: the pipelines
+        # are under ``data`` and the count is its sibling. This method read
+        # ``items`` only, which that shape never carries — so it returned an
+        # EMPTY page for every caller, indistinguishable from an account with
+        # no pipelines. ``items`` is still honoured below so a build serving
+        # the older shape does not regress.
+        payload = unwrap_envelope(response)
+        items = payload if isinstance(payload, list) else response.get("items", [])
+
         return PaginatedResponse[Pipeline](
-            items=[Pipeline(**item) for item in response.get("items", [])],
-            total=response.get("total", 0),
+            items=[Pipeline(**item) for item in items],
+            # Defaulting to the number of items received, rather than to zero:
+            # a page reporting total=0 while carrying rows is never right.
+            total=response.get("total", len(items)),
             page=response.get("page", page),
             page_size=response.get("page_size", page_size),
             has_next=response.get("has_next", False),
@@ -181,7 +193,7 @@ class PipelinesModule:
             "/api/v1/pipelines",
             json_data=create_data.model_dump(exclude_none=True, mode="json"),
         )
-        return Pipeline(**response)
+        return Pipeline(**unwrap_envelope(response))
 
     async def get(self, pipeline_id: str) -> Pipeline:
         """
@@ -204,7 +216,7 @@ class PipelinesModule:
         response = await self._http.request(
             "GET", f"/api/v1/pipelines/{encode_path_param(pipeline_id)}"
         )
-        return Pipeline(**response)
+        return Pipeline(**unwrap_envelope(response))
 
     async def update(self, pipeline_id: str, **kwargs: Any) -> Pipeline:
         """
@@ -234,7 +246,7 @@ class PipelinesModule:
             f"/api/v1/pipelines/{encode_path_param(pipeline_id)}",
             json_data=update_data.model_dump(exclude_none=True, mode="json"),
         )
-        return Pipeline(**response)
+        return Pipeline(**unwrap_envelope(response))
 
     async def delete(self, pipeline_id: str) -> None:
         """
@@ -279,7 +291,7 @@ class PipelinesModule:
             f"/api/v1/pipelines/{encode_path_param(pipeline_id)}/duplicate",
             json_data={"name": name},
         )
-        return Pipeline(**response)
+        return Pipeline(**unwrap_envelope(response))
 
     async def save_graph(
         self,
@@ -334,9 +346,7 @@ class PipelinesModule:
             f"/api/v1/pipelines/{encode_path_param(pipeline_id)}/graph",
             json_data={"nodes": nodes, "connections": connections},
         )
-        if isinstance(response, dict) and "data" in response:
-            return response["data"]
-        return response
+        return unwrap_envelope(response)
 
     # -------------------------------------------------------------------------
     # Workflows (execution-graph views)
@@ -575,4 +585,9 @@ class PipelinesModule:
             "POST",
             f"/api/v1/pipelines/{encode_path_param(pipeline_id)}/validate",
         )
-        return response
+        # The endpoint answers ``{"data": {"valid": ..., "errors": [...]}}``.
+        # The documented contract above — and the example in it — has always
+        # been the INNER result, so unwrapping brings the behaviour into line
+        # with the documentation rather than changing the contract: before
+        # this, ``validation["valid"]`` raised KeyError on every call.
+        return unwrap_envelope(response)

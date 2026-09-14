@@ -18,15 +18,18 @@ from datetime import UTC, datetime, timedelta
 from aegis_sdk import (
     AgenticOSClient,
     AgenticOSError,
-    AgentTrustContext,
-    DelegationPath,
     EstablishedTrustChain,
-    PostureMetrics,
     RevocationImpact,
     TrustDelegation,
-    TrustPostureInfo,
     TrustVerificationResult,
     TrustViolationError,
+)
+from aegis_sdk.trust.chains import AgentDelegationPath, AgentTrustContextDetail
+from aegis_sdk.trust.postures import (
+    PostureChangeResult,
+    PostureProgressionMetrics,
+    PostureState,
+    ProgressionEvaluation,
 )
 
 
@@ -132,17 +135,24 @@ async def delegate_capabilities(
     print(f"  Constraints: {delegation.constraints}")
     print(f"  Status: {delegation.status}")
 
-    # List all delegations for the coordinator
-    delegations: list[TrustDelegation] = await client.trust.delegations.get_for_agent(
-        "agent_coordinator",
-        include_granted=True,
-        include_received=True,
+    # NOTE: DelegationsModule.get_for_agent() is a deprecation shim that
+    # ALWAYS raises UnsupportedOperationError -- there is no
+    # /agents/{agent_id}/delegations route on the backend, in either
+    # direction. Calling it here would crash this example on every run.
+    # The only servable substitute covers delegations RECEIVED (not
+    # granted), and it comes from the chain's own lineage:
+    received = [
+        d
+        for d in chain.delegations
+        if d.get("delegatee_id") == "agent_coordinator"  # raw dicts, not TrustDelegation
+    ]
+    print(f"\nCoordinator's received delegations (lineage substitute): {len(received)}")
+    for d in received:
+        print(f"  [received] from {d.get('delegator_id')}: {d.get('capabilities')}")
+    print(
+        "  (There is no servable list of delegations GRANTED by this agent -- "
+        "that data lives in the chains of whichever agents it delegated to.)"
     )
-    print(f"\nCoordinator's delegations: {len(delegations)}")
-    for d in delegations:
-        direction = "granted" if d.delegator_id == "agent_coordinator" else "received"
-        other = d.delegatee_id if direction == "granted" else d.delegator_id
-        print(f"  [{direction}] {other}: {d.capabilities}")
 
     return delegation
 
@@ -155,70 +165,94 @@ async def manage_postures(client: AgenticOSClient) -> None:
     """
     print("\n=== Step 4: Manage Postures ===\n")
 
-    # Get current posture
-    info: TrustPostureInfo = await client.trust.postures.get("agent_worker")
-    print(f"Worker posture: {info.posture}")
-    print(f"  Eligible for progression: {info.progression_eligible}")
-    print(f"  Last assessment: {info.last_assessment}")
+    # Get current posture. The posture routes report the posture IN FORCE and
+    # who put it there -- they do NOT carry a progression verdict.
+    state: PostureState = await client.trust.postures.get("agent_worker")
+    print(f"Worker posture: {state.posture}")
+    print(f"  In force since: {state.current_since}")
+    print(f"  Configured by: {state.configured_by_name or state.configured_by}")
+    print(f"  Override active: {state.override_active}")
 
     # Get progression metrics
-    metrics: PostureMetrics = await client.trust.postures.get_metrics("agent_worker")
+    metrics: PostureProgressionMetrics = await client.trust.postures.get_metrics("agent_worker")
     print("\nPosture metrics:")
-    print(f"  Tasks completed: {metrics.tasks_completed}")
-    print(f"  Successful verifications: {metrics.successful_verifications}")
-    print(f"  Failed verifications: {metrics.failed_verifications}")
-    print(f"  Days at current posture: {metrics.time_at_current}")
-    print(f"  Progression score: {metrics.progression_score}")
+    print(f"  Interactions: {metrics.interaction_count}")
+    print(f"  Approval rate: {metrics.approval_rate:.1%}")
+    print(f"  Override rate: {metrics.override_rate:.1%}")
+    print(f"  Error rate: {metrics.error_rate:.1%}")
+    print(f"  Autonomous success rate: {metrics.autonomous_success_rate:.1%}")
+    print(f"  Last evaluated: {metrics.last_evaluated_at}")
 
-    if metrics.successful_verifications + metrics.failed_verifications > 0:
-        success_rate = (
-            metrics.successful_verifications
-            / (metrics.successful_verifications + metrics.failed_verifications)
-            * 100
-        )
-        print(f"  Success rate: {success_rate:.1f}%")
+    # Eligibility is its own question, answered by its own route -- ask it
+    # rather than inferring one from the metrics above.
+    evaluation: ProgressionEvaluation = await client.trust.postures.evaluate_progression(
+        "agent_worker"
+    )
+    print(f"\nCan progress: {evaluation.can_progress}")
+    if evaluation.blockers:
+        for blocker in evaluation.blockers:
+            print(f"  Blocked by: {blocker}")
 
     # Request progression if eligible
-    if info.progression_eligible:
+    if evaluation.can_progress and evaluation.next_posture:
         print("\nRequesting posture progression...")
-        new_info: TrustPostureInfo = await client.trust.postures.request_progression(
+        result: PostureChangeResult = await client.trust.postures.request_progression(
             "agent_worker",
-            target_posture="shared_planning",
+            target_posture=evaluation.next_posture,
             justification=(
-                f"Completed {metrics.tasks_completed} tasks with "
-                f"{metrics.progression_score:.1f} progression score"
+                f"{metrics.interaction_count} interactions at "
+                f"{metrics.autonomous_success_rate:.1%} autonomous success rate"
             ),
         )
-        print(f"  New posture: {new_info.posture}")
+        # A posture change may APPLY IMMEDIATELY or require manager approval.
+        # Branch on it: the two outcomes demand opposite next actions, and a
+        # caller that cannot tell them apart will re-issue an accepted request
+        # and create a duplicate pending approval.
+        if result.approval_pending:
+            print(f"  Awaiting approval (approval id: {result.approval_id})")
+            print(f"  Posture still in force: {result.posture}")
+            print("  Do NOT re-issue this request -- poll get_pending_approval() instead.")
+        else:
+            print(f"  New posture applied: {result.posture}")
 
-    # Override posture (admin action)
-    # override_info = await client.trust.postures.override(
+    # Override posture (admin action). Returns the same PostureChangeResult,
+    # so it carries the same approval_pending branch as above.
+    # override_result = await client.trust.postures.override(
     #     "agent_worker",
     #     new_posture="pseudo",
     #     reason="Security review pending",
     # )
-    # print(f"  Override to: {override_info.posture}")
+    # print(f"  Override to: {override_result.posture}")
 
 
 async def inspect_trust_context(client: AgenticOSClient, chain: EstablishedTrustChain) -> None:
     """Inspect an agent's trust context and delegation path."""
     print("\n=== Step 5: Inspect Trust Context ===\n")
 
-    # Get agent trust context
-    context: AgentTrustContext = await client.trust.chains.get_agent_context("agent_coordinator")
+    # Get agent trust context. This route returns the agent's POSITION in its
+    # chain plus any standing warnings -- not a flat capability summary.
+    context: AgentTrustContextDetail = await client.trust.chains.get_agent_context(
+        "agent_coordinator"
+    )
     print("Agent trust context:")
-    print(f"  Agent: {context.agent_id}")
-    print(f"  Chain: {context.chain_id}")
-    print(f"  Posture: {context.posture}")
-    print(f"  Capabilities: {context.capabilities}")
-    print(f"  Constraints: {context.constraints}")
-    print(f"  Delegation depth: {context.delegation_depth}")
+    print(f"  Position in chain: {context.position}")
+    print(f"  Expires in (days): {context.expires_in_days}")
+    print(f"  Has warnings: {context.has_warnings}")
+    for warning in context.warnings:
+        print(f"    ! {warning}")
+    if context.trust_chain is not None:
+        print(f"  Trust chain: {context.trust_chain}")
 
     # Get delegation path
-    path: DelegationPath = await client.trust.chains.get_delegation_path(chain.agent_id)
-    print(f"\nDelegation path (depth: {path.depth}):")
+    path: AgentDelegationPath = await client.trust.chains.get_delegation_path(chain.agent_id)
+    print(f"\nDelegation path (depth: {path.depth} of max {path.max_depth_allowed}):")
     for step in path.path:
-        print(f"  {step.get('from', 'origin')} -> {step.get('to', 'agent')}")
+        delegator = step.get("delegator_id", "origin")
+        delegatee = step.get("delegatee_id", "agent")
+        print(
+            f"  {delegator} ({step.get('delegator_type', '?')})"
+            f" -> {delegatee} ({step.get('delegatee_type', '?')})"
+        )
         print(f"    Capabilities: {step.get('capabilities', [])}")
 
 

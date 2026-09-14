@@ -196,6 +196,26 @@ is what gets consumed. Without it, you are invoking as yourself. Chapter 03.4 is
 the grant model, and it is the difference between a tool you can call and a tool
 your organisation can call.
 
+**Two independent 30-second clocks bound how long this call can take, and
+they are configured in different places.** The server's own tool-execution
+default is 30s; the SDK client's own request timeout also defaults to 30s and
+applies to connect, write, read and pool-wait alike (see
+[04.5](../04-the-api-surface/05-concurrency-and-streams.md) before raising it
+for a slow tool — a single higher number lengthens all four, including how
+long an unreachable deployment takes to say so). A slow tool can exhaust
+either clock, and the two failures look different: the server's own timeout
+comes back as an ordinary response your typed result models, while the
+client's own timeout raises `sdk:aegis_sdk.TimeoutError` before any response
+is parsed at all. If invocations of a tool that should be fast are timing
+out, raise the **client's** timeout first (on a second, dedicated client —
+04.5's pattern) and re-measure — a partner report of a 180-second stall
+against a nominally-trivial built-in tool was traced this far and no
+further: the platform's own tool-execution path resolves the same 30s
+default, not 180s, and whether the SDK's own bundled tool set even contains
+the tool in question was not established from here. Treat a timeout on a
+"trivial" tool as a measurement to keep pursuing, not a known bug with a
+known fix.
+
 **A successful invoke proves the path is live. It does not prove the agent is
 correct, and it does not prove anything was governed.** Confirm the record
 separately:

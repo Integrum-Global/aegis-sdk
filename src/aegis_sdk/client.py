@@ -4,11 +4,9 @@ Aegis SDK Main Client.
 Provides the primary entry point for the SDK.
 """
 
-import os
-
 from ._http import HTTPClient
 from .auth import AuthModule
-from .config import ClientConfig
+from .config import ClientConfig, _resolve_env
 from .core import AgentsModule, PipelinesModule, SkillsModule
 from .exceptions import ConfigurationError
 from .execution import ObjectivesModule, RequestsModule, SessionsModule
@@ -161,14 +159,14 @@ class AgenticOSClient:
 
     Examples:
         # API key authentication (base_url is REQUIRED — either pass it
-        # explicitly, as shown, or set AGENTIC_OS_BASE_URL and omit it)
+        # explicitly, as shown, or set AEGIS_BASE_URL and omit it)
         >>> client = AgenticOSClient(
         ...     base_url="https://your-aegis-instance.example.com",  # placeholder — your deployment
         ...     api_key="sk_live_...",
         ... )
         >>> agents = await client.agents.list()
 
-        # From environment variables (AGENTIC_OS_BASE_URL + AGENTIC_OS_API_KEY set)
+        # From environment variables (AEGIS_BASE_URL + AEGIS_API_KEY set)
         >>> client = AgenticOSClient.from_env()
         >>> agent = await client.agents.create(name="My Agent")
 
@@ -215,9 +213,10 @@ class AgenticOSClient:
 
         Args:
             base_url: API base URL for your Aegis deployment. REQUIRED --
-                pass it explicitly here, or set the ``AGENTIC_OS_BASE_URL``
-                environment variable and omit this argument. There is no
-                hardcoded fallback host: a dead/placeholder
+                pass it explicitly here, or set the ``AEGIS_BASE_URL``
+                environment variable and omit this argument (the former
+                ``AGENTIC_OS_BASE_URL`` is still read, and is deprecated).
+                There is no hardcoded fallback host: a dead/placeholder
                 default would silently misdirect every request.
             api_key: API key for authentication
             config: Full ClientConfig object (overrides other args)
@@ -228,18 +227,20 @@ class AgenticOSClient:
 
         Raises:
             ConfigurationError: If no ``base_url`` is resolvable from either
-                the ``base_url`` argument or the ``AGENTIC_OS_BASE_URL``
-                environment variable (and ``config`` was not supplied).
+                the ``base_url`` argument or the ``AEGIS_BASE_URL``
+                environment variable -- nor the deprecated
+                ``AGENTIC_OS_BASE_URL`` -- and ``config`` was not supplied.
         """
         # Build config from arguments
         if config is None:
-            resolved_base_url = base_url or os.environ.get("AGENTIC_OS_BASE_URL")
+            resolved_base_url = base_url or _resolve_env("BASE_URL")
             if not resolved_base_url:
                 raise ConfigurationError(
                     "AgenticOSClient requires a base_url. Pass base_url=... "
-                    "explicitly, set the AGENTIC_OS_BASE_URL environment "
+                    "explicitly, set the AEGIS_BASE_URL environment "
                     "variable, or use AgenticOSClient.from_env() / "
-                    "ClientConfig.from_env()."
+                    "ClientConfig.from_env(). (The former name "
+                    "AGENTIC_OS_BASE_URL is still read, and is deprecated.)"
                 )
             config = ClientConfig(
                 base_url=resolved_base_url,
@@ -366,21 +367,26 @@ class AgenticOSClient:
         Create client from environment variables.
 
         Environment Variables:
-            AGENTIC_OS_BASE_URL: API base URL -- REQUIRED, no default
-            AGENTIC_OS_API_KEY: API key for authentication
-            AGENTIC_OS_TIMEOUT: Request timeout in seconds
-            AGENTIC_OS_DEBUG: Enable debug mode ("true"/"false")
+            AEGIS_BASE_URL: API base URL -- REQUIRED, no default
+            AEGIS_API_KEY: API key for authentication
+            AEGIS_TIMEOUT: Request timeout in seconds
+            AEGIS_DEBUG: Enable debug mode ("true"/"false")
+
+        The ``AGENTIC_OS_`` prefix is the SDK's original naming; it is still
+        read for each variable above and emits a one-time deprecation
+        warning. When both names are set, the ``AEGIS_`` value wins.
 
         Returns:
             AgenticOSClient configured from environment
 
         Raises:
-            ConfigurationError: If ``AGENTIC_OS_BASE_URL`` is not set
+            ConfigurationError: If neither ``AEGIS_BASE_URL`` nor the
+                deprecated ``AGENTIC_OS_BASE_URL`` is set
 
         Example:
             >>> # Set env vars first:
-            >>> #   export AGENTIC_OS_BASE_URL=https://your-aegis-instance.example.com
-            >>> #   export AGENTIC_OS_API_KEY=sk_live_...
+            >>> #   export AEGIS_BASE_URL=https://your-aegis-instance.example.com
+            >>> #   export AEGIS_API_KEY=sk_live_...
             >>> client = AgenticOSClient.from_env()
         """
         config = ClientConfig.from_env()

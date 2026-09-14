@@ -1344,9 +1344,12 @@ class AgentsModule:
         ``create_shadow_agent`` /
         ``CreateDelegateAgentRequest`` (``POST /api/v1/delegate-agents``).
 
-        PACT constraints (enforced server-side): the target role must be
-        non-vacant (Rule 18) and belong to the caller's tenant (Rule 21);
-        external/BOD roles receive governance-only agents (Rule 5).
+        PACT constraints (enforced server-side): the target role must
+        RESOLVE and belong to the caller's tenant (Rule 21); external/BOD roles
+        receive governance-only agents (Rule 5). An earlier revision of this
+        docstring also required the role to be non-vacant — that requirement is
+        retracted and the server no longer refuses a vacant role, so an SDK
+        caller that pre-checks occupancy is blocking a call the API now accepts.
 
         Args:
             role_id: OrganizationRole ID to attach the delegate agent to

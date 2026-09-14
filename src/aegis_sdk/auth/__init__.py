@@ -9,11 +9,12 @@ Provides authentication operations including:
 """
 
 from .client import AuthModule
-from .models import APIKey, AuthToken, User
+from .models import APIKey, APIKeyCreated, AuthToken, User
 
 __all__ = [
     "AuthModule",
     "AuthToken",
     "APIKey",
+    "APIKeyCreated",
     "User",
 ]

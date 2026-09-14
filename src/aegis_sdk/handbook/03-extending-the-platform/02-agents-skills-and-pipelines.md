@@ -306,10 +306,43 @@ report = await client.pipelines.validate(pipeline.id)
 result = await client.pipelines.execute(pipeline.id, inputs={"topic": "cash"})
 ```
 
-`api:POST /api/v1/pipelines/{id}/validate` checks node connectivity, missing
-configuration, circular dependencies and agent availability. **Run it before every
-execution of a graph you have edited** — it is the cheapest check in this part and
-it catches the four structural ways a pipeline is wrong.
+`api:POST /api/v1/pipelines/{id}/validate` returns a raw dict —
+`{"valid": bool, "errors": [...], "warnings": [...]}` — and checks node
+connectivity, missing configuration, circular dependencies and agent
+availability. **Run it before every execution of a graph you have edited**;
+it is the cheapest check in this part.
+
+⛔ **`report["valid"]` being `True` does not mean the graph is free of every
+real risk.** By deliberate severity contract, several defect classes are
+reported as `warnings` rather than `errors`, and a warning never flips
+`valid` to `False`:
+
+- a node bound to an agent id with **no trust posture configured at all**
+  (fail-closes to `pseudo` at execution — refused, but for a different reason
+  than a posture deliberately set low)
+- a node bound to an agent **already at `pseudo`** (refused at execution; the
+  graph did not change, the agent's posture did)
+- an approval gate with **no outbound edges at all** (indistinguishable from
+  an unfinished draft, so it is not condemned as broken)
+- an approval gate with **no timeout configured** (an unanswered approval
+  holds the run open indefinitely)
+- an **agent node with no outbound edge** (a legitimate terminal step, but
+  also indistinguishable from a graph nobody finished wiring — a run ending
+  there records no outcome)
+
+Two related classes ARE hard errors and do flip `valid` to `False`: a node
+type with **no execution handler that the run can actually reach**, and an
+agent binding that **resolves to no agent in the organization** — the second
+of these previously read back as a silent `valid: true` and is the confirmed
+root cause of the partner-reported symptom *"validate returns `valid: true`
+... over graphs carrying ... an agent id that resolves on no agent route"*.
+
+**If your acceptance criterion is "nothing could possibly go wrong", check
+`report["warnings"]` too, not only `report["valid"]`.** A pipeline that
+validates clean can still refuse at execution time on a posture that changed
+between the two calls — posture is read from a mutable store, not from the
+graph — which is why that class is a warning rather than an error: the graph
+itself did nothing wrong.
 
 `api:POST /api/v1/pipelines/{id}/execute` returns
 `sdk:aegis_sdk.PipelineExecution`, carrying `status` (a

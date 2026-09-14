@@ -110,6 +110,61 @@ def encode_path_param(value: object) -> str:
     return quote(str(value), safe="")
 
 
+#: Keys that may legitimately accompany "data" in a response ENVELOPE.
+#:
+#: These are pagination and status fields the server attaches BESIDE the
+#: payload. A response whose top-level keys are a subset of ``{"data"} |
+#: _ENVELOPE_SIBLING_KEYS`` is an envelope and nothing else, so the payload can
+#: be lifted out of it without losing information.
+_ENVELOPE_SIBLING_KEYS = frozenset(
+    {"total", "message", "meta", "page", "page_size", "has_next", "limit", "offset", "count"}
+)
+
+
+def unwrap_envelope(response: Any) -> Any:
+    """Return the payload from a ``{"data": ...}`` response envelope.
+
+    Many endpoints wrap their payload as ``{"data": <payload>}``, sometimes with
+    a pagination sibling such as ``{"data": [...], "total": 12}``. A client that
+    reads the payload fields straight off the outer object finds none of them.
+    That failure is quiet rather than loud -- a list reads as EMPTY and a
+    single object reads as missing -- so it surfaces as "the account has no
+    pipelines" rather than as an error anyone can act on.
+
+    THE SIBLING-KEY GUARD IS THE WHOLE POINT, AND IT IS WHY THIS IS NOT
+    AUTOMATIC. Some payloads legitimately OWN a top-level ``data`` field: a
+    settings export is ``{"version", "exportedAt", "format", "categories",
+    "data"}``, and a query result is ``{"success", "query", "params", "data",
+    "row_count", ...}``. In both, ``data`` is one field of the answer, not a
+    wrapper around it, and lifting it would DESTROY the response -- silently,
+    and in the same shape as the bug this function exists to fix. The guard
+    separates the two cases mechanically: an envelope carries ``data`` and
+    nothing beyond the known pagination siblings, so a response carrying any
+    other key is returned untouched.
+
+    Unwrapping is therefore OPT-IN PER CALL SITE **and** guarded. It is
+    deliberately not applied inside :meth:`HTTPClient.request`: a transport-level
+    unwrap would change the return shape of every method at once, including the
+    many that are correct today and the endpoints that answer with a bare list,
+    a bare scalar, or a payload that owns a ``data`` field. A method opts in
+    only where its own endpoint is known to wrap, which keeps the blast radius
+    of this change equal to the set of methods actually being repaired.
+
+    Args:
+        response: A parsed JSON response body, of any shape.
+
+    Returns:
+        ``response["data"]`` when ``response`` is an envelope; otherwise
+        ``response`` exactly as given -- including when it is not a dict, has no
+        ``data`` key, or carries a key outside the sibling allowlist.
+    """
+    if not isinstance(response, dict) or "data" not in response:
+        return response
+    if not (set(response) - {"data"}) <= _ENVELOPE_SIBLING_KEYS:
+        return response
+    return response["data"]
+
+
 def _scrub_url_path(url: str) -> str:
     """Redact one-time tokens embedded in URL paths before logging.
 
@@ -148,6 +203,46 @@ def _scrub_sensitive(data: dict | None) -> dict | None:
         else:
             result[key] = value
     return result
+
+
+#: The prefix that makes a credential an Aegis API key rather than a session
+#: JWT. The server's own credential extractors gate on exactly this string --
+#: a value without it can never be validated as a key, whichever header it
+#: arrives in -- so it is the only sound way to tell the two credentials apart
+#: from the client side.
+API_KEY_PREFIX = "sk_live_"
+
+#: Every header this client may use to present a credential. Enumerated so a
+#: credential swap can RETIRE the header it is not using -- see
+#: :meth:`HTTPClient.set_api_key`.
+_CREDENTIAL_HEADERS: tuple[str, ...] = ("Authorization", "X-API-Key")
+
+
+def _credential_headers(credential: str) -> dict[str, str]:
+    """Return the header(s) that present ``credential`` on its own channel.
+
+    THE TWO CREDENTIALS DO NOT SHARE A CHANNEL, even though this client stores
+    them in one field. The server accepts an API key on either
+    ``X-API-Key: sk_live_...`` or ``Authorization: Bearer sk_live_...``, and
+    documents the FIRST as canonical and the Bearer form as "the documented
+    alternative". A session JWT has only the
+    ``Authorization`` channel -- placed in ``X-API-Key`` it is ignored, since
+    both server extractors require the ``sk_live_`` prefix before a value
+    reaches key validation.
+
+    So the routing is by credential SHAPE, not by caller intent: a key goes to
+    the canonical key header, anything else to Bearer. Sending an API key on
+    the alternative channel worked and still would; the reason to move it is
+    that this client's own diagnostic (``python -m aegis_sdk.coc.probe``)
+    already used ``X-API-Key``, and a probe that authenticates differently
+    from the client it diagnoses cannot reproduce the client's auth failures.
+
+    CSRF is unaffected: the server's exemption for ``X-API-Key`` is gated on
+    SUCCESSFUL key validation, which a real key passes.
+    """
+    if credential.startswith(API_KEY_PREFIX):
+        return {"X-API-Key": credential}
+    return {"Authorization": f"Bearer {credential}"}
 
 
 class HTTPClient:
@@ -210,13 +305,28 @@ class HTTPClient:
             "User-Agent": f"AgenticOS-SDK/{__version__}",
         }
         if self._api_key:
-            headers["Authorization"] = f"Bearer {self._api_key}"
+            headers.update(_credential_headers(self._api_key))
         return headers
 
     def set_api_key(self, api_key: str) -> None:
-        """Update the API key for authentication."""
+        """Update the API key for authentication.
+
+        BOTH credential headers are rewritten on every call, never just the
+        one being set. This slot holds an API key OR a session JWT (the
+        client's own documented flow is
+        ``client.set_api_key(token.access_token)``), so swapping one kind for
+        the other must RETIRE the previous header -- leaving a stale
+        ``X-API-Key`` beside a fresh ``Authorization`` would present two
+        credentials at once and let the server authenticate as whichever it
+        checked first.
+        """
         self._api_key = api_key
-        self._client.headers["Authorization"] = f"Bearer {api_key}"
+        chosen = _credential_headers(api_key)
+        for name in _CREDENTIAL_HEADERS:
+            if name in chosen:
+                self._client.headers[name] = chosen[name]
+            else:
+                self._client.headers.pop(name, None)
 
     def set_auth_token(self, token: str) -> None:
         """Update the auth token (same as API key)."""

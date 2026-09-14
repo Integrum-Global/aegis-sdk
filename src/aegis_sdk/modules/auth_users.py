@@ -572,8 +572,33 @@ class AuthUsersModule:
         """
         Rotate an API key's secret. The previous secret is invalidated
         immediately; the new full key is returned ONLY in this response
-        and cannot be retrieved later. Identity (id, name, scopes, rate
-        limit) is preserved.
+        and cannot be retrieved later. ``id``, ``name``, ``scopes``,
+        ``rate_limit``, ``organization_id`` and ``expires_at`` survive the
+        rotation; ``last_used_at`` is cleared, since the prior secret no
+        longer works.
+
+        ⛔ OWNERSHIP IS NOT AMONG THE PRESERVED FIELDS, and this docstring
+        said "identity is preserved" without qualifying that. ``created_by``
+        is RE-ANCHORED to the rotating caller (#3605). That column is the
+        principal the key's continued validity is BOUND to -- not a record
+        of who first created it -- because the server's ``validate`` denies
+        on ``owner_inactive`` / ``owner_not_member_of_key_org`` against THAT
+        id. So after you rotate a key, it answers for YOU: it stops
+        authenticating when your access ends, not the original creator's.
+        Re-anchoring is unconditional; rotating your own key rewrites the
+        same value.
+
+        The original creator is NOT retained by the row -- there is one
+        column and it now holds the current bound principal. A caller that
+        needs provenance reads the audit log, never this response.
+
+        ⛔ ROTATION ALSO REACTIVATES A REVOKED KEY. It is the only
+        un-revoke path in the product and is retained by decision, so a
+        successful rotation always returns a key with status ``active``,
+        even when the stored row was ``revoked``. Whether revocation
+        should be terminal is tracked separately (#3607); do not rely on
+        revocation alone to retire a credential that anyone with mint
+        authority over its scopes can still rotate.
 
         Args:
             key_id: API key ID

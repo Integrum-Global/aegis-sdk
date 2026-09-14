@@ -155,7 +155,7 @@ class LicensesModule:
         )
         response = await self._http.request(
             "POST",
-            "/licenses/generate",
+            "/api/v1/licenses/generate",
             json_data=request_data.model_dump(exclude_none=True),
         )
         # Response includes license_id, license_data, message
@@ -211,7 +211,7 @@ class LicensesModule:
         )
         response = await self._http.request(
             "POST",
-            "/licenses/validate",
+            "/api/v1/licenses/validate",
             json_data=request_data.model_dump(exclude_none=True),
         )
         return LicenseValidation(**response)
@@ -247,7 +247,7 @@ class LicensesModule:
         """
         response = await self._http.request(
             "POST",
-            f"/licenses/{encode_path_param(license_id)}/revoke",
+            f"/api/v1/licenses/{encode_path_param(license_id)}/revoke",
             json_data={"reason": reason},
         )
         return response.get("revoked", False)
@@ -272,7 +272,7 @@ class LicensesModule:
         """
         response = await self._http.request(
             "GET",
-            f"/licenses/{encode_path_param(license_id)}/usage",
+            f"/api/v1/licenses/{encode_path_param(license_id)}/usage",
         )
         return LicenseUsage(**response)
 
@@ -298,7 +298,7 @@ class LicensesModule:
         """
         response = await self._http.request(
             "GET",
-            "/licenses/status",
+            "/api/v1/licenses/status",
         )
         return LicenseStatus(**response)
 
@@ -318,7 +318,7 @@ class LicensesModule:
         """
         response = await self._http.request(
             "GET",
-            "/licenses/editions",
+            "/api/v1/licenses/editions",
         )
         editions_data = response.get("editions", {})
         return {name: Edition(name=name, **data) for name, data in editions_data.items()}

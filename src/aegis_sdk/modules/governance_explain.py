@@ -103,9 +103,16 @@ class RoleEnvelopeCoverage(BaseModel):
     coerce them, and the distinctions are the point of the report:
 
     * ``bucket`` — ``resolved_constrained``, ``resolved_allow_all``,
-      ``not_resolved``, or ``unclassified``. ``unclassified`` is **neither**
-      covered nor uncovered; it is the tool declining to guess, and any
-      non-zero count of it means the coverage question is not fully answered.
+      ``resolved_holds_all_egress``, ``not_resolved``, or ``unclassified``.
+      The two resolved failure buckets are OPPOSITE failures and must not be
+      summed: ``resolved_allow_all`` is an EMPTY allow-list, which is
+      intersection-neutral and permits everything, while
+      ``resolved_holds_all_egress`` is a NON-empty allow-list enumerating no
+      ``llm_call:<model>`` — the agent cannot call its own model, so every
+      egress is HELD and the role is silenced rather than constrained.
+      ``unclassified`` is **neither** covered nor uncovered; it is the tool
+      declining to guess, and any non-zero count of it means the coverage
+      question is not fully answered.
     * ``has_active_envelope_row`` — ``True``/``False`` when the envelope table
       was read, ``None`` when it was **not** read. "No row" and "could not
       look" are opposite findings; do not treat ``None`` as ``False``.

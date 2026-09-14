@@ -9,12 +9,11 @@ import builtins
 import warnings
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from .._http import encode_path_param
-from ..exceptions import UnsupportedOperationError
+from ..exceptions import UnsupportedOperationError, ValidationError
 from ..types import (
-    AgentTrustContext,
     CascadeRevocationResult,
     DelegationPath,
     EstablishedTrustChain,
@@ -22,9 +21,178 @@ from ..types import (
     RevocationImpact,
     TrustChain,
     TrustChainStatus,
-    TrustVerification,
     TrustVerificationResult,
 )
+
+
+class TrustLineageGenesis(BaseModel):
+    """The genesis record at the root of a trust lineage.
+
+    This is where a lineage document carries ``id``, ``agent_id`` and
+    ``authority_id``. The lineage document has NO top-level fields of those
+    names -- a reader looking for them one level too high finds nothing and,
+    on a permissive model, reads three nulls beside fully-populated
+    capability rows.
+
+    Note:
+        ``authority_id`` and ``created_at`` are ``None`` ONLY for a chain
+        established before lineage signing existed, where the platform has no
+        such record to report. On any chain established since, both are
+        populated -- so a ``None`` here means "this chain predates the signed
+        lineage", never "the value was lost in transit".
+    """
+
+    model_config = ConfigDict(populate_by_name=True, extra="allow")
+
+    id: str
+    agent_id: str
+    authority_type: str
+    authority_id: str | None = None
+    created_at: str | None = None
+    agent_name: str | None = None
+    expires_at: str | None = None
+    signature: str = ""
+    # Opaque signing metadata, carried through verbatim and never interpreted
+    # here. Deliberately untyped: the platform owns this vocabulary, and
+    # refusing a whole lineage document because a field the SDK does not read
+    # arrived in an unexpected form would turn a cosmetic platform change into
+    # an outage. The fields that carry MEANING -- id, agent_id, authority_id --
+    # stay strictly required above.
+    signature_algorithm: Any = None
+    alg_id: Any = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class TrustLineageCapability(BaseModel):
+    """One signed capability attestation within a lineage."""
+
+    model_config = ConfigDict(populate_by_name=True, extra="allow")
+
+    id: str
+    capability: str
+    capability_type: str
+    attester_id: str
+    attested_at: str
+    constraints: builtins.list[str] = Field(default_factory=list)
+    expires_at: str | None = None
+    signature: str = ""
+    # Opaque signing metadata -- see TrustLineageGenesis.alg_id.
+    alg_id: Any = None
+    scope: dict[str, Any] | None = None
+
+
+class TrustChainLineage(BaseModel):
+    """The full signed EATP lineage document for one agent.
+
+    Returned by :meth:`ChainsModule.get`. This is a RICHER shape than the
+    summary projection :meth:`ChainsModule.list` yields, and it is nested:
+    identity lives on :attr:`genesis`, not at the top level.
+
+    Warning:
+        ``verification`` carries the per-record trusted-key verdict. A chain
+        established before lineage signing existed is returned with unsigned
+        records and an ALL-FALSE verification block. That is an honest
+        "unverified", never a claim of tampering -- do not read
+        ``verified=False`` as a security finding without checking whether the
+        record carries a signature at all.
+    """
+
+    model_config = ConfigDict(populate_by_name=True, extra="allow")
+
+    genesis: TrustLineageGenesis
+    capabilities: builtins.list[TrustLineageCapability] = Field(default_factory=list)
+    delegations: builtins.list[dict[str, Any]] = Field(default_factory=list)
+    constraint_envelope: dict[str, Any] | None = None
+    audit_anchors: builtins.list[dict[str, Any]] = Field(default_factory=list)
+    chain_hash: str | None = None
+    verification: dict[str, Any] = Field(default_factory=dict)
+
+    @property
+    def agent_id(self) -> str:
+        """The agent this lineage belongs to, read from the genesis record."""
+        return self.genesis.agent_id
+
+    @property
+    def authority_id(self) -> str:
+        """The authority that established this lineage."""
+        return self.genesis.authority_id
+
+
+class AgentDelegationPath(DelegationPath):
+    """Delegation path from the human root down to one agent.
+
+    Extends :class:`~aegis_sdk.types.DelegationPath` with the depth ceiling the
+    base model does not carry, and populates ``chain_id`` / ``depth`` from the
+    platform's ``trust_chain_id`` / ``total_depth``.
+
+    Note:
+        ``chain_id`` is ``None`` for an agent with no established chain -- the
+        platform answers that case with an empty path rather than an error, so
+        ``None`` here means "no chain", not "failed to load".
+
+        Each entry in ``path`` is keyed ``delegator_id`` / ``delegator_name`` /
+        ``delegator_type`` / ``delegatee_id`` / ``delegatee_name`` /
+        ``delegatee_type`` / ``delegated_at`` / ``capabilities`` /
+        ``constraints_added``. There are no ``from`` / ``to`` keys.
+    """
+
+    chain_id: str | None = None  # type: ignore[assignment]
+    path: builtins.list[dict[str, Any]] = Field(default_factory=list)
+    depth: int = 0
+    max_depth_allowed: int = 10
+
+
+class TrustWarning(BaseModel):
+    """A computed advisory about an agent's trust standing."""
+
+    model_config = ConfigDict(populate_by_name=True, extra="allow")
+
+    type: str
+    message: str
+    severity: str
+
+
+class AgentTrustContextDetail(BaseModel):
+    """Everything the platform knows about one agent's current trust standing.
+
+    Composes the agent's chain, its delegation path, its position in that
+    path, and any computed warnings.
+
+    Note:
+        ``trust_chain`` is ``None`` for an agent that exists but has no chain
+        established yet. That is a normal state answered with a 200, not a
+        404: the platform 404s only when the agent itself is unknown or
+        belongs to another organization, so ``trust_chain is None`` tells you
+        the agent is real and its chain is the thing still missing.
+    """
+
+    model_config = ConfigDict(populate_by_name=True, extra="allow")
+
+    trust_chain: TrustChain | None = None
+    delegation_path: AgentDelegationPath = Field(default_factory=AgentDelegationPath)
+    position: int = 0
+    expires_in_days: int | None = None
+    has_warnings: bool = False
+    warnings: builtins.list[TrustWarning] = Field(default_factory=list)
+
+
+class TrustVerificationOutcome(TrustVerificationResult):
+    """Result of a trust verification, including the platform's reasoning.
+
+    Extends :class:`~aegis_sdk.types.TrustVerificationResult` with the two
+    lists the platform actually returns, which the base model does not carry:
+    which capabilities matched, and which constraints were violated.
+
+    Warning:
+        ``chain_id`` and ``constraints_applied`` are inherited from the base
+        model and are ALWAYS ``None`` / empty -- the verification route emits
+        neither. Read :attr:`constraints_violated` for the constraints that
+        decided a denial; ``constraints_applied`` is not its synonym and is
+        not populated.
+    """
+
+    capabilities_matched: builtins.list[str] = Field(default_factory=list)
+    constraints_violated: builtins.list[str] = Field(default_factory=list)
 
 
 class TrustChainSummary(BaseModel):
@@ -194,84 +362,150 @@ class ChainsModule:
         )
         return EstablishedTrustChain(**response)
 
-    async def get(self, chain_id: str) -> TrustChain:
+    async def get(self, chain_id: str) -> TrustChainLineage:
         """
-        Get trust chain by ID.
+        Get the full signed trust lineage for an agent.
 
         Args:
-            chain_id: Trust chain ID (an agent id -- the route is keyed by
-                agent, one chain per agent)
+            chain_id: The agent whose lineage is read. Chains are keyed by
+                agent -- one chain per agent -- so this is an agent id.
 
         Returns:
-            Trust chain details
+            The lineage document: genesis, capability attestations,
+            delegations, the constraint envelope, audit anchors, the chain
+            hash, and the per-record verification block.
 
         Raises:
-            NotFoundError: If chain doesn't exist
+            NotFoundError: If the agent has no trust chain.
 
-        .. warning::
-            **Known limitation -- this method does not currently work.**
-            ``GET /api/v1/trust/chains/{agent_id}`` returns the full EATP
-            trust-lineage document (``genesis``, ``capabilities``,
-            ``delegations``, ``constraint_envelope``, ``audit_anchors``,
-            ``chain_hash``, ``verification``). That is a richer shape than
-            the :class:`TrustChain` model this method constructs, and it
-            carries no top-level ``agent_id``, ``status`` or ``human_origin``,
-            so every call raises a Pydantic ``ValidationError`` client-side.
-            A dedicated lineage model is a tracked follow-up. Use
-            :meth:`list` for the summary shape in the meantime.
+        Note:
+            Identity is NESTED on this route. ``id``, ``agent_id`` and
+            ``authority_id`` live on :attr:`TrustChainLineage.genesis`, not at
+            the top level; :attr:`TrustChainLineage.agent_id` and
+            :attr:`TrustChainLineage.authority_id` are conveniences that read
+            through to it. A consumer that looks for those three names at the
+            top level of the raw response finds none of them.
+
+            Use :meth:`list` or :meth:`get_summary` for the flat summary
+            projection; they are a different, narrower shape.
 
         Example:
-            >>> chain = await client.trust.chains.get("chain_abc123")
-            >>> print(f"Chain status: {chain.status}")
+            >>> lineage = await client.trust.chains.get("agent_abc123")
+            >>> print(lineage.genesis.authority_id, lineage.chain_hash)
+            >>> for capability in lineage.capabilities:
+            ...     print(capability.capability, capability.attester_id)
         """
         response = await self._http.request(
             "GET", f"/api/v1/trust/chains/{encode_path_param(chain_id)}"
         )
-        return TrustChain(**response)
+        return TrustChainLineage(**response)
 
     async def verify(
         self,
         agent_id: str,
         action: str,
-        resource: str,
+        resource: str | None = None,
         context: dict[str, Any] | None = None,
-    ) -> TrustVerificationResult:
+        *,
+        resource_type: str | None = None,
+        resource_id: str | None = None,
+    ) -> TrustVerificationOutcome:
         """
-        Verify if an agent action is authorized by the trust chain.
+        Verify whether an agent's action is authorized by its trust chain.
+
+        The target of an action is addressed as a KIND plus an optional
+        INSTANCE -- ``resource_type`` says what sort of thing is being acted
+        on, ``resource_id`` says which one. ``resource_type`` is required;
+        omit ``resource_id`` to ask about the kind as a whole.
 
         Args:
-            agent_id: Agent requesting the action
-            action: Action to verify (e.g., "read", "write", "execute")
-            resource: Resource the action targets
-            context: Additional context for verification
+            agent_id: Agent requesting the action.
+            action: Action to verify (e.g. ``"read"``, ``"write"``,
+                ``"execute"``).
+            resource: Deprecated. A single undifferentiated string cannot
+                express the kind/instance pair, so it is forwarded AS the kind
+                when ``resource_type`` is absent, and read as the instance when
+                ``resource_type`` is supplied alongside it. Pass the two
+                explicitly instead.
+            context: Deprecated, ignored. The verification route accepts no
+                caller-supplied context and evaluates against the chain's own
+                recorded constraints.
+            resource_type: The kind of resource the action targets.
+            resource_id: The specific resource instance, when the check is
+                about one.
 
         Returns:
-            Verification result with authorization decision
+            The authorization decision, the capabilities that matched, and any
+            constraints violated.
+
+        Raises:
+            ValidationError: If neither ``resource_type`` nor ``resource`` is
+                supplied. The route requires a target and the SDK will not
+                invent one: a fabricated resource kind would be written into
+                the platform's audit record as though the caller had named it.
 
         Example:
             >>> result = await client.trust.chains.verify(
             ...     agent_id="agent_abc123",
             ...     action="write",
-            ...     resource="report_q4_2024",
-            ...     context={"cost": 50}
+            ...     resource_type="report",
+            ...     resource_id="report_q4_2024",
             ... )
             >>> if result.allowed:
-            ...     print(f"Authorized via chain: {result.chain_id}")
+            ...     print("Authorized:", result.capabilities_matched)
             ... else:
-            ...     print(f"Denied: {result.reason}")
+            ...     print("Denied:", result.reason, result.constraints_violated)
         """
-        verify_data = TrustVerification(
-            agent_id=agent_id,
-            action=action,
-            resource=resource,
-            context=context or {},
-        )
+        if context is not None:
+            warnings.warn(
+                "verify(context=...) is deprecated and ignored — the "
+                "verification route accepts no caller-supplied context and "
+                "evaluates against the trust chain's own recorded "
+                "constraints. This parameter will be removed in a future "
+                "release.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+        if resource is not None:
+            warnings.warn(
+                "verify(resource=...) is deprecated — the verification route "
+                "addresses a target as resource_type (the kind) plus an "
+                "optional resource_id (the instance). Pass resource_type, and "
+                "resource_id where a specific instance is meant. This "
+                "parameter will be removed in a future release.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+        if resource_type is None and resource is None:
+            raise ValidationError(
+                "verify() requires resource_type — the kind of resource the "
+                'action targets (for example "report" or "dataset"). The SDK '
+                "will not substitute a placeholder: the platform records this "
+                "value in its audit trail, so an invented kind would read as "
+                "one the caller had named."
+            )
+        # A caller who supplied only the legacy single string gets that string
+        # forwarded AS the kind. This invents nothing -- it carries the
+        # caller's own word into the one required target field -- and it cannot
+        # change a verdict: the platform matches capabilities on `action`, and
+        # reads resource_type only as an audit label.
+        if resource_type is not None:
+            kind, instance = resource_type, (resource_id if resource_id is not None else resource)
+        else:
+            kind, instance = resource, resource_id
+        body: dict[str, Any] = {
+            "agent_id": agent_id,
+            "action": action,
+            "resource_type": kind,
+        }
+        if instance is not None:
+            body["resource_id"] = instance
         response = await self._http.request(
             "POST",
             "/api/v1/trust/verify",
-            json_data=verify_data.model_dump(),
+            json_data=body,
         )
-        return TrustVerificationResult(**response)
+        return TrustVerificationOutcome(**response)
 
     async def revoke(
         self,
@@ -371,21 +605,33 @@ class ChainsModule:
             "reinstatement is not currently supported by the Aegis API."
         )
 
-    async def get_delegation_path(self, chain_id: str) -> DelegationPath:
+    async def get_delegation_path(self, chain_id: str) -> AgentDelegationPath:
         """
-        Get the delegation path for a trust chain.
+        Get the delegation path for an agent's trust chain.
 
         Args:
-            chain_id: Trust chain ID
+            chain_id: The agent whose path is read. Delegation paths are keyed
+                by agent id.
 
         Returns:
-            Delegation path from human origin to current agent
+            The ordered path from the human root down to this agent, its
+            depth, and the depth ceiling in force.
+
+        Note:
+            The platform names these fields ``trust_chain_id`` and
+            ``total_depth``; they are surfaced here as
+            :attr:`~AgentDelegationPath.chain_id` and
+            :attr:`~AgentDelegationPath.depth` to match the rest of this SDK.
+
+            Path entries are keyed ``delegator_id`` / ``delegatee_id`` (plus
+            ``*_name``, ``*_type``, ``delegated_at``, ``capabilities``,
+            ``constraints_added``) -- there are no ``from`` / ``to`` keys.
 
         Example:
-            >>> path = await client.trust.chains.get_delegation_path("chain_abc123")
-            >>> print(f"Delegation depth: {path.depth}")
+            >>> path = await client.trust.chains.get_delegation_path("agent_abc123")
+            >>> print(f"Depth {path.depth} of {path.max_depth_allowed}")
             >>> for step in path.path:
-            ...     print(f"  {step['from']} -> {step['to']}")
+            ...     print(f"  {step['delegator_id']} -> {step['delegatee_id']}")
         """
         # GET /api/v1/trust/chains/{agent_id}/delegation-path. The delegation
         # path is keyed by agent id; pass the agent id for this chain.
@@ -393,9 +639,14 @@ class ChainsModule:
             "GET",
             f"/api/v1/trust/chains/{encode_path_param(chain_id)}/delegation-path",
         )
-        return DelegationPath(**response)
+        return AgentDelegationPath(
+            chain_id=response.get("trust_chain_id"),
+            path=list(response.get("path") or []),
+            depth=response.get("total_depth", 0),
+            max_depth_allowed=response.get("max_depth_allowed", 10),
+        )
 
-    async def get_agent_context(self, agent_id: str) -> AgentTrustContext:
+    async def get_agent_context(self, agent_id: str) -> AgentTrustContextDetail:
         """
         Get the current trust context for an agent.
 
@@ -403,19 +654,50 @@ class ChainsModule:
             agent_id: Agent ID
 
         Returns:
-            Agent's current trust context
+            The agent's chain, its delegation path, its position in that path,
+            how long its authorization has left, and any computed warnings.
+
+        Raises:
+            NotFoundError: If the agent is unknown or belongs to another
+                organization.
+
+        Note:
+            An agent that exists but has no chain established yet is answered
+            with a normal result carrying ``trust_chain=None`` and an empty
+            delegation path -- NOT a 404. The two cases are deliberately kept
+            distinct: a 404 means the agent is not yours to see, while
+            ``trust_chain is None`` means the agent is real and establishing
+            its chain is the action that unblocks you.
 
         Example:
             >>> context = await client.trust.chains.get_agent_context("agent_abc123")
-            >>> print(f"Posture: {context.posture}")
-            >>> print(f"Capabilities: {context.capabilities}")
+            >>> if context.trust_chain is None:
+            ...     print("No trust chain established yet")
+            ... else:
+            ...     print("Status:", context.trust_chain.status)
+            ...     print("Depth:", context.delegation_path.depth)
+            >>> for warning in context.warnings:
+            ...     print(warning.severity, warning.message)
         """
         # GET /api/v1/trust/agents/{agent_id}/trust-context.
         response = await self._http.request(
             "GET",
             f"/api/v1/trust/agents/{encode_path_param(agent_id)}/trust-context",
         )
-        return AgentTrustContext(**response)
+        path_data = response.get("delegation_path") or {}
+        return AgentTrustContextDetail(
+            trust_chain=response.get("trust_chain"),
+            delegation_path=AgentDelegationPath(
+                chain_id=path_data.get("trust_chain_id"),
+                path=list(path_data.get("path") or []),
+                depth=path_data.get("total_depth", 0),
+                max_depth_allowed=path_data.get("max_depth_allowed", 10),
+            ),
+            position=response.get("position", 0),
+            expires_in_days=response.get("expires_in_days"),
+            has_warnings=response.get("has_warnings", False),
+            warnings=[TrustWarning(**w) for w in response.get("warnings") or []],
+        )
 
     async def analyze_revocation_impact(self, agent_id: str) -> RevocationImpact:
         """

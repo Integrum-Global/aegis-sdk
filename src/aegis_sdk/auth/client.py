@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 from .._http import encode_path_param
 from ..exceptions import AgenticOSError
-from .models import APIKey, APIKeyCreate, AuthToken, User
+from .models import APIKey, APIKeyCreate, APIKeyCreated, AuthToken, User
 
 if TYPE_CHECKING:
     from .._http import HTTPClient
@@ -70,16 +70,35 @@ class AuthModule:
         )
         return self._parse_auth_envelope(response)
 
-    async def logout(self) -> None:
+    async def logout(self, refresh_token: str | None = None) -> None:
         """
         Logout current session.
 
-        Invalidates the current access token on the server.
+        Invalidates the current access token on the server, and the refresh
+        token too when one is supplied.
+
+        A JSON BODY IS ALWAYS SENT, EVEN WHEN EMPTY. The server declares this
+        endpoint with a ``LogoutRequest`` body model, and such a model is a
+        REQUIRED body -- so a
+        bodyless POST is rejected with ``422 field required`` before the
+        handler runs. The body's own field is optional, which is what makes
+        ``{}`` the correct minimum rather than a placeholder: it satisfies the
+        model without asserting a refresh token the caller may not hold.
+
+        Args:
+            refresh_token: Optional refresh token to blacklist alongside the
+                access token. Omit it when the refresh token lives in an
+                HTTP-only cookie -- the server reads the access token from the
+                request either way.
 
         Raises:
             AuthenticationError: If not authenticated
         """
-        await self._http.request("POST", "/api/v1/auth/logout")
+        await self._http.request(
+            "POST",
+            "/api/v1/auth/logout",
+            json_data={"refresh_token": refresh_token} if refresh_token else {},
+        )
 
     async def refresh_token(self, refresh_token: str | None = None) -> AuthToken:
         """
@@ -98,14 +117,21 @@ class AuthModule:
             >>> new_token = await client.auth.refresh_token(old_token.refresh_token)
             >>> client._http.set_auth_token(new_token.access_token)
         """
-        json_data = {}
+        # A BODY IS ALWAYS SENT, for the same reason as :meth:`logout`: the
+        # server declares ``refresh(request: RefreshRequest, ...)``, so the
+        # body is REQUIRED even though its one field is optional. Sending
+        # ``None`` produced ``422 field required`` in precisely the case the
+        # server documents as supported -- an SSO cookie session, which CANNOT
+        # put the refresh token in the body because JavaScript cannot read the
+        # HTTP-only cookie it lives in.
+        json_data: dict[str, str] = {}
         if refresh_token:
             json_data["refresh_token"] = refresh_token
 
         response = await self._http.request(
             "POST",
             "/api/v1/auth/refresh",
-            json_data=json_data if json_data else None,
+            json_data=json_data,
         )
         return AuthToken(**response)
 
@@ -248,7 +274,7 @@ class AuthModule:
         name: str,
         scopes: list[str] | None = None,
         expires_in_days: int | None = None,
-    ) -> APIKey:
+    ) -> APIKeyCreated:
         """
         Create new API key.
 
@@ -258,7 +284,10 @@ class AuthModule:
             expires_in_days: Optional expiration in days
 
         Returns:
-            APIKey with the key_prefix (full key only shown once)
+            APIKeyCreated -- an :class:`APIKey` plus ``key``, the full secret.
+            The server emits ``key`` ONLY in this response and it cannot be
+            retrieved later, so a caller that does not store it here has lost
+            it. Store it in a secret manager; do NOT log it.
 
         Raises:
             AuthenticationError: If not authenticated
@@ -270,6 +299,7 @@ class AuthModule:
             ...     scopes=["agents:read", "pipelines:write"]
             ... )
             >>> print(f"Key prefix: {key.key_prefix}")
+            >>> secrets_manager.store(key.key)  # the ONLY time key is available
         """
         create_data = APIKeyCreate(
             name=name,
@@ -281,7 +311,7 @@ class AuthModule:
             "/api/v1/api-keys",
             json_data=create_data.model_dump(exclude_none=True),
         )
-        return APIKey(**response)
+        return APIKeyCreated(**response)
 
     async def list_api_keys(self) -> list[APIKey]:
         """

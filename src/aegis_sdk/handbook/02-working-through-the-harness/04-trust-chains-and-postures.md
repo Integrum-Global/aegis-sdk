@@ -99,13 +99,43 @@ governance and the console blurs them into one button.
 behalf) asks to move up; a human approves.
 
 ```python
-await client.trust.postures.request_progression(...)
+result = await client.trust.postures.request_progression(...)
 ```
 
-`api:POST /api/v1/agents/{id}/trust-posture/request-upgrade`, then
-`api:POST /api/v1/agents/{id}/trust-posture/approve` or
-`api:POST /api/v1/agents/{id}/trust-posture/reject`. Pending requests across the
-tenant are at `api:GET /api/v1/posture/pending-approvals`.
+⛔ There is **no dedicated `/request-upgrade` endpoint** — this and
+`postures.override()` below both go through the SAME
+`api:PUT /api/v1/agents/{id}/trust-posture`, which decides internally whether
+the change applies at once or is held for a human. A resolution comes back
+through `api:POST /api/v1/agents/{id}/trust-posture/approve` or
+`.../reject`. Pending requests across the tenant are at
+`api:GET /api/v1/posture/pending-approvals`; one agent's pending request is at
+`api:GET /api/v1/agents/{id}/trust-posture/pending`.
+
+**The change is not always applied when this returns.** Raising an agent
+above `supervised` is held for approval — branch on `result.approval_pending`
+before reporting the agent progressed; while it is `True`, `result.posture`
+is the posture the agent is **still running at**, not the one you asked for.
+This is the confirmed root cause of a partner-reported symptom: code that
+assumed the return always carried the new posture could not parse the
+approval-pending reply and raised *after the server had already accepted the
+request* — and a caller that then retries files a **second** pending request
+against the same agent, because the endpoint has no idempotency key.
+**Before retrying after an ambiguous failure** (a timeout, a dropped
+connection), call `get_pending_approval(agent_id)` to find out whether the
+first attempt already landed — `None` means it did not.
+
+**Approving is addressed by AGENT, not by request.**
+`postures.approve_transition(agent_id, notes=...)` takes no request
+identifier — there is nowhere to send one, because the endpoint resolves
+whichever request is pending for that agent. **With more than one request
+pending, which one it decides is not something the caller controls.** This
+is the confirmed root cause of a second partner-reported symptom — sending a
+`request_id` to try to disambiguate does nothing, because the endpoint has no
+such field, and the fix is upstream of the call: never let a second request
+become pending while one is already outstanding. Check
+`get_pending_approval(agent_id)` before every `request_progression()` call,
+and treat a non-`None` result as "already asked, do not ask again" rather
+than as an obstacle to route around.
 
 **2. Override** — set it directly.
 
@@ -113,10 +143,15 @@ tenant are at `api:GET /api/v1/posture/pending-approvals`.
 await client.trust.postures.override(...)
 ```
 
-`api:PUT /api/v1/agents/{id}/trust-posture`. This is the one to be careful with.
-It is legitimate — an incident, a migration, a deliberate decision — and it is
-also the operation that turns a governed progression into an assertion. Use it
-knowingly and record why.
+`api:PUT /api/v1/agents/{id}/trust-posture` — the same endpoint as
+`request_progression()` above, and it carries the same two-outcome shape: a
+downward move (an emergency restriction) applies immediately, but an upward
+override above `supervised` is held for approval exactly like a normal
+progression request. Branch on `result.approval_pending` here too; do not
+assume an override always takes effect at once. This is the one to be
+careful with regardless — it is legitimate (an incident, a migration, a
+deliberate decision) and it is also the operation that turns a governed
+progression into an assertion. Use it knowingly and record why.
 
 **3. Let the evidence decide.** Aegis accumulates evidence about whether an agent
 has earned more autonomy, and will tell you:
@@ -165,10 +200,21 @@ difference between removing one agent and silently removing a department's.
 a particular person — the operation you want when someone leaves — and
 `api:POST /api/v1/trust/revoke-delegation` removes a single delegation.
 
-### Suspend is not revoke, and the distinction matters when you read state back
+### There is no reversible pair — only revoke, which is not reversible
 
-`client.trust.chains.suspend(agent_id, reason)` and `.reinstate(agent_id)` are
-the reversible pair. Revocation is not reversible.
+⛔ **`client.trust.chains.suspend(agent_id, reason)` and `.reinstate(agent_id)`
+do not do this.** Both are deprecation shims that **always raise
+`UnsupportedOperationError`** — there is no server route for suspending or
+reinstating a trust chain directly. `SUSPENDED` exists only as a lifecycle
+state a chain reaches automatically during cascade revocation of a
+bridge-sourced chain (see the callout below); it is not something you can put
+an agent into or take it out of on demand. If you need to stop an agent
+acting without permanently ending its chain, the honest tool today is
+`postures.override(agent_id, new_posture="pseudo", reason=...)`
+([the posture section above](#postures--the-five-levels)) — reversible, and a
+downward move applies immediately rather than waiting on approval. `revoke()`
+remains the only permanent, cascading removal, and it is genuinely not
+reversible.
 
 > ⚠ **A revoked chain that originated from a bridge can read back as
 > `suspended`.** If you are writing a check that asks "is this revoked?" by

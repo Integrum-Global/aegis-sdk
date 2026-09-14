@@ -32,18 +32,27 @@ Quick Start:
     ...     )
 
 Environment Variables:
-    AGENTIC_OS_BASE_URL: API base URL -- REQUIRED, no default
-    AGENTIC_OS_API_KEY: API key for authentication
-    AGENTIC_OS_MODEL: LLM model ID to use for agents you create via the SDK
+    AEGIS_BASE_URL: API base URL -- REQUIRED, no default
+    AEGIS_API_KEY: API key for authentication
+    AEGIS_TIMEOUT: Request timeout in seconds (default: 30)
+    AEGIS_DEBUG: Enable debug logging (default: false)
+
+    The ``AGENTIC_OS_`` prefix is the SDK's original naming for the four
+    variables above. It is still read, so existing deployments keep
+    working, and emits a one-time DeprecationWarning naming its ``AEGIS_``
+    replacement. When both names are set, the ``AEGIS_`` value wins.
+
+    AEGIS_MODEL: LLM model ID to use for agents you create via the SDK
         (the SDK never hardcodes a model name -- your scripts should read
         this, or an equivalent, from your own environment)
-    AGENTIC_OS_WORKSPACE_ID: Workspace to create agents in. Like
-        AGENTIC_OS_MODEL this is a convention the shipped examples follow,
-        not a variable the SDK reads: ``agents.create()`` REQUIRES
-        ``workspace_id`` and raises ValidationError without it, so every
-        example that creates an agent has to source one from somewhere.
-    AGENTIC_OS_TIMEOUT: Request timeout in seconds (default: 30)
-    AGENTIC_OS_DEBUG: Enable debug logging (default: false)
+    AEGIS_WORKSPACE_ID: Workspace to create agents in. Like AEGIS_MODEL
+        this is a convention the shipped examples follow, not a variable
+        the SDK reads: ``agents.create()`` REQUIRES ``workspace_id`` and
+        raises ValidationError without it, so every example that creates
+        an agent has to source one from somewhere. Because the SDK never
+        reads these two, neither the precedence nor the deprecation
+        warning above applies to them -- the shipped examples still read
+        the ``AGENTIC_OS_`` spelling.
 
 Documentation:
     https://docs.agentic-os.com/sdk
@@ -150,6 +159,7 @@ from .types import (
     # Auth models
     APIKey,
     APIKeyCreate,
+    APIKeyCreated,
     AuthToken,
     BillingCycle,
     CancelRequest,
@@ -314,6 +324,7 @@ __all__ = [
     # Auth models
     "APIKey",
     "APIKeyCreate",
+    "APIKeyCreated",
     "AuthToken",
     "User",
     # Common
