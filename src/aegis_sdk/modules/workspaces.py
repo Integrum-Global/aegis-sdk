@@ -16,6 +16,12 @@ Provides programmatic access to workspace lifecycle and composition:
 - delete(): Delete a workspace
 - add_member() / update_member() / remove_member(): Membership
 - add_work_unit() / remove_work_unit(): Work-unit attachment
+- attach_document() / list_documents() / detach_document(): Seeded documents
+
+The document operations are the only transport for the workspace-document edge.
+``attach_document`` RAISES the workspace's containment high-water mark and
+returns the resulting value; ``detach_document`` never lowers it, so the two are
+not inverses and a detach must not be read as a declassification.
 
 Archive and delete are different operations with different consequences:
 ``archive`` is reversible via :meth:`WorkspacesModule.restore`, ``delete`` is
@@ -128,11 +134,49 @@ class WorkspaceSummary(BaseModel):
 
 
 class WorkspaceMessage(BaseModel):
-    """Message envelope returned by archive and delete."""
+    """Message envelope returned by archive, delete and document detach."""
 
     model_config = ConfigDict(populate_by_name=True)
 
     message: str
+
+
+class WorkspaceDocument(BaseModel):
+    """A document seeded into a workspace.
+
+    ``classification`` is the DOCUMENT's own sensitivity, not the workspace's
+    containment mark — the two are different values and a caller that reads one
+    for the other will mis-report what the workspace holds. The workspace's mark
+    is returned by :meth:`WorkspacesModule.attach_document` as
+    ``contains_classification``.
+    """
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    id: str
+    title: str
+    classification: str
+    knowledge_type: str | None = Field(None, alias="knowledgeType")
+    path: str | None = None
+    workspace_id: str | None = Field(None, alias="workspaceId")
+
+
+class WorkspaceDocumentAttachment(BaseModel):
+    """The result of attaching a document, including the RESULTING mark.
+
+    ``contains_classification`` is the workspace's containment high-water mark
+    AFTER this attach. It is reported by the attach itself rather than by a
+    follow-up read, so it is the mark this request produced and not a
+    concurrent one's.
+    """
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    message: str
+    knowledge_id: str = Field(alias="knowledgeId")
+    workspace_id: str = Field(alias="workspaceId")
+    document_classification: str = Field(alias="documentClassification")
+    contains_classification: str = Field(alias="containsClassification")
 
 
 class WorkspacesModule:
@@ -148,6 +192,7 @@ class WorkspacesModule:
         - delete(): Irreversible removal
         - add_member() / update_member() / remove_member(): Membership
         - add_work_unit() / remove_work_unit(): Work-unit attachment
+        - attach_document() / list_documents() / detach_document(): Documents
 
     Example:
         >>> from aegis_sdk import AgenticOSClient
@@ -526,3 +571,111 @@ class WorkspacesModule:
             f"/api/v1/workspaces/{encode_path_param(workspace_id)}/work-units/{encode_path_param(work_unit_id)}",
         )
         return payload
+
+    async def attach_document(
+        self, workspace_id: str, knowledge_id: str
+    ) -> WorkspaceDocumentAttachment:
+        """
+        Seed a document into a workspace, raising its containment mark.
+
+        The returned ``contains_classification`` is the workspace's mark AFTER
+        this attach, so it is the value this call produced.
+
+        Args:
+            workspace_id: Workspace to seed
+            knowledge_id: Document to attach
+
+        Returns:
+            The attach result, carrying the document's own classification and
+            the workspace's resulting containment mark.
+
+        Raises:
+            NotFoundError: The workspace or the document is outside the
+                caller's tenant. The same status answers "absent" and "another
+                tenant's", so neither read is a cross-tenant existence oracle.
+            ValidationError: The document's sensitivity is not expressible by a
+                workspace mark, or it is already attached to another workspace.
+            AuthorizationError: A principal already inside the workspace does
+                not clear the mark this attach would raise it to.
+
+        Example:
+            >>> result = await client.workspaces.attach_document("ws-123", "kn-456")
+            >>> result.contains_classification
+            'confidential'
+        """
+        response = await self._http.request(
+            "POST",
+            f"/api/v1/workspaces/{encode_path_param(workspace_id)}/documents",
+            json_data={"knowledgeId": knowledge_id},
+        )
+        return WorkspaceDocumentAttachment(**response)
+
+    async def list_documents(
+        self, workspace_id: str, limit: int = 50, offset: int = 0
+    ) -> builtins.list[WorkspaceDocument]:
+        """
+        List documents seeded into a workspace, filtered by YOUR clearance.
+
+        Workspace membership is not a read grant: the workspace-document edge is
+        provenance and an input to the container's mark, not a read boundary. So
+        the rows returned are the ones the CALLER's own clearance admits, and two
+        members of one workspace can legitimately see different lists. A short
+        list is therefore not evidence the workspace holds few documents.
+
+        Args:
+            workspace_id: Workspace to read
+            limit: Page size, 1-200 (server-enforced)
+            offset: Rows to skip
+
+        Returns:
+            The documents this caller is cleared to see.
+
+        Raises:
+            NotFoundError: The workspace is absent or outside the caller's tenant.
+
+        Example:
+            >>> documents = await client.workspaces.list_documents("ws-123")
+            >>> [d.title for d in documents]
+            ['Q3 plan']
+        """
+        return [
+            WorkspaceDocument(**item)
+            for item in await self._http.request(
+                "GET",
+                f"/api/v1/workspaces/{encode_path_param(workspace_id)}/documents",
+                params={"limit": limit, "offset": offset},
+            )
+        ]
+
+    async def detach_document(
+        self, workspace_id: str, knowledge_id: str
+    ) -> WorkspaceMessage:
+        """
+        Remove a document from a workspace. The containment mark is NOT lowered.
+
+        Deliberate, and stated in the response so a 200 here cannot be read as a
+        declassification: a detach that lowered the mark would declassify a
+        workspace with no named actor, no reason and no audited re-derivation.
+
+        Args:
+            workspace_id: Workspace to detach from
+            knowledge_id: Document to detach
+
+        Returns:
+            A message envelope stating that the mark is unchanged.
+
+        Raises:
+            NotFoundError: The workspace or the document is absent or outside
+                the caller's tenant.
+            ValidationError: Both exist, in this tenant, and it is the
+                RELATIONSHIP that does not hold — the document is not attached
+                to this workspace.
+
+        Example:
+            >>> await client.workspaces.detach_document("ws-123", "kn-456")
+        """
+        response = await self._http.request(
+            "DELETE",
+            f"/api/v1/workspaces/{encode_path_param(workspace_id)}/documents/{encode_path_param(knowledge_id)}",
+        )
+        return WorkspaceMessage(**response)

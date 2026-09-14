@@ -271,6 +271,15 @@ from .workflows_module import (
     WorkflowSchema as WorkflowModuleSchema,
 )
 
+# Nexus FEATURE-GENERATION marker -- deliberately NOT the distribution version,
+# which lives in `aegis_sdk/_version.py` and is the sole anchor the build reads.
+# This number is
+# what the 17 `(v1.1)` group markers throughout this file refer to: it records
+# WHICH Nexus generation introduced each exported symbol (v1.1 = Tiered
+# Deployment, per the module docstring above). Raising it to track the package
+# version would orphan every one of those markers and destroy the mapping they
+# encode. Read by nothing -- no consumer of `aegis_sdk.nexus.__version__` exists
+# in this tree. Bump it only when a new Nexus feature generation lands.
 __version__ = "1.1.0"
 __all__ = [
     # Deployment

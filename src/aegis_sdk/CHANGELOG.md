@@ -1,6 +1,263 @@
 # Aegis SDK Changelog
 
+This SDK is versioned independently of the Aegis platform it talks to. The
+version here is the SDK's own; it is not the server's.
+
 ## Unreleased
+
+_Nothing yet._
+
+## [2.0.0] — 2026-09-14
+
+The first cut of this SDK under a version number. Everything below is the
+difference between `2.0.0` and the `1.0.0` that `aegis_sdk.__version__` has
+reported until now.
+
+**Read the Breaking Changes first.** Two public subpackages are gone with no
+compatibility shim, several trust methods changed their first parameter, and a
+handful of methods that used to return a value now raise. If you have code
+running against `1.0.0`, it will not all keep working.
+
+**Why a major bump.** We cannot establish that no consumer is pinned at
+`1.0.0` — the SDK sends its own version on every request (`X-SDK-Version`), so
+one may exist. Removals without a shim and signature changes are breaking under
+semantic versioning whether or not anyone is currently affected. `2.0.0` costs
+nothing if nobody is, and is the only honest number if somebody is.
+
+### Breaking Changes
+
+**Two subpackages were removed outright.**
+
+- **`aegis_sdk.kaizen`** is gone. It shipped an agent-signature/journey/memory
+  toolkit that duplicated capability the platform now exposes over HTTP. The
+  name also left the top-level `__all__`, so `from aegis_sdk import kaizen`
+  fails at import.
+- **`aegis_sdk.dataflow`** is gone, for the same reason. It was never exported
+  from the top-level `__all__`, so only direct
+  `import aegis_sdk.dataflow` callers are affected.
+
+Neither removal ships a `DeprecationWarning` shim. If you depend on either,
+stay on `1.0.0` and open an issue describing what you used it for — we would
+rather re-expose the capability over the API than have you vendor a copy.
+
+**Trust chains are addressed by agent, not by a separate chain id.** Every
+method that took a `chain_id` first now takes `agent_id`. This is a rename of
+the first positional parameter, so positional calls keep compiling and silently
+change meaning if you were passing something that was not an agent id — check
+your call sites rather than trusting a clean import.
+
+**`chains.establish()` requires `authority_id`.** It has no default; the server
+has never had one. `human_origin_data` is still accepted but ignored — the
+server derives human origin from the authenticated caller.
+
+**Two trust return types changed.**
+`chains.establish()` now returns `EstablishedTrustChain` (fields: `agent_id`,
+`genesis`, `delegations`, `status`, `human_origin`) and `chains.revoke()`
+returns `CascadeRevocationResult` (`revoked_agent_ids`, `total_revoked`,
+`reason`, `initiated_by`, `completed_at`). Both previously returned
+`TrustChain`, whose shape matched neither response.
+
+**Six methods now raise `UnsupportedOperationError` instead of returning.**
+There is no server route behind any of them. They are kept as named, throwing
+stubs — rather than deleted — so you get a message naming the gap instead of an
+`AttributeError`: `chains.suspend()`, `chains.reinstate()`,
+`delegations.list()`, `delegations.get()`, `delegations.get_for_agent()`,
+`audit.get_entry()`.
+
+**`User.full_name` is now a read-only deprecated property, not a field.** The
+server has never emitted `full_name`; the real field is `name`. Reading
+`user.full_name` still works. Constructing a `User(full_name=...)`, or relying
+on `full_name` appearing in `model_dump()`, does not. `register()` still
+accepts `full_name=` as a deprecated alias for `name=`, but passing **both**
+with different values now raises `ValueError` naming the conflict instead of
+silently picking one.
+
+**`bridges.scoped.participants()` returns `list[Participant]`, not `list[dict]`.**
+The route now declares a schema, so the method wraps it. Only `unit_id` is
+required — it is the sole field the server guarantees; `roles`, `constraints`
+and `added_at` are optional, because a participant supplied at bridge-creation
+time is persisted as written. Unknown keys are preserved, not dropped.
+
+**A missing base URL raises instead of defaulting.** `ClientConfig.from_env()`
+and `AgenticOSClient(...)` no longer fall back to a dead placeholder host. With
+no base URL resolvable from an argument or the environment, both raise
+`ConfigurationError` naming `AEGIS_BASE_URL`. If you were relying on the
+default, you were pointing at a host that does not answer.
+
+#### Migration
+
+| You called                                                      | Call this instead                                                                        |
+| --------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `import aegis_sdk.kaizen`                                       | No replacement — open an issue with your use case                                        |
+| `import aegis_sdk.dataflow`                                     | No replacement — open an issue with your use case                                        |
+| `chains.establish(agent_id, human_origin_data=..., ...)`        | `chains.establish(agent_id, authority_id, ...)` — `authority_id` is required             |
+| `chains.revoke(chain_id, reason, cascade=...)`                  | `chains.revoke(agent_id, reason)` — revocation always cascades                           |
+| `chains.analyze_revocation_impact(chain_id)`                    | `chains.analyze_revocation_impact(agent_id)`                                             |
+| `chains.suspend(...)` / `chains.reinstate(...)`                 | Unsupported — raises `UnsupportedOperationError`                                          |
+| `delegations.list()` / `.get(id)` / `.get_for_agent(id)`        | `chains.get(agent_id)` and read its `delegations` field                                   |
+| `delegations.revoke(delegation_id, ...)`                        | `delegation_id` must be the `"{delegator_id}:{delegatee_id}"` key returned by `create()`  |
+| `audit.get_entry(entry_id)`                                     | Unsupported — raises `UnsupportedOperationError`                                           |
+| `user.full_name` on a constructed `User`                        | `user.name` — `full_name` survives as a read-only property                                |
+| `participants()[0]["unit_id"]`                                  | `participants()[0].unit_id` — or `.model_dump()` for the old shape                        |
+| relying on a default `base_url`                                 | set `AEGIS_BASE_URL`, or pass `base_url=` explicitly                                      |
+| `AGENTIC_OS_*` environment variables                            | `AEGIS_*` — the old names still work and warn once                                        |
+
+### Added
+
+**Thirty-nine new resource surfaces on the client**, and none removed. If you
+have been reaching for `httpx` because the SDK had no method for something, look
+again before you do. The new attributes are:
+
+`admin` · `agent_pools` · `agentic_dashboard` · `applications` · `approvals` ·
+`auth_users` · `bridges` · `credentials` · `decisions` · `emergency_bypass` ·
+`governance_explain` · `integrations` · `kill_switch` · `knowledge` ·
+`knowledge_govern` · `llm_providers` · `metrics` · `observe_audit` · `ontology` ·
+`org_standup` · `organizations` · `positions` · `promotions` · `pseudo_agents` ·
+`review_decisions` · `role_admin` · `role_envelopes` · `roles` · `settings` ·
+`specialist_system` · `surfaces` · `task_agents` · `teams` · `tool_agents` ·
+`tools` · `trust_posture` · `units` · `work_objectives` · `workspaces`
+
+Highlights, for the ones whose names do not explain themselves:
+
+- **`surfaces`** — the domain surface registry, where a declared classification
+  is a real clearance gate rather than a label.
+- **`bridges`** — ad-hoc, scoped and standing bridges, with typed
+  `Participant` records.
+- **`emergency_bypass`** and **`kill_switch`** — break-glass controls.
+- **`governance_explain`** — ask why a specific action was refused, instead of
+  inferring it from a 403.
+- **`promotions`** — environment promotion and the rules that gate it.
+- **`credentials`** — encrypted credential storage and rotation.
+- **`decisions`** / **`review_decisions`** — the human decision and review
+  queues.
+- **`work_objectives`** — human-in-the-loop work objectives and config
+  versioning.
+
+**Attaching documents to a workspace.** `workspaces` gained the document
+transport, with two new models (`WorkspaceDocument`,
+`WorkspaceDocumentAttachment`):
+
+- `attach_document(workspace_id, knowledge_id) -> WorkspaceDocumentAttachment`
+- `list_documents(workspace_id, limit=50, offset=0) -> list[WorkspaceDocument]`
+- `detach_document(workspace_id, knowledge_id) -> WorkspaceMessage`
+
+**Posture transitions can be approved and rejected.** Two real server routes
+that the SDK never exposed: `postures.approve_transition(agent_id, notes=None)`
+and `postures.reject_transition(agent_id, notes)`.
+
+**`AEGIS_*` environment variables.** `AEGIS_BASE_URL`, `AEGIS_API_KEY` and
+friends are now the primary names. The `AGENTIC_OS_*` names are still read, emit
+a one-time `DeprecationWarning`, and lose to `AEGIS_*` when both are set.
+
+**New exception types.** `UnsupportedOperationError` for an SDK method with no
+backing server capability — deliberately distinct from `ServiceUnavailableError`,
+which means a transient outage and is worth retrying. `ConfigurationError` for a
+client that cannot be constructed.
+
+**New models.** `EstablishedTrustChain`, `TrustGenesisRecord`,
+`TrustHumanOriginInfo`, `TrustDelegationRecord`, `CascadeRevocationResult`,
+`AffectedTrustAgent`, `Participant`, `WorkspaceDocument`,
+`WorkspaceDocumentAttachment`.
+
+**Five runnable examples** under `aegis_sdk/examples/` —
+`basic_agent_workflow.py`, `error_handling.py`, `stand_up_a_vertical.py`,
+`streaming_progress.py`, `trust_chain_management.py`. Each runs against a live
+server rather than illustrating an API in prose.
+
+**A five-part operator and architect handbook** in `aegis_sdk/handbook/` —
+orientation, working through the harness, extending the platform, the API
+surface, and the web console.
+
+**A coding-agent harness** in `aegis_sdk/coc/` — agent briefs, commands, skills,
+guardrails and hooks. Open this clone in your coding CLI and it arrives already
+knowing the SDK's shape, so you can architect against Aegis from inside the
+agent rather than pasting docs into it.
+
+### Fixed
+
+- **`client.agents.list()` always returned an empty page**, no matter how many
+  agents existed. It sent `page`/`page_size` query parameters the server ignores
+  and read `items`/`page`/`has_next` keys from a response that carries
+  `records`/`total`. The result was an empty list, indistinguishable from an
+  empty account. It now sends `limit`/`offset` and reads `records`/`total`. Your
+  call signature is unchanged — `page_size=` still works and is translated.
+- **`client.pipelines` returned an empty list and raised on reads**, the same
+  wire-shape drift in a second place.
+- **`Agent.capabilities` was always `[]`.** The server only ever emits
+  `capabilities_json` (a JSON-encoded string), never a bare `capabilities`
+  list, so the field never populated. It now derives from the raw field.
+- **`auth.login()` and `auth.register()` never populated `access_token`.** Both
+  passed the server's nested `{"user": ..., "tokens": ...}` envelope straight
+  into `AuthToken(**response)`. They now parse the envelope, and `AuthToken`
+  carries the authenticated `user` from the same response — no second
+  round-trip. A malformed envelope now raises a typed error naming the missing
+  and present keys, instead of a bare `KeyError`.
+- **Trust posture calls raised on every successful reply**, and four trust-chain
+  calls could not succeed at all, because they targeted routes that do not
+  exist. Posture progression and override both now target the real
+  `PUT /agents/{agent_id}/trust-posture`; there is no separate override endpoint
+  on the server, and the single route decides internally whether a transition
+  applies immediately or needs manager approval. Delegation create and revoke,
+  audit query and chain history were reconciled the same way.
+- **`audit.query()` could not filter by human origin at all**, and sent three
+  parameter names the server does not recognise (`action_type`, `start_date`,
+  `end_date`; the real names are `action`, `start_time`, `end_time`).
+- **Bearer tokens and email addresses appeared in `repr()` and logs.**
+  `AuthToken.access_token`, `AuthToken.refresh_token`, `User.email`, API-key
+  secrets and one-time invite tokens are now excluded from the default
+  `repr()`/`str()`, so a `print(token)` or an uncaught traceback no longer emits
+  the credential in cleartext.
+
+  ⛔ **Read the bound precisely — this masks RENDERING, not SERIALIZATION.**
+  `model_dump()` and `model_dump_json()` still return the credential in full
+  (measured, not assumed). So `logger.info(token.model_dump())` — a very common
+  structured-logging idiom — emits the bearer token in cleartext, and so does
+  `logger.info("%s", token.access_token)`. The attributes remain fully readable
+  by design; only the default rendering is masked. Scrub these fields
+  explicitly before any structured log or error report.
+
+### Changed
+
+- **Trust postures use the platform's vocabulary.** The SDK's `TrustPosture`
+  enum shipped `minimal`/`basic`/`standard`/`elevated`/`full`, which matched no
+  server value. It is now `pseudo`/`supervised`/`shared_planning`/
+  `continuous_insight`/`delegated`.
+- **Delegation constraints are `list[str]` on the wire.** The server's field is
+  a list of strings, not a mapping; a dict you pass is serialized to
+  `"key=value"` entries.
+- **`delegations.create()` synthesizes a stable delegation id.** This backend
+  has no first-class delegation entity, so the response has no `id`. The SDK
+  composes `"{delegator_id}:{delegatee_id}"` so `revoke()` can address the
+  delegation later. `chain_id` is no longer sent — the server has no field for
+  it — but is retained on the returned object for your reference.
+- **`delegations.revoke()` verifies before it acts.** It fetches the delegatee's
+  trust chain first, raising `NotFoundError` if the delegation does not exist,
+  and recovers the real creation timestamp and capabilities rather than
+  fabricating them.
+- **Documentation and docstrings now use valid values.** Every example used
+  `agent_type="atomic"`, which is a 422 every time — the server accepts
+  `chat`, `task`, `pipeline`, `custom`. Hardcoded `model_id="gpt-4"` strings
+  were replaced by reads from your own environment.
+
+### Removed
+
+- `aegis_sdk.kaizen` (see Breaking Changes).
+- `aegis_sdk.dataflow` (see Breaking Changes).
+- `"kaizen"` from the top-level `__all__`.
+- The placeholder `base_url` default. There is no fallback host.
+- The fictional fields on `RevocationImpact` — `chain_id`,
+  `affected_delegations` and `cascading_revocations` matched no server response.
+  `affected_agents` is now `list[AffectedTrustAgent]` rather than `list[str]`,
+  alongside `target_agent_id`, `target_agent_name`, `total_affected`,
+  `has_active_workloads` and `warnings`.
+
+---
+
+## Pre-2.0.0 working notes
+
+The entries below were written while the changes above were being made, before
+this SDK had a released version. They are kept for detail; the `2.0.0` section
+is the authoritative summary.
 
 ### Changed — `bridges.scoped.participants()` returns a typed model
 
@@ -139,8 +396,9 @@ contract. verified against the deployed API and reconciled:
 
 - **`chains.suspend(agent_id, reason)`** and **`chains.reinstate(agent_id)`**
   are **deprecated and non-functional**. No server route exists for
-  directly suspending or reinstating a trust chain — verified by grepping for a matching `/suspend` or `/reinstate`
-  endpoint (none found, 2026-07-08). The trust-chain state machine supports `SUSPENDED`
+  directly suspending or reinstating a trust chain — the API declares no
+  matching `/suspend` or `/reinstate`
+  endpoint. The trust-chain state machine supports `SUSPENDED`
   as an internal lifecycle state reached automatically during cascade
   revocation of bridge-sourced chains, but it is not exposed as a
   directly-invokable operation. Both methods now raise
@@ -174,8 +432,7 @@ originally shipped a legacy vocabulary — `minimal`/`basic`/`standard`/`elevate
 that matched no server posture value. It was realigned to the server's
 CARE-aligned posture names —
 `pseudo`/`supervised`/`shared_planning`/`continuous_insight`/`delegated`
-(`aegis_sdk/types.py`, `.claude/) in commit
-`3dd6cbff` (2026-07-14). At the time of
+(`aegis_sdk/types.py`). At the time of
 THIS wave the realignment was out of scope; the response-shape mismatches
 noted below (SDK Pydantic field names vs. the server's actual JSON keys) were
 likewise untouched in this wave — routes and request bodies are corrected;
@@ -225,8 +482,8 @@ and `AuditModule`, verified against the deployed API:
 - **`delegations.list()`**, **`delegations.get(delegation_id)`**, and
   **`delegations.get_for_agent(agent_id, ...)`** are **deprecated and
   non-functional** — no server route exists for listing delegations, or
-  for fetching one by ID, as first-class resources (searched the published API for a matching `/delegations*` route,
-  2026-07-13, none found). All three now raise
+  for fetching one by ID, as first-class resources — the published API declares
+  no matching `/delegations*` route. All three now raise
   `UnsupportedOperationError` and emit a `DeprecationWarning`. Callers
   needing an agent's received delegations can use
   `client.trust.chains.get(agent_id)` and read its `delegations` field.

@@ -11,7 +11,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from .._http import encode_path_param
+from .._http import HTTPClient, encode_path_param
 from ..exceptions import UnsupportedOperationError, ValidationError
 from ..types import (
     CascadeRevocationResult,
@@ -113,8 +113,16 @@ class TrustChainLineage(BaseModel):
         return self.genesis.agent_id
 
     @property
-    def authority_id(self) -> str:
-        """The authority that established this lineage."""
+    def authority_id(self) -> str | None:
+        """The authority that established this lineage, or ``None``.
+
+        ``None`` has ONE meaning here: this chain was established before
+        lineage signing existed, so the platform holds no authority record to
+        report for it. It never means the value was lost in transit -- see
+        :class:`TrustLineageGenesis`. A caller that requires an authority must
+        branch on this rather than assume a string; the platform populates it
+        on every chain established since signing landed.
+        """
         return self.genesis.authority_id
 
 
@@ -247,7 +255,7 @@ class ChainsModule:
         ...         print("Action authorized")
     """
 
-    def __init__(self, http_client):
+    def __init__(self, http_client: HTTPClient) -> None:
         """Initialize with HTTP client."""
         self._http = http_client
 
@@ -476,7 +484,26 @@ class ChainsModule:
                 DeprecationWarning,
                 stacklevel=2,
             )
-        if resource_type is None and resource is None:
+        # A caller who supplied only the legacy single string gets that string
+        # forwarded AS the kind. This invents nothing -- it carries the
+        # caller's own word into the one required target field -- and it cannot
+        # change a verdict: the platform matches capabilities on `action`, and
+        # reads resource_type only as an audit label.
+        #
+        # The "neither was supplied" refusal is the LAST arm of this same
+        # dispatch rather than a separate guard above it. Written as a separate
+        # guard the two forms stay in sync only by inspection, and the fact
+        # that `kind` can never be None is something a reader has to
+        # reconstruct from a condition several lines away. Here the arm that
+        # binds `kind` from `resource` is reached only when `resource` is not
+        # None, so `kind: str` is enforced by the control flow itself.
+        kind: str
+        instance: str | None
+        if resource_type is not None:
+            kind, instance = resource_type, (resource_id if resource_id is not None else resource)
+        elif resource is not None:
+            kind, instance = resource, resource_id
+        else:
             raise ValidationError(
                 "verify() requires resource_type — the kind of resource the "
                 'action targets (for example "report" or "dataset"). The SDK '
@@ -484,15 +511,6 @@ class ChainsModule:
                 "value in its audit trail, so an invented kind would read as "
                 "one the caller had named."
             )
-        # A caller who supplied only the legacy single string gets that string
-        # forwarded AS the kind. This invents nothing -- it carries the
-        # caller's own word into the one required target field -- and it cannot
-        # change a verdict: the platform matches capabilities on `action`, and
-        # reads resource_type only as an audit label.
-        if resource_type is not None:
-            kind, instance = resource_type, (resource_id if resource_id is not None else resource)
-        else:
-            kind, instance = resource, resource_id
         body: dict[str, Any] = {
             "agent_id": agent_id,
             "action": action,

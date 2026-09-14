@@ -88,7 +88,7 @@ async def login_flow() -> None:
                 email="user@example.com",
                 password="your_password",
             )
-            print(f"Access token: {token.access_token[:20]}...")
+            # Never print or log the token itself -- not even a prefix.
             print(f"Token type: {token.token_type}")
             print(f"Expires in: {token.expires_in}s")
 
@@ -226,7 +226,7 @@ from aegis_sdk.config import OAuthConfig
 oauth = OAuthConfig(
     client_id="your_client_id",
     client_secret="your_client_secret",
-    token_url="https://auth.agentic-os.com/oauth/token",
+    token_url="https://auth.aegis.example.com/oauth/token",
     scopes=["agents:read", "agents:write"],
 )
 

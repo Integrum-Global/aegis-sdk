@@ -2,7 +2,7 @@
 
 A Python SDK for programmatic access to the Agentic OS platform. Provides async-first APIs for managing agents, objectives, sessions, trust chains, and billing.
 
-**Version**: 1.0.0
+**Version**: 2.0.0
 
 ## Installation
 

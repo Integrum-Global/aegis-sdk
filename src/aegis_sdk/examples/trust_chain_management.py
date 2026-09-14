@@ -21,10 +21,13 @@ from aegis_sdk import (
     EstablishedTrustChain,
     RevocationImpact,
     TrustDelegation,
-    TrustVerificationResult,
     TrustViolationError,
 )
-from aegis_sdk.trust.chains import AgentDelegationPath, AgentTrustContextDetail
+from aegis_sdk.trust.chains import (
+    AgentDelegationPath,
+    AgentTrustContextDetail,
+    TrustVerificationOutcome,
+)
 from aegis_sdk.trust.postures import (
     PostureChangeResult,
     PostureProgressionMetrics,
@@ -78,26 +81,36 @@ async def verify_action(client: AgenticOSClient) -> None:
     """
     print("\n=== Step 2: Verify Actions ===\n")
 
-    # Verify an allowed action
-    result: TrustVerificationResult = await client.trust.chains.verify(
+    # A target is addressed as a KIND plus an optional INSTANCE.
+    # resource_type says what sort of thing is acted on, resource_id says
+    # which one. The older single `resource=` string is deprecated (it cannot
+    # express the pair and raises a DeprecationWarning on every call), and
+    # `context=` is deprecated AND ignored -- verification evaluates against
+    # the chain's own recorded constraints, never caller-supplied context.
+    result: TrustVerificationOutcome = await client.trust.chains.verify(
         agent_id="agent_coordinator",
         action="write",
-        resource="quarterly_report",
-        context={"cost": 50, "region": "us-west-2"},
+        resource_type="report",
+        resource_id="quarterly_report",
     )
 
+    # Read capabilities_matched / constraints_violated, NOT chain_id /
+    # constraints_applied: the verification route emits neither of the latter
+    # two, so they are always None / empty and printing them as findings shows
+    # a blank where a reader expects the reasoning.
     if result.allowed:
-        print(f"Action ALLOWED via chain: {result.chain_id}")
-        print(f"  Constraints applied: {result.constraints_applied}")
+        print(f"Action ALLOWED via capabilities: {result.capabilities_matched}")
     else:
         print(f"Action DENIED: {result.reason}")
+        print(f"  Constraints violated: {result.constraints_violated}")
 
     # Verify an action that might be denied
     try:
         result_restricted = await client.trust.chains.verify(
             agent_id="agent_coordinator",
             action="delete",
-            resource="production_database",
+            resource_type="database",
+            resource_id="production_database",
         )
         if not result_restricted.allowed:
             print(f"\nRestricted action denied: {result_restricted.reason}")
@@ -140,15 +153,17 @@ async def delegate_capabilities(
     # /agents/{agent_id}/delegations route on the backend, in either
     # direction. Calling it here would crash this example on every run.
     # The only servable substitute covers delegations RECEIVED (not
-    # granted), and it comes from the chain's own lineage:
-    received = [
-        d
-        for d in chain.delegations
-        if d.get("delegatee_id") == "agent_coordinator"  # raw dicts, not TrustDelegation
-    ]
+    # granted), and it comes from the chain's own lineage.
+    #
+    # Each entry in chain.delegations is a TrustDelegationRecord -- a pydantic
+    # model, NOT a dict. Read its fields as attributes; it has no .get(), and
+    # calling one raises AttributeError at runtime. delegator_id, delegatee_id
+    # and capabilities are all REQUIRED on that model, so plain attribute
+    # access is total and needs no default.
+    received = [d for d in chain.delegations if d.delegatee_id == "agent_coordinator"]
     print(f"\nCoordinator's received delegations (lineage substitute): {len(received)}")
     for d in received:
-        print(f"  [received] from {d.get('delegator_id')}: {d.get('capabilities')}")
+        print(f"  [received] from {d.delegator_id}: {d.capabilities}")
     print(
         "  (There is no servable list of delegations GRANTED by this agent -- "
         "that data lives in the chains of whichever agents it delegated to.)"
@@ -238,8 +253,9 @@ async def inspect_trust_context(client: AgenticOSClient, chain: EstablishedTrust
     print(f"  Position in chain: {context.position}")
     print(f"  Expires in (days): {context.expires_in_days}")
     print(f"  Has warnings: {context.has_warnings}")
+    # Each warning is a TrustWarning model -- print its fields, not its repr.
     for warning in context.warnings:
-        print(f"    ! {warning}")
+        print(f"    ! [{warning.severity}] {warning.message}")
     if context.trust_chain is not None:
         print(f"  Trust chain: {context.trust_chain}")
 

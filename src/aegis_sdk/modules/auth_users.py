@@ -427,7 +427,13 @@ class AuthUsersModule:
     Example:
         >>> users = await client.auth_users.users_list()
         >>> key = await client.auth_users.api_keys_regenerate("key_123")
-        >>> print(f"New key (shown once): {key.key}")
+        >>> store_in_secret_manager(key.key)   # returned ONCE; never recoverable
+        >>> print(f"Rotated {key.key_prefix}... at {key.created_at}")
+
+    ⛔ ``key.key`` is the full secret. Do not print, log, or serialize it.
+    It is masked in ``repr()`` but NOT in ``model_dump()`` /
+    ``model_dump_json()``, so a structured log line carrying the dumped
+    model emits the credential in cleartext. Log ``key.key_prefix``.
     """
 
     def __init__(self, http_client: HTTPClient):
@@ -577,9 +583,8 @@ class AuthUsersModule:
         rotation; ``last_used_at`` is cleared, since the prior secret no
         longer works.
 
-        ⛔ OWNERSHIP IS NOT AMONG THE PRESERVED FIELDS, and this docstring
-        said "identity is preserved" without qualifying that. ``created_by``
-        is RE-ANCHORED to the rotating caller (#3605). That column is the
+        ⛔ OWNERSHIP IS NOT AMONG THE PRESERVED FIELDS. ``created_by``
+        is RE-ANCHORED by the server to the rotating caller. That column is the
         principal the key's continued validity is BOUND to -- not a record
         of who first created it -- because the server's ``validate`` denies
         on ``owner_inactive`` / ``owner_not_member_of_key_org`` against THAT
@@ -596,7 +601,8 @@ class AuthUsersModule:
         un-revoke path in the product and is retained by decision, so a
         successful rotation always returns a key with status ``active``,
         even when the stored row was ``revoked``. Whether revocation
-        should be terminal is tracked separately (#3607); do not rely on
+        should instead be terminal is an open question and may change in a
+        future release, so treat this behaviour as current-version; do not rely on
         revocation alone to retire a credential that anyone with mint
         authority over its scopes can still rotate.
 

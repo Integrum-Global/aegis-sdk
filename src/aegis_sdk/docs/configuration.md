@@ -57,7 +57,7 @@ When using constructor arguments, a `ClientConfig` is built internally with sens
 from aegis_sdk import AgenticOSClient, ClientConfig
 
 config = ClientConfig(
-    base_url="https://custom.agentic-os.com",
+    base_url="https://custom.aegis.example.com",
     api_key="sk_live_your_key_here",
     timeout=60.0,
     max_retries=5,
@@ -119,7 +119,7 @@ config = ClientConfig(
 config_user2 = config.with_api_key("sk_live_key_2")
 
 # Create a new config for a different environment
-staging_config = config.with_base_url("https://staging.agentic-os.com")
+staging_config = config.with_base_url("https://staging.aegis.example.com")
 ```
 
 ## OAuthConfig
@@ -132,7 +132,7 @@ from aegis_sdk.config import OAuthConfig, ClientConfig
 oauth = OAuthConfig(
     client_id="your_client_id",
     client_secret="your_client_secret",
-    token_url="https://auth.agentic-os.com/oauth/token",
+    token_url="https://auth.aegis.example.com/oauth/token",
     scopes=["agents:read", "agents:write"],
 )
 

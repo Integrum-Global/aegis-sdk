@@ -59,9 +59,17 @@ class AuthModule:
             ValidationError: If email/password format is invalid
 
         Example:
-            >>> token = await client.auth.login("user@example.com", "password123")
-            >>> print(f"Access token: {token.access_token}")
-            >>> print(f"Logged in as: {token.user.name} ({token.user.email})")
+            >>> token = await client.auth.login(
+            ...     "user@example.com", os.environ["AEGIS_PASSWORD"]
+            ... )
+            >>> print(f"Token type: {token.token_type}, expires in {token.expires_in}s")
+            >>> print(f"Logged in as: {token.user.name}")
+
+        ⛔ Do not print, log, or serialize ``token.access_token`` or
+        ``token.refresh_token``. They are masked in ``repr()`` but NOT in
+        ``model_dump()`` / ``model_dump_json()``, so a structured log line
+        carrying the dumped model emits the bearer token in cleartext.
+        ``token.user.email`` is masked on the same terms and is PII.
         """
         response = await self._http.request(
             "POST",

@@ -102,7 +102,11 @@ class WebhooksModule:
         ...     url="https://api.example.com/webhook",
         ...     events=["agent.created", "objective.completed"]
         ... )
-        >>> print(f"Secret: {webhook.secret}")
+        >>> store_in_secret_manager(webhook.secret)  # HMAC signing secret
+        >>> print(f"Created webhook {webhook.id}")
+        # ⛔ Never print or log `webhook.secret`. It is masked in `repr()` but
+        # NOT in `model_dump()` / `model_dump_json()`; anyone holding it can
+        # forge a signature your endpoint will accept as genuine.
 
         # Test webhook
         >>> result = await client.webhooks.test(webhook.id)

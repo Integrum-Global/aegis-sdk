@@ -700,13 +700,14 @@ class APIKey(BaseModel):
     created_at: datetime
     expires_at: datetime | None = None
     last_used_at: datetime | None = None
-    # --- present on the server's responses; dropped by this model until #C1 ---
+    # --- present on the server's responses; see the class docstring for why
+    # these four are optional rather than required ---
     organization_id: str | None = None
     rate_limit: int | None = None
     status: str | None = None  # e.g. "active" / "revoked" -- see class docstring
     # The principal the key's liveness is BOUND to, not merely its creator:
     # validate() denies on owner_inactive / owner_not_member_of_key_org against
-    # THIS id, and #3605 made regenerate RE-ANCHOR it to the rotating caller, so
+    # THIS id, and regenerate RE-ANCHORS it to the rotating caller, so
     # on a rotated key it names the last rotator. update() never rewrites it.
     created_by: str | None = None
 
@@ -729,7 +730,11 @@ class APIKeyCreated(APIKey):
 
     ``repr=False`` matches :class:`AuthToken`'s treatment of bearer
     credentials (H1): the value is returned to the caller and never rendered
-    into a repr, a log line, or a traceback.
+    into a repr or a traceback.
+
+    ⛔ It is NOT excluded from ``model_dump()`` or ``model_dump_json()``, which
+    return the secret in full. A log line carrying the dumped model emits the
+    credential in cleartext. Scrub it explicitly, or log ``key_prefix``.
     """
 
     key: str = Field(repr=False)  # full secret, shown once -- never log this
