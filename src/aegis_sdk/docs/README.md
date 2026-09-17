@@ -65,11 +65,13 @@ asyncio.run(main())
 The SDK supports two authentication methods:
 
 1. **API Key** (recommended for programmatic access):
+
    ```python
    client = AgenticOSClient(api_key="sk_live_your_key_here")
    ```
 
 2. **Email/Password** (for interactive use):
+
    ```python
    client = AgenticOSClient(base_url="https://aegis.example.com")
    token = await client.auth.login("user@example.com", "password")
@@ -93,54 +95,55 @@ The client provides access to the following module groups:
 
 ### Core
 
-| Module | Access | Description |
-|--------|--------|-------------|
-| `client.auth` | [AuthModule](modules/agents.md) | Login, logout, API key management |
-| `client.agents` | [AgentsModule](modules/agents.md) | Agent CRUD, execution, versions, contexts, tools |
-| `client.skills` | SkillsModule | Skill CRUD |
-| `client.pipelines` | PipelinesModule | Pipeline CRUD and execution |
+| Module             | Access                            | Description                                                      |
+| ------------------ | --------------------------------- | ---------------------------------------------------------------- |
+| `client.auth`      | [AuthModule](modules/agents.md)   | Login, logout, API key management                                |
+| `client.agents`    | [AgentsModule](modules/agents.md) | Agent CRUD, execution, versions, contexts, tools                 |
+| `client.skills`    | SkillsModule                      | Skill CRUD                                                       |
+| `client.pipelines` | PipelinesModule                   | Pipeline CRUD and execution                                      |
+| `client.mcp`       | [McpModule](modules/mcp.md)       | MCP server registration, and binding a stored server to an agent |
 
 ### Execution
 
-| Module | Access | Description |
-|--------|--------|-------------|
-| `client.objectives` | [ObjectivesModule](modules/objectives.md) | Objective CRUD, progress, requests |
-| `client.requests` | RequestsModule | Request claim, complete, escalate |
-| `client.sessions` | [SessionsModule](modules/sessions.md) | Session lifecycle, messages, streaming |
-| `client.artifacts` | [ArtifactsModule](modules/artifacts.md) | Artifact upload, versions, supersede, download, delete |
+| Module              | Access                                    | Description                                            |
+| ------------------- | ----------------------------------------- | ------------------------------------------------------ |
+| `client.objectives` | [ObjectivesModule](modules/objectives.md) | Objective CRUD, progress, requests                     |
+| `client.requests`   | RequestsModule                            | Request claim, complete, escalate                      |
+| `client.sessions`   | [SessionsModule](modules/sessions.md)     | Session lifecycle, messages, streaming                 |
+| `client.artifacts`  | [ArtifactsModule](modules/artifacts.md)   | Artifact upload, versions, supersede, download, delete |
 
 ### Trust (EATP)
 
-| Module | Access | Description |
-|--------|--------|-------------|
-| `client.trust.chains` | [ChainsModule](modules/trust.md) | Trust chain establish, verify, revoke |
-| `client.trust.delegations` | [DelegationsModule](modules/trust.md) | Delegation create, revoke |
-| `client.trust.postures` | [PosturesModule](modules/trust.md) | Posture get, progression, override |
-| `client.trust.audit` | [AuditModule](modules/trust.md) | Audit log queries |
+| Module                     | Access                                | Description                           |
+| -------------------------- | ------------------------------------- | ------------------------------------- |
+| `client.trust.chains`      | [ChainsModule](modules/trust.md)      | Trust chain establish, verify, revoke |
+| `client.trust.delegations` | [DelegationsModule](modules/trust.md) | Delegation create, revoke             |
+| `client.trust.postures`    | [PosturesModule](modules/trust.md)    | Posture get, progression, override    |
+| `client.trust.audit`       | [AuditModule](modules/trust.md)       | Audit log queries                     |
 
 ### Revenue
 
-| Module | Access | Description |
-|--------|--------|-------------|
-| `client.revenue.subscriptions` | [SubscriptionsModule](modules/billing.md) | Subscribe, upgrade, cancel |
-| `client.revenue.plans` | [PlansModule](modules/billing.md) | List plans, compare tiers |
-| `client.revenue.licenses` | [LicensesModule](modules/billing.md) | License generation, validation |
-| `client.revenue.usage` | [UsageModule](modules/billing.md) | Usage tracking |
-| `client.revenue.quotas` | [QuotasModule](modules/billing.md) | Quota management |
-| `client.revenue.invoices` | [InvoicesModule](modules/billing.md) | Invoice history |
+| Module                         | Access                                    | Description                    |
+| ------------------------------ | ----------------------------------------- | ------------------------------ |
+| `client.revenue.subscriptions` | [SubscriptionsModule](modules/billing.md) | Subscribe, upgrade, cancel     |
+| `client.revenue.plans`         | [PlansModule](modules/billing.md)         | List plans, compare tiers      |
+| `client.revenue.licenses`      | [LicensesModule](modules/billing.md)      | License generation, validation |
+| `client.revenue.usage`         | [UsageModule](modules/billing.md)         | Usage tracking                 |
+| `client.revenue.quotas`        | [QuotasModule](modules/billing.md)        | Quota management               |
+| `client.revenue.invoices`      | [InvoicesModule](modules/billing.md)      | Invoice history                |
 
 ### Advanced
 
-| Module | Access | Description |
-|--------|--------|-------------|
-| `client.a2a` | A2AModule | Agent-to-agent communication |
-| `client.analytics` | AnalyticsModule | Analytics queries |
-| `client.connectors` | ConnectorsModule | External connectors |
-| `client.notifications` | NotificationsModule | Notification management |
-| `client.webhooks` | WebhooksModule | Webhook configuration |
-| `client.governance` | GovernanceModule | Governance policies |
-| `client.compliance` | ComplianceModule | Compliance checks |
-| `client.pools` | PoolsModule | Agent pool management |
+| Module                 | Access              | Description                  |
+| ---------------------- | ------------------- | ---------------------------- |
+| `client.a2a`           | A2AModule           | Agent-to-agent communication |
+| `client.analytics`     | AnalyticsModule     | Analytics queries            |
+| `client.connectors`    | ConnectorsModule    | External connectors          |
+| `client.notifications` | NotificationsModule | Notification management      |
+| `client.webhooks`      | WebhooksModule      | Webhook configuration        |
+| `client.governance`    | GovernanceModule    | Governance policies          |
+| `client.compliance`    | ComplianceModule    | Compliance checks            |
+| `client.pools`         | PoolsModule         | Agent pool management        |
 
 ## Guides
 
@@ -159,11 +162,11 @@ The client provides access to the following module groups:
 
 ## Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `AGENTIC_OS_BASE_URL` | (required, no default) | API base URL |
-| `AGENTIC_OS_API_KEY` | -- | API key for authentication |
-| `AGENTIC_OS_TIMEOUT` | `30` | Request timeout in seconds |
-| `AGENTIC_OS_MAX_RETRIES` | `3` | Maximum retry attempts |
-| `AGENTIC_OS_VERIFY_SSL` | `true` | SSL certificate verification |
-| `AGENTIC_OS_DEBUG` | `false` | Enable debug logging |
+| Variable                 | Default                | Description                  |
+| ------------------------ | ---------------------- | ---------------------------- |
+| `AGENTIC_OS_BASE_URL`    | (required, no default) | API base URL                 |
+| `AGENTIC_OS_API_KEY`     | --                     | API key for authentication   |
+| `AGENTIC_OS_TIMEOUT`     | `30`                   | Request timeout in seconds   |
+| `AGENTIC_OS_MAX_RETRIES` | `3`                    | Maximum retry attempts       |
+| `AGENTIC_OS_VERIFY_SSL`  | `true`                 | SSL certificate verification |
+| `AGENTIC_OS_DEBUG`       | `false`                | Enable debug logging         |

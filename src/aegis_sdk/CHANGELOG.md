@@ -5,10 +5,36 @@ version here is the SDK's own; it is not the server's.
 
 ## Unreleased
 
+### Added — `client.mcp`, an MCP capability surface
+
+Reported by a partner, in their words: the installed SDK exposed no MCP verb at
+all — no module, class or method name contained `mcp`. That was accurate. The
+platform has carried an MCP client for some time; nothing in this package could
+reach it, so the capability existed and the party who reported it could not call
+it.
+
+`client.mcp` registers MCP servers and attaches them to agents. The shape worth
+knowing before you read the reference: **registration and binding are two
+separate acts with two separate bodies.** Registering a server stores its
+endpoint and credential and attaches it to nobody; an agent receives its tools
+only when a binding references that registration. `bind` therefore takes no
+`url`, `headers` or `command` — a row carrying a reference and inline connection
+settings is refused, so those parameters do not exist on it. `bind_inline` is
+the self-contained form.
+
+The partner's second observation was also accurate and is unchanged by design:
+an endpoint is resolved at registration time, and loopback, link-local,
+cloud-metadata and private ranges are refused. The platform is what reaches the
+server, so an address only you can reach is not one it can use — which does mean
+an MCP server on your own machine cannot be registered. Expose it at an address
+the deployment can reach.
+
+See [modules/mcp.md](docs/modules/mcp.md).
+
 ### Fixed — the 2.0.0 note on `governance_explain` advertised a capability the module does not have
 
-The 2.0.0 highlights below described it as *"ask why a specific action was
-refused, instead of inferring it from a 403."* It cannot do that, and the module
+The 2.0.0 highlights below described it as _"ask why a specific action was
+refused, instead of inferring it from a 403."_ It cannot do that, and the module
 says so in its own docstring: it never sees the action that was refused. It
 evaluates an item **you describe** — a dry run in which nothing is read from a
 stored record and nothing is recorded as an access — so the verdict is only as
@@ -76,15 +102,15 @@ could list a session's or an objective's artifacts but could not upload one
 against a request, read its version history, supersede it, download it or delete
 it. `ArtifactsModule` covers all seven routes:
 
-| method | route |
-| --- | --- |
-| `create(request_id, file_content, filename, *, name, artifact_type, session_id, metadata, content_type)` | `POST /api/v1/artifacts` |
-| `list(request_id=None, workspace_id=None, limit=None)` | `GET /api/v1/artifacts` |
-| `get(artifact_id)` | `GET /api/v1/artifacts/{artifact_id}` |
-| `get_versions(artifact_id)` | `GET /api/v1/artifacts/{artifact_id}/versions` |
-| `supersede(artifact_id, file_content, change_description, *, filename, content_type)` | `POST /api/v1/artifacts/{artifact_id}/supersede` |
-| `download(artifact_id)` → `bytes` | `GET /api/v1/artifacts/{artifact_id}/download` |
-| `delete(artifact_id)` | `DELETE /api/v1/artifacts/{artifact_id}` |
+| method                                                                                                   | route                                            |
+| -------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| `create(request_id, file_content, filename, *, name, artifact_type, session_id, metadata, content_type)` | `POST /api/v1/artifacts`                         |
+| `list(request_id=None, workspace_id=None, limit=None)`                                                   | `GET /api/v1/artifacts`                          |
+| `get(artifact_id)`                                                                                       | `GET /api/v1/artifacts/{artifact_id}`            |
+| `get_versions(artifact_id)`                                                                              | `GET /api/v1/artifacts/{artifact_id}/versions`   |
+| `supersede(artifact_id, file_content, change_description, *, filename, content_type)`                    | `POST /api/v1/artifacts/{artifact_id}/supersede` |
+| `download(artifact_id)` → `bytes`                                                                        | `GET /api/v1/artifacts/{artifact_id}/download`   |
+| `delete(artifact_id)`                                                                                    | `DELETE /api/v1/artifacts/{artifact_id}`         |
 
 `create` has **no `workspace_id` argument, on purpose.** The workspace is derived
 on the server from the request the artifact is attached to; a caller-named
@@ -100,6 +126,7 @@ Server-side changes that arrived with it, visible through this module:
   `exc.error_code == "ARTIFACT_STORAGE_UNAVAILABLE"`, any other handled failure
   `ARTIFACT_CREATE_FAILED`, and a platform defect the generic `INTERNAL_ERROR`.
   All three were previously the same 500 with the same message.
+
 ### Added — permanent delete, and two resources that had no delete at all
 
 The server has always offered `?hard=true` on seven routers. The SDK reached
@@ -192,7 +219,7 @@ loud:
 Both shapes are now supported. The envelope is recognised by an `error` key
 holding a **dict**; anything else takes the flat path unchanged, so a gateway,
 proxy or non-Aegis server answering in FastAPI's default shape parses exactly as
-before. An `error` key holding a plain *string* is not an envelope and is read as
+before. An `error` key holding a plain _string_ is not an envelope and is read as
 the message.
 
 Two behaviours changed as a consequence, both deliberate:
@@ -201,7 +228,7 @@ Two behaviours changed as a consequence, both deliberate:
   keys) now raises with the per-status default — `'Insufficient permissions'` for
   a `403` — instead of the literal string `'None'`.
 - `exc.details["message"]` is passed through **verbatim** and is not coerced to
-  `str`. A `422` carries a *list* of per-field validation objects there, which
+  `str`. A `422` carries a _list_ of per-field validation objects there, which
   callers iterate; stringifying it would have destroyed the most useful error
   body the API produces while looking like a tidy-up.
 
@@ -211,12 +238,12 @@ Two behaviours changed as a consequence, both deliberate:
 structured refusal data as attributes, so a caller can branch on a denial
 instead of parsing its prose:
 
-| attribute | what it holds |
-| --- | --- |
-| `error_code` | the server's code (`'FORBIDDEN'`, `'DEPENDENCY_UNAVAILABLE'`, …), or `None` for an error raised locally |
-| `server_details` | the structured fields sent beside the message; `{}` when none |
-| `request_id` | the server's correlation id, when supplied |
-| `status_code` | the HTTP status, or `None` for a local failure |
+| attribute        | what it holds                                                                                           |
+| ---------------- | ------------------------------------------------------------------------------------------------------- |
+| `error_code`     | the server's code (`'FORBIDDEN'`, `'DEPENDENCY_UNAVAILABLE'`, …), or `None` for an error raised locally |
+| `server_details` | the structured fields sent beside the message; `{}` when none                                           |
+| `request_id`     | the server's correlation id, when supplied                                                              |
+| `status_code`    | the HTTP status, or `None` for a local failure                                                          |
 
 ```python
 except AgenticOSError as exc:
@@ -238,11 +265,11 @@ The first discriminator to ride this channel is on agent execution, landed in th
 same change as the parsing fix above. A governance refusal on the temporal
 dimension now carries `server_details['unverifiable_scope']`:
 
-| value | what it means | what to do |
-| --- | --- | --- |
-| `'apparatus'` | the constraint store could not be queried at all; **no restriction of yours was evaluated** | escalate as a platform outage; retry |
-| `'subject'` | your agent's own stored restriction could not be read | fix the agent's configuration |
-| `'unspecified'` | the server denied but attached no kind | UNDETERMINED — treat as either |
+| value           | what it means                                                                               | what to do                           |
+| --------------- | ------------------------------------------------------------------------------------------- | ------------------------------------ |
+| `'apparatus'`   | the constraint store could not be queried at all; **no restriction of yours was evaluated** | escalate as a platform outage; retry |
+| `'subject'`     | your agent's own stored restriction could not be read                                       | fix the agent's configuration        |
+| `'unspecified'` | the server denied but attached no kind                                                      | UNDETERMINED — treat as either       |
 
 Both kinds are still a **refusal**, and that is deliberate: an unverifiable
 restriction is not a safe restriction, so neither value is an allow. What changed
@@ -329,21 +356,21 @@ default, you were pointing at a host that does not answer.
 
 #### Migration
 
-| You called                                                      | Call this instead                                                                        |
-| --------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| `import aegis_sdk.kaizen`                                       | No replacement — open an issue with your use case                                        |
-| `import aegis_sdk.dataflow`                                     | No replacement — open an issue with your use case                                        |
-| `chains.establish(agent_id, human_origin_data=..., ...)`        | `chains.establish(agent_id, authority_id, ...)` — `authority_id` is required             |
-| `chains.revoke(chain_id, reason, cascade=...)`                  | `chains.revoke(agent_id, reason)` — revocation always cascades                           |
-| `chains.analyze_revocation_impact(chain_id)`                    | `chains.analyze_revocation_impact(agent_id)`                                             |
-| `chains.suspend(...)` / `chains.reinstate(...)`                 | Unsupported — raises `UnsupportedOperationError`                                          |
-| `delegations.list()` / `.get(id)` / `.get_for_agent(id)`        | `chains.get(agent_id)` and read its `delegations` field                                   |
-| `delegations.revoke(delegation_id, ...)`                        | `delegation_id` must be the `"{delegator_id}:{delegatee_id}"` key returned by `create()`  |
-| `audit.get_entry(entry_id)`                                     | Unsupported — raises `UnsupportedOperationError`                                           |
-| `user.full_name` on a constructed `User`                        | `user.name` — `full_name` survives as a read-only property                                |
-| `participants()[0]["unit_id"]`                                  | `participants()[0].unit_id` — or `.model_dump()` for the old shape                        |
-| relying on a default `base_url`                                 | set `AEGIS_BASE_URL`, or pass `base_url=` explicitly                                      |
-| `AGENTIC_OS_*` environment variables                            | `AEGIS_*` — the old names still work and warn once                                        |
+| You called                                               | Call this instead                                                                        |
+| -------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `import aegis_sdk.kaizen`                                | No replacement — open an issue with your use case                                        |
+| `import aegis_sdk.dataflow`                              | No replacement — open an issue with your use case                                        |
+| `chains.establish(agent_id, human_origin_data=..., ...)` | `chains.establish(agent_id, authority_id, ...)` — `authority_id` is required             |
+| `chains.revoke(chain_id, reason, cascade=...)`           | `chains.revoke(agent_id, reason)` — revocation always cascades                           |
+| `chains.analyze_revocation_impact(chain_id)`             | `chains.analyze_revocation_impact(agent_id)`                                             |
+| `chains.suspend(...)` / `chains.reinstate(...)`          | Unsupported — raises `UnsupportedOperationError`                                         |
+| `delegations.list()` / `.get(id)` / `.get_for_agent(id)` | `chains.get(agent_id)` and read its `delegations` field                                  |
+| `delegations.revoke(delegation_id, ...)`                 | `delegation_id` must be the `"{delegator_id}:{delegatee_id}"` key returned by `create()` |
+| `audit.get_entry(entry_id)`                              | Unsupported — raises `UnsupportedOperationError`                                         |
+| `user.full_name` on a constructed `User`                 | `user.name` — `full_name` survives as a read-only property                               |
+| `participants()[0]["unit_id"]`                           | `participants()[0].unit_id` — or `.model_dump()` for the old shape                       |
+| relying on a default `base_url`                          | set `AEGIS_BASE_URL`, or pass `base_url=` explicitly                                     |
+| `AGENTIC_OS_*` environment variables                     | `AEGIS_*` — the old names still work and warn once                                       |
 
 ### Added
 
@@ -368,7 +395,7 @@ Highlights, for the ones whose names do not explain themselves:
   `Participant` records.
 - **`emergency_bypass`** and **`kill_switch`** — break-glass controls.
 - **`governance_explain`** — dry-run an access decision through the chain and
-  read back the step it stopped at. It evaluates an item *you describe* (a role,
+  read back the step it stopped at. It evaluates an item _you describe_ (a role,
   a knowledge item, a posture) and reads no stored record, so it explains a
   hypothetical rather than a past refusal.
 - **`promotions`** — environment promotion and the rules that gate it.
@@ -531,14 +558,10 @@ a real server.
 - **`auth.login()` / `auth.register()`** now parse the server's nested
   `{"user": UserResponse, "tokens": TokenResponse}` envelope
   (:LoginResponse`/`RegisterResponse`) via
-  `AuthModule._parse_auth_envelope`. Previously both called
-  `AuthToken(**response)` directly against the nested envelope, so
-  `access_token` was never populated. `AuthToken` gained an optional
-  `.user` field (a `User`) carrying the authenticated user from the same
-  response -- no second round-trip to `get_current_user()` needed.
-  `_parse_auth_envelope` also raises a typed `AgenticOSError` (naming the
-  missing key(s) and the actual keys present) when the response is missing
-  `"tokens"` and/or `"user"`, instead of a bare `KeyError` -- e.g. an
+`AuthModule._parse_auth_envelope`. Previously both called
+`AuthToken(**response)`directly against the nested envelope, so`access_token`was never populated.`AuthToken`gained an optional`.user`field (a`User`) carrying the authenticated user from the same
+response -- no second round-trip to `get_current_user()`needed.`_parse_auth_envelope`also raises a typed`AgenticOSError`(naming the
+missing key(s) and the actual keys present) when the response is missing`"tokens"`and/or`"user"`, instead of a bare `KeyError` -- e.g. an
   error-shaped body, a proxy/gateway error page, or a future server contract
   change.
 - **`User`** now mirrors the server's `UserResponse` exactly (`name`,
@@ -758,13 +781,13 @@ and `AuditModule`, verified against the deployed API:
 
 #### Migration
 
-| Old call                                                                         | New call                                                                              |
-| ---------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| `postures.request_progression(agent_id, target_posture, justification)`         | Unchanged signature — now targets the real `PUT /agents/{id}/trust-posture` route     |
-| `postures.override(agent_id, new_posture, reason)`                              | Unchanged signature — targets the SAME real route as `request_progression`           |
-| `delegations.create(chain_id, delegator_id, delegatee_id, capabilities, ...)`   | Unchanged signature — `chain_id` no longer sent over the wire; targets `POST /trust/delegate` |
-| `delegations.revoke(delegation_id, reason, cascade)`                            | `delegation_id` MUST be the `"{delegator_id}:{delegatee_id}"` key from `create()`; cascade is always on |
-| `delegations.list()` / `.get(id)` / `.get_for_agent(id)`                        | Not supported — raise `UnsupportedOperationError`; use `chains.get(agent_id)`         |
-| `audit.query(human_origin_id=...)`                                              | Unchanged signature — now routes to the real `by-human` path-param endpoint          |
-| `audit.get_chain_history(chain_id)`                                             | Unchanged signature — now filters the real `/trust/audit` route by `agent_id`        |
-| `audit.get_entry(entry_id)`                                                     | Not supported — raises `UnsupportedOperationError`                                    |
+| Old call                                                                      | New call                                                                                                |
+| ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `postures.request_progression(agent_id, target_posture, justification)`       | Unchanged signature — now targets the real `PUT /agents/{id}/trust-posture` route                       |
+| `postures.override(agent_id, new_posture, reason)`                            | Unchanged signature — targets the SAME real route as `request_progression`                              |
+| `delegations.create(chain_id, delegator_id, delegatee_id, capabilities, ...)` | Unchanged signature — `chain_id` no longer sent over the wire; targets `POST /trust/delegate`           |
+| `delegations.revoke(delegation_id, reason, cascade)`                          | `delegation_id` MUST be the `"{delegator_id}:{delegatee_id}"` key from `create()`; cascade is always on |
+| `delegations.list()` / `.get(id)` / `.get_for_agent(id)`                      | Not supported — raise `UnsupportedOperationError`; use `chains.get(agent_id)`                           |
+| `audit.query(human_origin_id=...)`                                            | Unchanged signature — now routes to the real `by-human` path-param endpoint                             |
+| `audit.get_chain_history(chain_id)`                                           | Unchanged signature — now filters the real `/trust/audit` route by `agent_id`                           |
+| `audit.get_entry(entry_id)`                                                   | Not supported — raises `UnsupportedOperationError`                                                      |

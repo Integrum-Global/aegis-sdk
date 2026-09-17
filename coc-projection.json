@@ -428,17 +428,17 @@
     {
       "dest": "AGENTS.md",
       "source": "coc-context.md",
-      "source_sha256_16": "25198b44ddf5ac0a"
+      "source_sha256_16": "81b3ec1aebac0686"
     },
     {
       "dest": "CLAUDE.md",
       "source": "coc-context.md",
-      "source_sha256_16": "25198b44ddf5ac0a"
+      "source_sha256_16": "81b3ec1aebac0686"
     },
     {
       "dest": "GEMINI.md",
       "source": "coc-context.md",
-      "source_sha256_16": "25198b44ddf5ac0a"
+      "source_sha256_16": "81b3ec1aebac0686"
     }
   ]
 }

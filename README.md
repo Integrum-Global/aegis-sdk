@@ -61,7 +61,7 @@ there and re-run `node scripts/project_coc.mjs`; `--check` reds on drift.
 
 | | |
 | --- | --- |
-| `src/aegis_sdk/` | the client — 167 Python modules, version 2.0.0 |
+| `src/aegis_sdk/` | the client — 168 Python modules, version 2.0.0 |
 | `src/aegis_sdk/handbook/` | how the platform **behaves** — 41 chapters in 7 parts, screenshots included |
 | `src/aegis_sdk/coc/` | what to **do** about it — 2 agent briefs, 6 task skills, 7 guardrails, 4 commands, one probe |
 | `src/aegis_sdk/docs/` | reference: quickstart, authentication, configuration, errors, streaming |

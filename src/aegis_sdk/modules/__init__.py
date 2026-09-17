@@ -28,6 +28,7 @@ from .governance_explain import GovernanceExplainModule
 from .integrations import IntegrationsModule
 from .knowledge_govern import KnowledgeGovernModule
 from .llm_providers import LlmProvidersModule
+from .mcp import McpBinding, McpModule, McpRegistration
 from .metrics import MetricsModule
 from .notifications import NotificationsModule
 from .observe_audit import ObserveAuditModule
@@ -103,6 +104,9 @@ __all__ = [
     "AgenticDashboardModule",
     "ApplicationsModule",
     "LlmProvidersModule",
+    "McpBinding",
+    "McpModule",
+    "McpRegistration",
     "MetricsModule",
     "ObserveAuditModule",
     "SettingsModule",

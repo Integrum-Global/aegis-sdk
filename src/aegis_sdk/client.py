@@ -30,6 +30,7 @@ from .modules import (
     KillSwitchModule,
     KnowledgeGovernModule,
     LlmProvidersModule,
+    McpModule,
     MetricsModule,
     NotificationsModule,
     ObserveAuditModule,
@@ -212,6 +213,7 @@ class AgenticOSClient:
         requests: Request management (work items within objectives)
         sessions: Work session management with streaming
         artifacts: Artifact upload, version history, supersede, download, delete
+        mcp: MCP server registration, and binding a stored server to an agent
         trust: Trust management (chains, delegations, postures, audit)
         revenue: Revenue management (subscriptions, licenses, usage, quotas, invoices)
     """
@@ -325,6 +327,11 @@ class AgenticOSClient:
         self.agent_pools = AgentPoolsModule(self._http)
         self.positions = PositionsModule(self._http)
         self.tools = ToolsModule(self._http)
+        # MCP server registration and agent binding. Distinct from self.tools
+        # above, which is the platform's tool CATALOGUE: this is how an agent
+        # is given tools that live on an MCP server elsewhere — store the
+        # endpoint and credential once, then attach it to agents by reference.
+        self.mcp = McpModule(self._http)
         self.workspaces = WorkspacesModule(self._http)
         self.pseudo_agents = PseudoAgentsModule(self._http)
 
