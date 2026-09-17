@@ -20,10 +20,10 @@ aegis, from where you stand
 │     ├── 59 module namespaces       one shared transport between them
 │     └── never on the wire          the handbook · the working artifacts · the probe
 │
-│   ┌─────────────────────────────────────────────────────────────────────────┐
+│   ┌──────────────────────────────────────────────────────────────────────────┐
 │   │  THE BOUNDARY — HTTPS only.  One credential header per request.          │
 │   │  No organisation id travels: tenancy is derived from the credential.     │
-│   └─────────────────────────────────────────────────────────────────────────┘
+│   └──────────────────────────────────────────────────────────────────────────┘
 │
 └── what the deployment holds ───────────────────────────────────────────── core
       │
