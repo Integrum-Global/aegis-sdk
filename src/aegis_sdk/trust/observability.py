@@ -14,12 +14,13 @@ Operations:
 
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from .._http import encode_path_param
+from .._tolerant import TolerantModel
 
 
-class TrustTimelinePoint(BaseModel):
+class TrustTimelinePoint(TolerantModel):
     """One day of verification activity."""
 
     model_config = ConfigDict(populate_by_name=True, extra="allow")
@@ -30,7 +31,7 @@ class TrustTimelinePoint(BaseModel):
     failed: int = 0
 
 
-class TrustMetrics(BaseModel):
+class TrustMetrics(TolerantModel):
     """Trust-plane metrics for a time range.
 
     Warning:
@@ -57,7 +58,7 @@ class TrustMetrics(BaseModel):
     timeline: list[TrustTimelinePoint] = Field(default_factory=list)
 
 
-class ComplianceReport(BaseModel):
+class ComplianceReport(TolerantModel):
     """Compliance report for an organization over a period.
 
     Reading this correctly turns on three fields, not on the score:
@@ -93,7 +94,7 @@ class ComplianceReport(BaseModel):
     pages_scanned: int = 0
 
 
-class TrustFailure(BaseModel):
+class TrustFailure(TolerantModel):
     """One active failure mode detected on the trust plane."""
 
     model_config = ConfigDict(populate_by_name=True, extra="allow")
@@ -105,7 +106,7 @@ class TrustFailure(BaseModel):
     impact: str
 
 
-class TrustHealth(BaseModel):
+class TrustHealth(TolerantModel):
     """Trust-plane health snapshot."""
 
     model_config = ConfigDict(populate_by_name=True, extra="allow")

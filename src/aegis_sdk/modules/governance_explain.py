@@ -31,10 +31,12 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import ConfigDict, Field
+
+from .._tolerant import TolerantModel
 
 
-class AccessExplanation(BaseModel):
+class AccessExplanation(TolerantModel):
     """Step-by-step trace of one access decision.
 
     Note:
@@ -51,7 +53,7 @@ class AccessExplanation(BaseModel):
     access_path: str = ""
 
 
-class EnvelopeExplanation(BaseModel):
+class EnvelopeExplanation(TolerantModel):
     """A role's effective envelope, explained through its ancestor chain."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -60,7 +62,7 @@ class EnvelopeExplanation(BaseModel):
     explanation: str = ""
 
 
-class AddressDescription(BaseModel):
+class AddressDescription(TolerantModel):
     """Human-readable reading of a D/T/R address."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -69,7 +71,7 @@ class AddressDescription(BaseModel):
     description: str = ""
 
 
-class SkippedRoleEnvelope(BaseModel):
+class SkippedRoleEnvelope(TolerantModel):
     """One role envelope that the last hydration pass skipped.
 
     A skipped envelope means its role currently operates with **no** hydrated
@@ -88,7 +90,7 @@ class SkippedRoleEnvelope(BaseModel):
     detected_at: str = ""
 
 
-class EnvelopeHydrationStatus(BaseModel):
+class EnvelopeHydrationStatus(TolerantModel):
     """Summary of the organization's last envelope hydration pass."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -99,7 +101,7 @@ class EnvelopeHydrationStatus(BaseModel):
     computed_at: str | None = None
 
 
-class RoleEnvelopeCoverage(BaseModel):
+class RoleEnvelopeCoverage(TolerantModel):
     """Coverage verdict for one agent-reachable role.
 
     Three fields carry a three-valued meaning that collapses badly if you
@@ -137,7 +139,7 @@ class RoleEnvelopeCoverage(BaseModel):
     agent_ids: list[str] = Field(default_factory=list)
 
 
-class EnvelopeCoverageReport(BaseModel):
+class EnvelopeCoverageReport(TolerantModel):
     """Envelope-coverage report for the caller's organization.
 
     Of the roles an agent can actually execute as, how many resolve an
@@ -178,7 +180,7 @@ class EnvelopeCoverageReport(BaseModel):
     roles: list[RoleEnvelopeCoverage] = Field(default_factory=list)
 
 
-class CorruptedRoleEntry(BaseModel):
+class CorruptedRoleEntry(TolerantModel):
     """A role observed to violate one or more D/T/R grammar invariants.
 
     Note:
@@ -195,7 +197,7 @@ class CorruptedRoleEntry(BaseModel):
     violations: list[str] = Field(default_factory=list)
 
 
-class CorruptedRolesReport(BaseModel):
+class CorruptedRolesReport(TolerantModel):
     """Inventory of role-grammar violations in the caller's organization.
 
     Note:
@@ -267,7 +269,8 @@ class GovernanceExplainModule:
         access was permitted. A TOOL subject is the opposite kind of answer: it
         reads the refusals that were actually PERSISTED for the tool's work
         unit, so ``step_reached`` names the gate that refused it and ``reason``
-        is that gate's own reason, not a recomputation.
+        is that gate's own reason, not a recomputation. It reads an AUDIT
+        record, so it requires the audit-read tier — see ``Raises``.
 
         Args:
             role_id: The role requesting access.
@@ -279,10 +282,13 @@ class GovernanceExplainModule:
                 ``supervised``, ``shared_planning``, ``continuous_insight`` or
                 ``delegated``. Anything else is rejected.
             tool: A named tool subject, as ``{"id": "<tool>", "work_unit_id":
-                "<wu>"}``. ``work_unit_id`` is required: the persisted refusal
-                rows are work-unit scoped, and an unscoped read would narrate
-                another run's refusal as this subject's. Mutually exclusive with
-                ``knowledge_item``.
+                "<wu>"}``. ``work_unit_id`` is required: every persisted refusal
+                row is work-unit scoped, and an unscoped read would narrate
+                another run's refusal as this subject's. A refusal recorded
+                while a PIPELINE-backed composite ran is keyed by the agent
+                that executed it, so a pipeline-keyed subject reports the
+                absence of a record rather than another unit's. Mutually
+                exclusive with ``knowledge_item``.
 
         Returns:
             The decision, the reason, the step the evaluation reached, and the
@@ -296,7 +302,11 @@ class GovernanceExplainModule:
         Raises:
             ValidationError: ``400``/``422`` — an unrecognized posture, a
                 malformed knowledge item, both subjects, or neither.
-            AuthorizationError: ``403`` — missing ``organizations:read``.
+            AuthorizationError: ``403`` — missing ``organizations:read``; for a
+                TOOL subject, also missing ``audit:read``. The tool subject
+                reads persisted audit rows — the same store the audit-log
+                endpoints gate on ``audit:read`` — so it carries the operator
+                tier, while a knowledge item keeps the organization-read tier.
 
         Example:
             >>> why = await client.governance_explain.explain_access(

@@ -29,13 +29,14 @@ currently serve and return 404. Each carries a warning in its own docstring.
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from .._http import encode_path_param
+from .._tolerant import TolerantModel
 
 
 # Response Models
-class OverviewMetrics(BaseModel):
+class OverviewMetrics(TolerantModel):
     """Dashboard overview metrics.
 
     Verified against ``OverviewResponse``.
@@ -59,7 +60,7 @@ class OverviewMetrics(BaseModel):
     period_end: str = Field(alias="periodEnd")
 
 
-class TaskMetricsItem(BaseModel):
+class TaskMetricsItem(TolerantModel):
     """Time-series task metrics item.
 
     Verified against ``TaskMetricsItem``.
@@ -78,7 +79,7 @@ class TaskMetricsItem(BaseModel):
     median_completion_time_seconds: float = Field(alias="medianCompletionTimeSeconds")
 
 
-class AgentPerformance(BaseModel):
+class AgentPerformance(TolerantModel):
     """Agent performance metrics.
 
     Verified against ``AgentPerformanceResponse`` — there is no ``agentName`` field on the wire
@@ -106,7 +107,7 @@ class AgentPerformance(BaseModel):
     success_rate: float = Field(alias="successRate")
 
 
-class PoolUtilization(BaseModel):
+class PoolUtilization(TolerantModel):
     """Pool utilization metrics.
 
     Verified against ``PoolUtilizationResponse``.
@@ -126,7 +127,7 @@ class PoolUtilization(BaseModel):
     escalation_rate: float = Field(alias="escalationRate")
 
 
-class CostBreakdownItem(BaseModel):
+class CostBreakdownItem(TolerantModel):
     """Single cost breakdown item.
 
     Verified against ``CostBreakdownItem`` — each item carries its own ``groupBy`` (the dimension it was
@@ -144,7 +145,7 @@ class CostBreakdownItem(BaseModel):
     total_sessions: int = Field(alias="totalSessions")
 
 
-class CostBreakdown(BaseModel):
+class CostBreakdown(TolerantModel):
     """Cost breakdown response.
 
     Verified against ``CostBreakdownResponse`` — the envelope key is ``records`` (the prior
@@ -172,7 +173,7 @@ class CostBreakdown(BaseModel):
         return sum(item.total_cost_usd for item in self.records)
 
 
-class TrendItem(BaseModel):
+class TrendItem(TolerantModel):
     """Completion rate trend item.
 
     Verified against ``CompletionRateTrendItem`` — fields already matched the wire shape.
@@ -187,7 +188,7 @@ class TrendItem(BaseModel):
     completion_rate: float = Field(alias="completionRate")
 
 
-class UsageHistoryItem(BaseModel):
+class UsageHistoryItem(TolerantModel):
     """Usage history item.
 
     Retained for typing only: no route currently backs
@@ -202,7 +203,7 @@ class UsageHistoryItem(BaseModel):
     limit: int
 
 
-class UsageBreakdownItem(BaseModel):
+class UsageBreakdownItem(TolerantModel):
     """Usage breakdown by dimension.
 
     Retained for typing only: no route currently backs
@@ -217,7 +218,7 @@ class UsageBreakdownItem(BaseModel):
     by_date: dict[str, int] | None = Field(None, alias="byDate")
 
 
-class TopAgent(BaseModel):
+class TopAgent(TolerantModel):
     """Top performing agent.
 
     Retained for typing only: no route currently backs
@@ -234,7 +235,7 @@ class TopAgent(BaseModel):
     total_cost: float = Field(alias="totalCost")
 
 
-class PoolMetricsItem(BaseModel):
+class PoolMetricsItem(TolerantModel):
     """Aggregate pool-utilization list item.
 
     Verified against ``PoolMetricsListItem`` — the aggregate ``/pools`` list, distinct from the
@@ -260,7 +261,7 @@ class PoolMetricsItem(BaseModel):
     escalation_rate: float = Field(alias="escalationRate")
 
 
-class SLAMetrics(BaseModel):
+class SLAMetrics(TolerantModel):
     """SLA compliance metrics.
 
     Verified against ``SLAMetricsResponse`` — all keys camelCase on the wire.
@@ -285,7 +286,7 @@ class SLAMetrics(BaseModel):
     period_end: str = Field(alias="periodEnd")
 
 
-class ReviewDecisions(BaseModel):
+class ReviewDecisions(TolerantModel):
     """Review-decision counts for HITL metrics.
 
     Verified against ``ReviewDecisions``.
@@ -298,7 +299,7 @@ class ReviewDecisions(BaseModel):
     revision_requested: int = Field(alias="revisionRequested")
 
 
-class HITLMetrics(BaseModel):
+class HITLMetrics(TolerantModel):
     """Human-in-the-loop (escalation / review) metrics.
 
     Verified against ``HITLMetricsResponse`` — all keys camelCase on the wire; ``review_decisions`` is a
@@ -323,7 +324,7 @@ class HITLMetrics(BaseModel):
     period_end: str = Field(alias="periodEnd")
 
 
-class SummaryTasksSection(BaseModel):
+class SummaryTasksSection(TolerantModel):
     """Tasks section of the combined analytics summary.
 
     Verified against ``SummaryTasksSection``.
@@ -338,7 +339,7 @@ class SummaryTasksSection(BaseModel):
     avg_completion_time_change: float = Field(alias="avgCompletionTimeChange")
 
 
-class SummarySLASection(BaseModel):
+class SummarySLASection(TolerantModel):
     """SLA section of the combined analytics summary.
 
     Verified against ``SummarySLASection``.
@@ -354,7 +355,7 @@ class SummarySLASection(BaseModel):
     late_tasks: int = Field(alias="lateTasks")
 
 
-class SummaryHITLSection(BaseModel):
+class SummaryHITLSection(TolerantModel):
     """HITL section of the combined analytics summary.
 
     Verified against ``SummaryHITLSection``.
@@ -368,7 +369,7 @@ class SummaryHITLSection(BaseModel):
     avg_review_time_change: float = Field(alias="avgReviewTimeChange")
 
 
-class SummaryTopPerformer(BaseModel):
+class SummaryTopPerformer(TolerantModel):
     """Top-performer entry in the summary agents section.
 
     Verified against ``TopPerformerItem``.
@@ -381,7 +382,7 @@ class SummaryTopPerformer(BaseModel):
     success_rate: float = Field(alias="successRate")
 
 
-class SummaryAgentsSection(BaseModel):
+class SummaryAgentsSection(TolerantModel):
     """Agents section of the combined analytics summary.
 
     Verified against ``SummaryAgentsSection``.
@@ -394,7 +395,7 @@ class SummaryAgentsSection(BaseModel):
     top_performer: SummaryTopPerformer | None = Field(default=None, alias="topPerformer")
 
 
-class SummaryPoolsSection(BaseModel):
+class SummaryPoolsSection(TolerantModel):
     """Pools section of the combined analytics summary.
 
     Verified against ``SummaryPoolsSection``.
@@ -407,7 +408,7 @@ class SummaryPoolsSection(BaseModel):
     avg_queue_depth: float = Field(alias="avgQueueDepth")
 
 
-class AnalyticsSummary(BaseModel):
+class AnalyticsSummary(TolerantModel):
     """Combined analytics summary for dashboard overview panels.
 
     Verified against ``AnalyticsSummaryResponse`` — five nested sections, no top-level scalars.
@@ -422,7 +423,7 @@ class AnalyticsSummary(BaseModel):
     pools: SummaryPoolsSection
 
 
-class VerificationDistributionItem(BaseModel):
+class VerificationDistributionItem(TolerantModel):
     """Single verification-level distribution entry.
 
     Verified against ``VerificationDistributionItem`` — plain snake_case (no aliasing on this route).
@@ -435,7 +436,7 @@ class VerificationDistributionItem(BaseModel):
     percent: float
 
 
-class VerificationGradient(BaseModel):
+class VerificationGradient(TolerantModel):
     """EATP verification-level distribution statistics.
 
     Verified against ``VerificationGradientStatsResponse`` — ``period_start``/``period_end`` are snake_case

@@ -1,7 +1,17 @@
-"""Organization roles module — typed create/get for the vertical-standup path.
+"""Organization roles module — create/get/list for the vertical-standup path.
 
-Verified against the server ``organization-roles`` router(mounted at ``/api/v1``)).
+Verified against the server ``organization-roles`` router (mounted at ``/api/v1``).
+
+RELATED SURFACES (this module is not the whole of roles):
+  - ``client.role_admin`` — the full role-administration surface on
+    ``/api/v1/roles``, which the server documents as an ALIAS for
+    ``/api/v1/organization-roles``; both call the same
+    ``OrganizationRoleService.list``, so it returns the SAME records as
+    ``list()`` here, typed rather than raw dicts.
+  - ``client.org_standup`` — ``update_role`` / ``delete_role``.
 """
+
+from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
@@ -14,7 +24,7 @@ if TYPE_CHECKING:
 class OrganizationRolesModule:
     """Organization role (accountability anchor) management (create + get)."""
 
-    def __init__(self, http_client: "HTTPClient") -> None:
+    def __init__(self, http_client: HTTPClient) -> None:
         self._http = http_client
 
     async def create(
@@ -83,5 +93,50 @@ class OrganizationRolesModule:
         """
         resp: dict[str, Any] = await self._http.request(
             "GET", f"/api/v1/organization-roles/{encode_path_param(role_id)}"
+        )
+        return resp
+    async def list(
+        self,
+        organization_unit_id: str | None = None,
+        authority_level: int | None = None,
+        is_vacant: bool | None = None,
+        include_archived: bool = False,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> dict[str, Any]:
+        """List organization roles in the caller's organization.
+
+        Server: ``GET /api/v1/organization-roles`` (``organization_roles.py:292``).
+
+        ``GET /api/v1/roles`` is an ALIAS for this route -- both call the same
+        ``OrganizationRoleService.list``, so ``client.role_admin.list()``
+        returns the SAME records as this method, typed rather than raw.
+
+        Gated on ``organizations:read`` plus an ``admin``/``architect`` persona.
+
+        Args:
+            organization_unit_id: Filter by unit.
+            authority_level: Filter by authority level (1-5).
+            is_vacant: Filter by vacancy status.
+            include_archived: Include archived roles (default False).
+            limit: Maximum results (1-500, server default 50).
+            offset: Pagination offset.
+
+        Returns:
+            ``{"records": [...], "total": int}``.
+        """
+        params: dict[str, Any] = {
+            "include_archived": include_archived,
+            "limit": limit,
+            "offset": offset,
+        }
+        if organization_unit_id is not None:
+            params["organization_unit_id"] = organization_unit_id
+        if authority_level is not None:
+            params["authority_level"] = authority_level
+        if is_vacant is not None:
+            params["is_vacant"] = is_vacant
+        resp: dict[str, Any] = await self._http.request(
+            "GET", "/api/v1/organization-roles", params=params
         )
         return resp

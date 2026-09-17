@@ -28,15 +28,16 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from .._http import encode_path_param
+from .._tolerant import TolerantModel
 
 if TYPE_CHECKING:
     from .._http import HTTPClient
 
 
-class Position(BaseModel):
+class Position(TolerantModel):
     """
     A signed position and its binding state.
 

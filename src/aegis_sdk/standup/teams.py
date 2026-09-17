@@ -3,6 +3,8 @@
 Verified against the server ``teams`` router (mounted at ``/api/v1``).
 """
 
+from __future__ import annotations
+
 from typing import TYPE_CHECKING, Any
 
 from .._http import encode_path_param
@@ -14,7 +16,7 @@ if TYPE_CHECKING:
 class TeamsModule:
     """Team (working group) management (create + get)."""
 
-    def __init__(self, http_client: "HTTPClient") -> None:
+    def __init__(self, http_client: HTTPClient) -> None:
         self._http = http_client
 
     async def create(self, name: str, description: str | None = None) -> dict[str, Any]:
@@ -40,5 +42,26 @@ class TeamsModule:
         """
         resp: dict[str, Any] = await self._http.request(
             "GET", f"/api/v1/teams/{encode_path_param(team_id)}"
+        )
+        return resp
+    async def list(
+        self,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> dict[str, Any]:
+        """List teams in the caller's organization.
+
+        Server: ``GET /api/v1/teams`` (``teams.py:137``), gated on ``teams:read``.
+
+        Args:
+            limit: Maximum results (1-100, server default 50).
+            offset: Pagination offset.
+
+        Returns:
+            ``{"records": [...], "total": int}``.
+        """
+        params: dict[str, Any] = {"limit": limit, "offset": offset}
+        resp: dict[str, Any] = await self._http.request(
+            "GET", "/api/v1/teams", params=params
         )
         return resp

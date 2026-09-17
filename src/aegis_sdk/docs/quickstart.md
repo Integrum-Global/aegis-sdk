@@ -9,9 +9,9 @@ to an **unrelated third-party package** ("on-premise PII detection and masking
 for AI applications", published by a different company). Installing it gets you
 the wrong software under a right-sounding name.
 
-Install from your checkout of the **SDK repository**,
-`esperie-enterprise/aegis-sdk`. Either form gives you `aegis_sdk` and **nothing
-else** — neither carries the platform:
+Install from your checkout of the **SDK repository** — the one you cloned to
+get here. Either form gives you `aegis_sdk` and **nothing else** — neither
+carries the platform:
 
 ```bash
 # editable, for working in the repo

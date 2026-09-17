@@ -9,9 +9,10 @@ import builtins
 import warnings
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from .._http import HTTPClient, encode_path_param
+from .._tolerant import TolerantModel
 from ..exceptions import UnsupportedOperationError, ValidationError
 from ..types import (
     CascadeRevocationResult,
@@ -25,7 +26,7 @@ from ..types import (
 )
 
 
-class TrustLineageGenesis(BaseModel):
+class TrustLineageGenesis(TolerantModel):
     """The genesis record at the root of a trust lineage.
 
     This is where a lineage document carries ``id``, ``agent_id`` and
@@ -63,7 +64,7 @@ class TrustLineageGenesis(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
-class TrustLineageCapability(BaseModel):
+class TrustLineageCapability(TolerantModel):
     """One signed capability attestation within a lineage."""
 
     model_config = ConfigDict(populate_by_name=True, extra="allow")
@@ -81,7 +82,7 @@ class TrustLineageCapability(BaseModel):
     scope: dict[str, Any] | None = None
 
 
-class TrustChainLineage(BaseModel):
+class TrustChainLineage(TolerantModel):
     """The full signed EATP lineage document for one agent.
 
     Returned by :meth:`ChainsModule.get`. This is a RICHER shape than the
@@ -150,7 +151,7 @@ class AgentDelegationPath(DelegationPath):
     max_depth_allowed: int = 10
 
 
-class TrustWarning(BaseModel):
+class TrustWarning(TolerantModel):
     """A computed advisory about an agent's trust standing."""
 
     model_config = ConfigDict(populate_by_name=True, extra="allow")
@@ -160,7 +161,7 @@ class TrustWarning(BaseModel):
     severity: str
 
 
-class AgentTrustContextDetail(BaseModel):
+class AgentTrustContextDetail(TolerantModel):
     """Everything the platform knows about one agent's current trust standing.
 
     Composes the agent's chain, its delegation path, its position in that
@@ -203,7 +204,7 @@ class TrustVerificationOutcome(TrustVerificationResult):
     constraints_violated: builtins.list[str] = Field(default_factory=list)
 
 
-class TrustChainSummary(BaseModel):
+class TrustChainSummary(TolerantModel):
     """Public projection of a trust chain.
 
     Warning:

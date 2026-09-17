@@ -8,10 +8,11 @@ plan tier grants access to a named feature (SSO, custom_agents, etc.).
 - check() - Check if the organization has access to a feature
 """
 
-from pydantic import BaseModel
+
+from .._tolerant import TolerantModel
 
 
-class FeatureCheck(BaseModel):
+class FeatureCheck(TolerantModel):
     """Result of a feature-gate check.
 
     Mirrors the wire shape emitted by ``GET /api/v1/features/check``

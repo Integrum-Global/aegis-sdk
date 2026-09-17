@@ -99,9 +99,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import ConfigDict, Field, field_validator
 
 from .._http import encode_path_param
+from .._tolerant import TolerantModel
 
 if TYPE_CHECKING:
     from .._http import HTTPClient
@@ -135,7 +136,7 @@ ALLOWED_POSTURE_VALUES: frozenset[str] = frozenset(
 # ============================================================================
 
 
-class PostureTransition(BaseModel):
+class PostureTransition(TolerantModel):
     """A posture transition record (``PostureTransitionResponse``, camelCase wire)."""
 
     id: str
@@ -155,14 +156,14 @@ class PostureTransition(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
 
-class PostureTransitionsList(BaseModel):
+class PostureTransitionsList(TolerantModel):
     """History list envelope (``PostureTransitionsListResponse``)."""
 
     transitions: list[PostureTransition] = Field(default_factory=list)
     total: int = 0
 
 
-class PostureApproval(BaseModel):
+class PostureApproval(TolerantModel):
     """A pending posture approval request (``PostureApprovalResponse``)."""
 
     id: str
@@ -194,7 +195,7 @@ def _literal_true(value: Any) -> bool:
     return value is True
 
 
-class PostureApprovalPending(BaseModel):
+class PostureApprovalPending(TolerantModel):
     """The 202-shaped envelope PUT .../trust-posture returns when the
     transition requires approval (``ApprovalPendingResponse``).
 
@@ -217,7 +218,7 @@ class PostureApprovalPending(BaseModel):
         return _literal_true(value)
 
 
-class MetricStatus(BaseModel):
+class MetricStatus(TolerantModel):
     """One metric's status within a progression evaluation."""
 
     metric: str
@@ -226,7 +227,7 @@ class MetricStatus(BaseModel):
     met: bool
 
 
-class ProgressionEvaluation(BaseModel):
+class ProgressionEvaluation(TolerantModel):
     """Progression-eligibility evaluation (``ProgressionEvaluationResponse``)."""
 
     can_progress: bool = Field(alias="canProgress")
@@ -241,7 +242,7 @@ class ProgressionEvaluation(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
 
-class EvidenceMetrics(BaseModel):
+class EvidenceMetrics(TolerantModel):
     """Persistent evidence metrics for posture-upgrade qualification
     (``EvidenceMetricsResponse``)."""
 
@@ -265,7 +266,7 @@ class EvidenceMetrics(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
 
-class UpgradeEligibility(BaseModel):
+class UpgradeEligibility(TolerantModel):
     """Evidence-based upgrade eligibility evaluation (``UpgradeEligibilityResponse``)."""
 
     eligible: bool
@@ -278,7 +279,7 @@ class UpgradeEligibility(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
 
-class PostureOverrideInfo(BaseModel):
+class PostureOverrideInfo(TolerantModel):
     """Active posture-override info nested in the config response
     (``PostureOverrideInfo``, camelCase wire)."""
 
@@ -296,7 +297,7 @@ class PostureOverrideInfo(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
 
-class PostureConfig(BaseModel):
+class PostureConfig(TolerantModel):
     """Current effective posture configuration for an agent
     (``PostureConfigResponse``, camelCase wire)."""
 
@@ -317,7 +318,7 @@ class PostureConfig(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
 
-class ProgressionMetrics(BaseModel):
+class ProgressionMetrics(TolerantModel):
     """Progression metrics feeding posture-advancement evaluation
     (``ProgressionMetricsResponse``, camelCase wire)."""
 
@@ -333,7 +334,7 @@ class ProgressionMetrics(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
 
-class UpgradeRequestResult(BaseModel):
+class UpgradeRequestResult(TolerantModel):
     """Outcome of an evidence-based upgrade request
     (``UpgradeRequestResponse``, camelCase wire)."""
 
@@ -362,7 +363,7 @@ class UpgradeRequestResult(BaseModel):
 # ============================================================================
 
 
-class RoleClearanceRecord(BaseModel):
+class RoleClearanceRecord(TolerantModel):
     """A joined role-clearance record as LIST/GET emit it
     (``ClearanceRecordResponse`` -- ``compartments`` is a deserialized list;
     ``role_name``/``role_address`` are joined from OrganizationRole)."""
@@ -386,7 +387,7 @@ class RoleClearanceRecord(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
 
-class RoleClearanceList(BaseModel):
+class RoleClearanceList(TolerantModel):
     """List envelope for the clearance admin table (``ClearanceListResponse``)."""
 
     records: list[RoleClearanceRecord] = Field(default_factory=list)
@@ -399,7 +400,7 @@ class RoleClearanceList(BaseModel):
 # ============================================================================
 
 
-class RoleEnvelope(BaseModel):
+class RoleEnvelope(TolerantModel):
     """A RoleEnvelope record as the raw persisted row is emitted (no
     ``response_model`` on the backend route -- ``constraint_config_json`` /
     ``verification_defaults_json`` are JSON **strings**, not deserialized
@@ -426,7 +427,7 @@ class RoleEnvelope(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
 
-class RoleEnvelopeList(BaseModel):
+class RoleEnvelopeList(TolerantModel):
     """List envelope for the supervisor-scoped envelope list (raw
     ``{"records": [...], "total": N}`` -- no ``response_model``, see
     ``list_role_envelopes``)."""
@@ -441,14 +442,14 @@ class RoleEnvelopeList(BaseModel):
 # ============================================================================
 
 
-class TimeRange(BaseModel):
+class TimeRange(TolerantModel):
     """A 24-hour time range (``TimeRangeModel``)."""
 
     start: int
     end: int
 
 
-class FinancialConstraints(BaseModel):
+class FinancialConstraints(TolerantModel):
     """CARE Financial dimension (``FinancialConstraintsModel``)."""
 
     max_cost_usd: float | None = None
@@ -457,7 +458,7 @@ class FinancialConstraints(BaseModel):
     max_tool_invocations: int | None = None
 
 
-class TemporalConstraints(BaseModel):
+class TemporalConstraints(TolerantModel):
     """CARE Temporal dimension (``TemporalConstraintsModel``)."""
 
     valid_hours: list[TimeRange] | None = None
@@ -465,7 +466,7 @@ class TemporalConstraints(BaseModel):
     timezone: str = "UTC"
 
 
-class DataAccessConstraints(BaseModel):
+class DataAccessConstraints(TolerantModel):
     """CARE Data Access dimension (``DataAccessConstraintsModel``)."""
 
     max_records_accessed: int | None = None
@@ -473,21 +474,21 @@ class DataAccessConstraints(BaseModel):
     data_masking_required: list[str] = Field(default_factory=list)
 
 
-class OperationalConstraints(BaseModel):
+class OperationalConstraints(TolerantModel):
     """CARE Operational dimension (``OperationalConstraintsModel``)."""
 
     require_human_approval: list[str] = Field(default_factory=list)
     prohibited_actions: list[str] = Field(default_factory=list)
 
 
-class TransactionConstraints(BaseModel):
+class TransactionConstraints(TolerantModel):
     """Transaction constraints (``TransactionConstraintsModel``)."""
 
     max_transaction_amount: float | None = None
     require_approval_above: float | None = None
 
 
-class CommunicationConstraints(BaseModel):
+class CommunicationConstraints(TolerantModel):
     """CARE Communication dimension -- the 5th dimension (``CommunicationConstraintsModel``)."""
 
     internal_only: bool = True
@@ -495,7 +496,7 @@ class CommunicationConstraints(BaseModel):
     external_requires_approval: bool = True
 
 
-class ConstraintEnvelope(BaseModel):
+class ConstraintEnvelope(TolerantModel):
     """Complete constraint envelope (``ConstraintEnvelopeResponse``)."""
 
     id: str
@@ -515,7 +516,7 @@ class ConstraintEnvelope(BaseModel):
     updated_at: str
 
 
-class EffectiveConstraints(BaseModel):
+class EffectiveConstraints(TolerantModel):
     """Effective constraints merged from the inheritance chain
     (``EffectiveConstraintsResponse``)."""
 
@@ -529,7 +530,7 @@ class EffectiveConstraints(BaseModel):
     inheritance_chain: list[str] = Field(default_factory=list)
 
 
-class GradientRuleItem(BaseModel):
+class GradientRuleItem(TolerantModel):
     """One four-zone verification-gradient rule (``GradientRuleItemResponse``)."""
 
     id: str
@@ -542,13 +543,13 @@ class GradientRuleItem(BaseModel):
     enabled: bool
 
 
-class GradientRulesList(BaseModel):
+class GradientRulesList(TolerantModel):
     """Read-only list of gradient rules (``GradientRulesListResponse``)."""
 
     records: list[GradientRuleItem] = Field(default_factory=list)
 
 
-class ConstraintValidationError(BaseModel):
+class ConstraintValidationError(TolerantModel):
     """One monotonic-tightening validation error (``ValidationErrorResponse``, snake_case wire)."""
 
     category: str
@@ -558,7 +559,7 @@ class ConstraintValidationError(BaseModel):
     child_value: str
 
 
-class ConstraintValidationWarning(BaseModel):
+class ConstraintValidationWarning(TolerantModel):
     """One validation warning (``ValidationWarningResponse``, snake_case wire)."""
 
     category: str
@@ -566,7 +567,7 @@ class ConstraintValidationWarning(BaseModel):
     message: str
 
 
-class ConstraintValidationResult(BaseModel):
+class ConstraintValidationResult(TolerantModel):
     """Real-time constraint validation result used by the envelope editor to
     preview whether a child envelope tightens the parent before saving
     (``ValidationResultResponse``)."""
@@ -576,7 +577,7 @@ class ConstraintValidationResult(BaseModel):
     warnings: list[ConstraintValidationWarning] = Field(default_factory=list)
 
 
-class EnvelopeDefaults(BaseModel):
+class EnvelopeDefaults(TolerantModel):
     """Default 5-dimension CARE envelope for a posture level (``EnvelopeDefaultsResponse``)."""
 
     posture: str
@@ -588,7 +589,7 @@ class EnvelopeDefaults(BaseModel):
 # ============================================================================
 
 
-class DelegationRecord(BaseModel):
+class DelegationRecord(TolerantModel):
     """A trust delegation record (``DelegationRecord``)."""
 
     delegator_id: str
@@ -599,7 +600,7 @@ class DelegationRecord(BaseModel):
     expires_at: str | None = None
 
 
-class CascadeRevocationResult(BaseModel):
+class CascadeRevocationResult(TolerantModel):
     """Result of a cascade / by-human trust revocation (``CascadeRevocationResult``)."""
 
     revoked_agent_ids: list[str] = Field(default_factory=list)

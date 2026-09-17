@@ -25,16 +25,17 @@ client.py / modules/__init__.py / types.py); it is registered on
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from .._http import encode_path_param
+from .._tolerant import TolerantModel
 
 # ============================================================================
 # Response Models (local — mirror the server response shape )
 # ============================================================================
 
 
-class MetricsSummary(BaseModel):
+class MetricsSummary(TolerantModel):
     """Aggregated metrics summary — avg latency, tokens, error rate, cost."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -48,7 +49,7 @@ class MetricsSummary(BaseModel):
     failure_count: int
 
 
-class TimeseriesPoint(BaseModel):
+class TimeseriesPoint(TolerantModel):
     """Single time-bucketed data point."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -58,7 +59,7 @@ class TimeseriesPoint(BaseModel):
     count: int
 
 
-class ExecutionListResponse(BaseModel):
+class ExecutionListResponse(TolerantModel):
     """Raw execution metrics list."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -67,7 +68,7 @@ class ExecutionListResponse(BaseModel):
     count: int
 
 
-class TopErrorItem(BaseModel):
+class TopErrorItem(TolerantModel):
     """Top error by frequency."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -78,7 +79,7 @@ class TopErrorItem(BaseModel):
     last_occurred: str | None = None
 
 
-class TopAgentUsage(BaseModel):
+class TopAgentUsage(TolerantModel):
     """Per-agent usage aggregate (top_agents entry on the dashboard rollup)."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -89,7 +90,7 @@ class TopAgentUsage(BaseModel):
     total_cost: float
 
 
-class DashboardMetrics(BaseModel):
+class DashboardMetrics(TolerantModel):
     """
     Dashboard metrics rollup for the last 24h/30d window.
 
@@ -106,7 +107,7 @@ class DashboardMetrics(BaseModel):
     top_agents: list[TopAgentUsage] = Field(default_factory=list)
 
 
-class AgentMetrics(BaseModel):
+class AgentMetrics(TolerantModel):
     """
     Per-agent metrics, frontend-expected field names.
 
@@ -129,7 +130,7 @@ class AgentMetrics(BaseModel):
     last_execution_at: str | None = None
 
 
-class SdkMetricsOverview(BaseModel):
+class SdkMetricsOverview(TolerantModel):
     """Developer SDK API-usage headline counters + prior-window trends.
 
     Mirrors ``SdkMetricsOverviewResponse`` — DISTINCT surface from the agent-execution metrics above:
@@ -149,7 +150,7 @@ class SdkMetricsOverview(BaseModel):
     avg_latency_trend: float = Field(alias="avgLatencyTrend")
 
 
-class InvocationSummary(BaseModel):
+class InvocationSummary(TolerantModel):
     """Tool-agent invocation KPIs (/observe/invocations tiles).
 
     Mirrors ``InvocationSummaryResponse`` — plain snake_case on the wire.

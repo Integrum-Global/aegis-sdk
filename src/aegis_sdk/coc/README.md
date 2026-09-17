@@ -1,7 +1,7 @@
 # The working material — the harness is the primary surface
 
-You were given this package, a credential, and the URL of a running Aegis
-platform. You were not given the platform's source, and you cannot boot it, run
+You cloned this repository, and you have a credential and the URL of a running
+Aegis platform. You do not have the platform's source, and you cannot boot it, run
 its tests, or read its route table. Everything here is written for that position
 rather than adapted to it.
 
@@ -19,32 +19,32 @@ it.
 
 ## Agents
 
-| File | Answers |
-| ---- | ------- |
-| [`agents/aegis-sdk-specialist.md`](agents/aegis-sdk-specialist.md) | *how do I call this* — module surface, auth modes, errors, without inventing server behaviour |
-| [`agents/aegis-operator.md`](agents/aegis-operator.md) | *what do I do about what I am seeing* — queues, evidence, spend, and when the answer is a person |
+| File                                                               | Answers                                                                                          |
+| ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ |
+| [`agents/aegis-sdk-specialist.md`](agents/aegis-sdk-specialist.md) | _how do I call this_ — module surface, auth modes, errors, without inventing server behaviour    |
+| [`agents/aegis-operator.md`](agents/aegis-operator.md)             | _what do I do about what I am seeing_ — queues, evidence, spend, and when the answer is a person |
 
 ## Skills — the working loop, end to end
 
-| File | The task |
-| ---- | -------- |
+| File                                                                               | The task                                                                                |
+| ---------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
 | [`skills/working-against-a-deployment.md`](skills/working-against-a-deployment.md) | the spine: connect, establish what you hold, measure reachability, submit, work an item |
-| [`skills/registering-a-tool-or-agent.md`](skills/registering-a-tool-or-agent.md) | stand up a tool agent or task agent and prove it is callable |
-| [`skills/running-an-objective.md`](skills/running-an-objective.md) | submit, clarify, track, act on a hold, confirm completion |
-| [`skills/reading-trust-and-governance.md`](skills/reading-trust-and-governance.md) | posture, chains, envelopes, permissions, audit — and what each does not establish |
-| [`skills/diagnosing-a-refusal.md`](skills/diagnosing-a-refusal.md) | the seven-rung ladder; attribute before you change anything |
-| [`skills/day-two-operations.md`](skills/day-two-operations.md) | the operator's recurring loop, including the sweeps that hide their own emptiness |
+| [`skills/registering-a-tool-or-agent.md`](skills/registering-a-tool-or-agent.md)   | stand up a tool agent or task agent and prove it is callable                            |
+| [`skills/running-an-objective.md`](skills/running-an-objective.md)                 | submit, clarify, track, act on a hold, confirm completion                               |
+| [`skills/reading-trust-and-governance.md`](skills/reading-trust-and-governance.md) | posture, chains, envelopes, permissions, audit — and what each does not establish       |
+| [`skills/diagnosing-a-refusal.md`](skills/diagnosing-a-refusal.md)                 | the seven-rung ladder; attribute before you change anything                             |
+| [`skills/day-two-operations.md`](skills/day-two-operations.md)                     | the operator's recurring loop, including the sweeps that hide their own emptiness       |
 
 ## Guardrails — obligations, each with its Why
 
-| File | The obligation |
-| ---- | -------------- |
+| File                                                                             | The obligation                                                                         |
+| -------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
 | [`guardrails/credential-reachability.md`](guardrails/credential-reachability.md) | a 403 is often a credential-TYPE problem; never widen to clear an unattributed refusal |
-| [`guardrails/error-taxonomy.md`](guardrails/error-taxonomy.md) | discriminate on the status code, never on the exception subclass |
-| [`guardrails/reading-a-measurement.md`](guardrails/reading-a-measurement.md) | three-valued fields; an empty result is absence of records, not of events |
-| [`guardrails/sentinels-and-defaults.md`](guardrails/sentinels-and-defaults.md) | a value indistinguishable from an intention is a defect, not a convenience |
-| [`guardrails/billing-integrity.md`](guardrails/billing-integrity.md) | the errors on this surface are commercial and surface at reconciliation |
-| [`guardrails/client-model-fidelity.md`](guardrails/client-model-fidelity.md) | what the client omits you never see; some endpoints must not be wrapped |
+| [`guardrails/error-taxonomy.md`](guardrails/error-taxonomy.md)                   | discriminate on the status code, never on the exception subclass                       |
+| [`guardrails/reading-a-measurement.md`](guardrails/reading-a-measurement.md)     | three-valued fields; an empty result is absence of records, not of events              |
+| [`guardrails/sentinels-and-defaults.md`](guardrails/sentinels-and-defaults.md)   | a value indistinguishable from an intention is a defect, not a convenience             |
+| [`guardrails/billing-integrity.md`](guardrails/billing-integrity.md)             | the errors on this surface are commercial and surface at reconciliation                |
+| [`guardrails/client-model-fidelity.md`](guardrails/client-model-fidelity.md)     | what the client omits you never see; some endpoints must not be wrapped                |
 
 ## Start here
 
@@ -84,8 +84,8 @@ cannot tell. A green that could not have been red is not a green.
 
 **3. Separate what you observed from what you inferred.** "This client declares
 the operation" and "the deployment serves the operation" are different claims,
-and only the first is free. This package's route knowledge is *its own belief
-about the API* — where it is wrong, it is wrong confidently and in the same
+and only the first is free. This package's route knowledge is _its own belief
+about the API_ — where it is wrong, it is wrong confidently and in the same
 direction as anything derived from it.
 
 ## Verify this material against your own build

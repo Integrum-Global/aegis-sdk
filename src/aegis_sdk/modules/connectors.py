@@ -21,12 +21,13 @@ Provides connector management for databases, APIs, and messaging systems.
 import builtins
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from .._http import encode_path_param
+from .._tolerant import TolerantModel
 
 
-class ConnectorConfig(BaseModel):
+class ConnectorConfig(TolerantModel):
     """Connector configuration."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -41,7 +42,7 @@ class ConnectorConfig(BaseModel):
     extra: dict[str, Any] | None = None
 
 
-class Connector(BaseModel):
+class Connector(TolerantModel):
     """Connector model."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -58,7 +59,7 @@ class Connector(BaseModel):
     updated_at: str = Field(alias="updatedAt")
 
 
-class ConnectorInstance(BaseModel):
+class ConnectorInstance(TolerantModel):
     """Connector instance attached to agent."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -70,7 +71,7 @@ class ConnectorInstance(BaseModel):
     config_override: dict[str, Any] | None = Field(None, alias="configOverride")
 
 
-class TestResult(BaseModel):
+class TestResult(TolerantModel):
     """Connection test result."""
 
     success: bool
@@ -78,7 +79,7 @@ class TestResult(BaseModel):
     latency_ms: float | None = Field(None, alias="latencyMs")
 
 
-class QueryResult(BaseModel):
+class QueryResult(TolerantModel):
     """Query execution result."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -93,7 +94,7 @@ class QueryResult(BaseModel):
     execution_time_ms: float | None = Field(None, alias="executionTimeMs")
 
 
-class ConnectorType(BaseModel):
+class ConnectorType(TolerantModel):
     """Connector type definition."""
 
     type: str

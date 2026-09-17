@@ -12,10 +12,12 @@ Operations:
 
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import ConfigDict
+
+from .._tolerant import TolerantModel
 
 
-class ESAConfig(BaseModel):
+class ESAConfig(TolerantModel):
     """ESA configuration for an organization.
 
     Warning:
@@ -37,7 +39,7 @@ class ESAConfig(BaseModel):
     sync_interval_minutes: int = 60
 
 
-class ESAConnectionTest(BaseModel):
+class ESAConnectionTest(TolerantModel):
     """Result of an ESA connectivity probe.
 
     The probe never raises for a reachability problem: a refused connection, a

@@ -6,8 +6,10 @@ Provides pipeline management operations including:
 - Execution: Sync pipeline execution
 """
 
+import asyncio
 import builtins
 import warnings
+import weakref
 from typing import TYPE_CHECKING, Any
 
 from .._http import encode_path_param, unwrap_envelope
@@ -68,6 +70,8 @@ class PipelinesModule:
             http_client: Internal HTTP client instance
         """
         self._http = http_client
+        # Created on first sync call only; see ``list_node_types_sync``.
+        self._sync_loop: asyncio.AbstractEventLoop | None = None
 
     async def list(
         self,
@@ -651,6 +655,90 @@ class PipelinesModule:
             "POST",
             f"/api/v1/pipelines/{encode_path_param(pipeline_id)}/executions/{encode_path_param(execution_id)}/cancel",
         )
+
+    # -------------------------------------------------------------------------
+    # Node-type catalogue
+    # -------------------------------------------------------------------------
+
+    async def list_node_types(self) -> builtins.list[dict[str, Any]]:
+        """
+        List every pipeline node type the deployment has registered.
+
+        Covers the built-in types and every node a deployment pack added. Each
+        entry is a dict with ``type``, ``name``, ``description``, ``origin``
+        (``"builtin"`` or ``"pack:<pack_id>"``), ``citation``, ``binding``
+        (``None`` for built-ins), ``params`` (each with ``key``, ``label``,
+        ``type``, ``default``, ``required``, ``min``, ``max``, ``choices``),
+        ``inputs`` and ``outputs`` (each with ``name``, ``type``,
+        ``description``).
+
+        Verified route: ``GET /api/v1/pipelines/node-types``, which answers
+        ``{"data": [...]}``; this method returns the unwrapped list. Requires
+        the same authorization as reading pipelines (``agents:read``).
+
+        Returns:
+            The registered node types, in the server's order (built-ins
+            first).
+
+        Raises:
+            ServiceError: The server answered with something other than a
+                list of node types. Raised rather than returning an empty list,
+                because an empty catalogue is indistinguishable from a
+                deployment with no node types at all.
+
+        Example:
+            >>> for node_type in await client.pipelines.list_node_types():
+            ...     print(node_type["type"], node_type["origin"])
+        """
+        response = await self._http.request("GET", "/api/v1/pipelines/node-types")
+        payload = unwrap_envelope(response)
+        if not isinstance(payload, builtins.list) or not all(
+            isinstance(item, dict) for item in payload
+        ):
+            raise ServiceError(
+                "Unexpected response from GET /api/v1/pipelines/node-types: "
+                "expected {'data': [<node type>, ...]}",
+                details={"response_type": type(response).__name__},
+            )
+        return payload
+
+    def list_node_types_sync(self) -> builtins.list[dict[str, Any]]:
+        """
+        Blocking form of :meth:`list_node_types`, for scripts without an event loop.
+
+        Runs on an event loop owned by this module and reused across sync
+        calls. It is deliberately NOT ``asyncio.run``: that closes its loop on
+        return, and the client's pooled connections belong to the loop that
+        opened them, so a second sync call would reuse a connection bound to a
+        closed loop.
+
+        Use ONE mode per client. Connections opened here belong to this
+        module's private loop, and connections opened under your own loop
+        belong to that one; mixing the two on one client can hand a request a
+        connection from the other loop.
+
+        Raises:
+            RuntimeError: Called from a thread that is already running an event
+                loop. Blocking there would stall that loop; ``await
+                list_node_types()`` instead.
+            ServiceError: As :meth:`list_node_types`.
+        """
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            pass
+        else:
+            raise RuntimeError(
+                "list_node_types_sync() cannot run inside a running event loop; "
+                "use 'await client.pipelines.list_node_types()' instead"
+            )
+        if self._sync_loop is None or self._sync_loop.is_closed():
+            loop = asyncio.new_event_loop()
+            # Close the loop when this module is garbage-collected, so a
+            # short-lived client does not leak it.
+            weakref.finalize(self, loop.close)
+            self._sync_loop = loop
+        return self._sync_loop.run_until_complete(self.list_node_types())
 
     # -------------------------------------------------------------------------
     # Validation

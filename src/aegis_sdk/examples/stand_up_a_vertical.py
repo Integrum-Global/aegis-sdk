@@ -16,6 +16,21 @@ Prerequisites:
     export AGENTIC_OS_BASE_URL=https://your-deployment.example.com   # REQUIRED, no default
     export AGENTIC_OS_API_KEY=sk_live_your_key_here
     export AGENTIC_OS_MODEL=<your model id>                          # examples never hardcode one
+
+Session vs API-key callers — read before adapting this file:
+    This example authenticates with an API KEY, and creating an organization
+    therefore needs no extra step: the server does not rotate a key's
+    credentials, and a key's organization is fixed, so every call below runs in
+    the organization created on the first line.
+
+    A SESSION (JWT / bearer) caller is different. For one of those, creating an
+    organization also switches that session into it and ROTATES the pair: the
+    access token the request authenticated with, and the refresh token minted
+    alongside it, are revoked immediately — not at their expiry. The SDK does
+    NOT adopt the returned token for you. If you lift this example onto a
+    session, call ``client.set_auth_token(resp["access_token"])`` with the value
+    from ``client.organizations.create(...)`` before sending the next request,
+    or that request is rejected with 401.
 """
 
 import asyncio

@@ -46,9 +46,10 @@ import builtins
 import json
 from typing import TYPE_CHECKING, Any
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import ConfigDict
 
 from .._http import encode_path_param
+from .._tolerant import TolerantModel
 from ..exceptions import NotFoundError
 
 if TYPE_CHECKING:
@@ -107,7 +108,7 @@ def _parse_config(raw: object) -> dict[str, Any]:
     return raw if isinstance(raw, dict) else {}
 
 
-class McpRegistration(BaseModel):
+class McpRegistration(TolerantModel):
     """ONE stored MCP server: its endpoint and credential, kept in one place.
 
     A registration is STORAGE, not an attachment. Nothing is bound to an agent
@@ -151,7 +152,7 @@ class McpRegistration(BaseModel):
         return value if isinstance(value, str) else None
 
 
-class McpBinding(BaseModel):
+class McpBinding(TolerantModel):
     """One MCP server attached to ONE agent.
 
     Two forms, and :attr:`is_reference` says which:

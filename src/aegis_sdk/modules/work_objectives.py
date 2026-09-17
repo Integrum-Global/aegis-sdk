@@ -143,9 +143,10 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 from typing import TYPE_CHECKING, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from .._http import encode_path_param
+from .._tolerant import TolerantModel
 
 if TYPE_CHECKING:
     from .._http import HTTPClient
@@ -156,7 +157,7 @@ if TYPE_CHECKING:
 # ===========================================================================
 
 
-class ObjectiveRecentItem(BaseModel):
+class ObjectiveRecentItem(TolerantModel):
     """One row of ``GET /objectives/recent``.
 
     Built inline by the handler as a plain dict (no server-side
@@ -183,7 +184,7 @@ class ObjectiveRecentItem(BaseModel):
     updated_at: str | None = None
 
 
-class ObjectiveRecentList(BaseModel):
+class ObjectiveRecentList(TolerantModel):
     """Response for ``GET /objectives/recent`` (``ObjectiveListResponse``)."""
 
     records: list[ObjectiveRecentItem]
@@ -1841,7 +1842,7 @@ class WorkObjectivesModule:
 # ===========================================================================
 
 
-class WorkUnitTrustInfo(BaseModel):
+class WorkUnitTrustInfo(TolerantModel):
     """Trust information nested on a work unit."""
 
     status: str = "valid"
@@ -1851,7 +1852,7 @@ class WorkUnitTrustInfo(BaseModel):
     trustChainId: str | None = None
 
 
-class WorkUnitWorkspaceRef(BaseModel):
+class WorkUnitWorkspaceRef(TolerantModel):
     """Workspace reference nested on a work unit."""
 
     id: str
@@ -1859,7 +1860,7 @@ class WorkUnitWorkspaceRef(BaseModel):
     color: str | None = None
 
 
-class WorkUnit(BaseModel):
+class WorkUnit(TolerantModel):
     """Work unit record (``WorkUnitResponse``, camelCase)."""
 
     id: str
@@ -1880,7 +1881,7 @@ class WorkUnit(BaseModel):
     subUnitCount: int | None = None
 
 
-class WorkUnitListResponse(BaseModel):
+class WorkUnitListResponse(TolerantModel):
     """Response for ``GET /work-units`` (``WorkUnitListResponse``)."""
 
     items: list[WorkUnit]
@@ -1890,7 +1891,7 @@ class WorkUnitListResponse(BaseModel):
     hasMore: bool
 
 
-class RunResult(BaseModel):
+class RunResult(TolerantModel):
     """Response for ``POST /work-units/{id}/run`` (``RunResultResponse``, camelCase)."""
 
     id: str
@@ -1902,7 +1903,7 @@ class RunResult(BaseModel):
     error: str | None = None
 
 
-class ExecutionResult(BaseModel):
+class ExecutionResult(TolerantModel):
     """Response for ``POST /work-units/{id}/execute`` (``ExecutionResultResponse``, snake_case)."""
 
     run_id: str
@@ -1913,7 +1914,7 @@ class ExecutionResult(BaseModel):
     tokens_used: int = 0
 
 
-class ConfigVersion(BaseModel):
+class ConfigVersion(TolerantModel):
     """A snapshot of a work unit's configuration."""
 
     id: str
@@ -1928,7 +1929,7 @@ class ConfigVersion(BaseModel):
     tags: list[str] | None = None
 
 
-class VersionList(BaseModel):
+class VersionList(TolerantModel):
     """A page of config versions, plus which one is live."""
 
     versions: list[ConfigVersion] = Field(default_factory=list)
@@ -1936,7 +1937,7 @@ class VersionList(BaseModel):
     currentVersion: int
 
 
-class VersionChange(BaseModel):
+class VersionChange(TolerantModel):
     """One field-level difference between two versions."""
 
     field: str
@@ -1946,7 +1947,7 @@ class VersionChange(BaseModel):
     newValue: Any | None = None
 
 
-class VersionComparison(BaseModel):
+class VersionComparison(TolerantModel):
     """A field-level diff between two config versions."""
 
     fromVersion: ConfigVersion
@@ -1954,7 +1955,7 @@ class VersionComparison(BaseModel):
     changes: list[VersionChange] = Field(default_factory=list)
 
 
-class ExecutionConfig(BaseModel):
+class ExecutionConfig(TolerantModel):
     """Response for the execution-config get/patch endpoints (snake_case)."""
 
     id: str | None = None
@@ -1982,7 +1983,7 @@ class ExecutionConfig(BaseModel):
 # ===========================================================================
 
 
-class Directive(BaseModel):
+class Directive(TolerantModel):
     """Directive record (``DirectiveResponse``)."""
 
     model_config = ConfigDict(extra="allow")
@@ -2027,14 +2028,14 @@ class Directive(BaseModel):
     updated_at: str
 
 
-class DirectiveList(BaseModel):
+class DirectiveList(TolerantModel):
     """Response for ``GET /directives`` (``DirectiveListResponse``)."""
 
     records: list[Directive]
     total: int
 
 
-class AcknowledgmentStatus(BaseModel):
+class AcknowledgmentStatus(TolerantModel):
     """Response for ``GET /directives/{id}/acknowledgments``."""
 
     directive_id: str
@@ -2047,7 +2048,7 @@ class AcknowledgmentStatus(BaseModel):
     target_all_units: bool = False
 
 
-class BatchAcknowledgeResult(BaseModel):
+class BatchAcknowledgeResult(TolerantModel):
     """Response for ``POST /directives/{id}/batch-acknowledge``."""
 
     directive_id: str
@@ -2061,7 +2062,7 @@ class BatchAcknowledgeResult(BaseModel):
 # ===========================================================================
 
 
-class Intervention(BaseModel):
+class Intervention(TolerantModel):
     """Response for a pause/resume/tighten-constraints/fence intervention
     (``InterventionResponse``, also each row of ``get_intervention_history``)."""
 
@@ -2078,7 +2079,7 @@ class Intervention(BaseModel):
     completedAt: str | None = None
 
 
-class SessionInterventionState(BaseModel):
+class SessionInterventionState(TolerantModel):
     """Response for a session's intervention state (``SessionStateResponse``)."""
 
     sessionId: str
@@ -2092,7 +2093,7 @@ class SessionInterventionState(BaseModel):
     interventions: list[str] = Field(default_factory=list)
 
 
-class SessionInterventionList(BaseModel):
+class SessionInterventionList(TolerantModel):
     """Response for ``GET /interventions/sessions`` (``SessionListResponse``)."""
 
     sessions: list[SessionInterventionState]
@@ -2107,7 +2108,7 @@ class SessionInterventionList(BaseModel):
 # ===========================================================================
 
 
-class AgentEscalationTriggerEvent(BaseModel):
+class AgentEscalationTriggerEvent(TolerantModel):
     """Trigger event that caused an escalation (``TriggerEventResponse``)."""
 
     model_config = ConfigDict(extra="allow")
@@ -2118,7 +2119,7 @@ class AgentEscalationTriggerEvent(BaseModel):
     severity: str
 
 
-class AgentEscalationOption(BaseModel):
+class AgentEscalationOption(TolerantModel):
     """One resolution option (``EscalationOptionResponse``)."""
 
     model_config = ConfigDict(extra="allow")
@@ -2131,7 +2132,7 @@ class AgentEscalationOption(BaseModel):
     benefits: list[str] = Field(default_factory=list)
 
 
-class AgentEscalationRecommendation(BaseModel):
+class AgentEscalationRecommendation(TolerantModel):
     """AI recommendation for resolution (``AIRecommendationResponse``)."""
 
     model_config = ConfigDict(extra="allow")
@@ -2142,7 +2143,7 @@ class AgentEscalationRecommendation(BaseModel):
     supportingEvidence: list[str] = Field(default_factory=list)
 
 
-class AgentEscalationConstraintViolation(BaseModel):
+class AgentEscalationConstraintViolation(TolerantModel):
     """One constraint violation (``ConstraintViolationResponse``)."""
 
     model_config = ConfigDict(extra="allow")
@@ -2154,7 +2155,7 @@ class AgentEscalationConstraintViolation(BaseModel):
     actualValue: dict[str, Any] | None = None
 
 
-class AgentEscalationConstraintState(BaseModel):
+class AgentEscalationConstraintState(TolerantModel):
     """Current constraint state (``ConstraintStateResponse``)."""
 
     model_config = ConfigDict(extra="allow")
@@ -2164,7 +2165,7 @@ class AgentEscalationConstraintState(BaseModel):
     remainingBudget: dict[str, Any] | None = None
 
 
-class AgentEscalationGatheredContext(BaseModel):
+class AgentEscalationGatheredContext(TolerantModel):
     """Context gathered for the escalation (``GatheredContextResponse``)."""
 
     model_config = ConfigDict(extra="allow")
@@ -2175,7 +2176,7 @@ class AgentEscalationGatheredContext(BaseModel):
     stakeholderContext: dict[str, Any] = Field(default_factory=dict)
 
 
-class AgentEscalation(BaseModel):
+class AgentEscalation(TolerantModel):
     """A single agent escalation in SmartEscalationContext format
     (``EscalationContextResponse``, also each row of the pending list)."""
 
@@ -2201,14 +2202,14 @@ class AgentEscalation(BaseModel):
     resolutionReasoning: str | None = None
 
 
-class AgentEscalationList(BaseModel):
+class AgentEscalationList(TolerantModel):
     """Response for ``GET /agent-escalations/pending`` (``EscalationListResponse``)."""
 
     escalations: list[AgentEscalation]
     total: int
 
 
-class AgentEscalationResolveResult(BaseModel):
+class AgentEscalationResolveResult(TolerantModel):
     """Response for ``POST /agent-escalations/{id}/resolve``
     (``ResolveEscalationResponse``, serialized by alias → camelCase)."""
 
@@ -2220,7 +2221,7 @@ class AgentEscalationResolveResult(BaseModel):
     resolvedAt: str
 
 
-class AgentEscalationCancelResult(BaseModel):
+class AgentEscalationCancelResult(TolerantModel):
     """Response for ``POST /agent-escalations/{id}/cancel``
     (``CancelEscalationResponse``, serialized by alias → camelCase)."""
 

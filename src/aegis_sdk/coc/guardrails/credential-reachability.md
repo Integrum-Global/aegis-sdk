@@ -2,7 +2,7 @@
 
 **Scope:** every call you make against a deployed Aegis platform.
 
-The mechanism is documented in the shipped handbook chapter *The API surface*
+The mechanism is documented in the shipped handbook chapter _The API surface_
 (cited by title — the handbook is being renumbered, and a number printed here
 would resolve today and mislead next month), and is not restated here. In one
 line: **an API-key principal carries no personas, ever, and a persona-gated
@@ -36,13 +36,13 @@ merely uninformative; it points at a door that is not there.
 
 `sdk:aegis_sdk.User` declares `role` as a **required `str`**, while a key
 principal is documented as carrying no role. Three plausible wire shapes, tested
-against the installed model:
+against the model this client declares:
 
-| the response carries | result |
-| -------------------- | ------ |
-| `role` omitted       | `ValidationError` — *missing* |
-| `role: null`         | `ValidationError` — *string_type* |
-| `role: ""`           | parses, `role == ''` |
+| the response carries | result                            |
+| -------------------- | --------------------------------- |
+| `role` omitted       | `ValidationError` — _missing_     |
+| `role: null`         | `ValidationError` — _string_type_ |
+| `role: ""`           | parses, `role == ''`              |
 
 **`role` is not the only required field, and that widens the exposure.** Measured
 by omitting each in turn against a control with all present: **six** are required
@@ -50,7 +50,7 @@ by omitting each in turn against a control with all present: **six** are require
 principal thin on any one of them hits the same wall for the same reason.
 
 ⚠ **When you reproduce this, vary ONE field and supply every other.** Otherwise
-all three rows above come back *missing*, the shapes look indistinguishable when
+all three rows above come back _missing_, the shapes look indistinguishable when
 they are not, and the table you build from it is wrong in a way that reads as
 confirmation.
 
@@ -72,7 +72,7 @@ does not block your work, it only removes a convenience.
 
 **UNVERIFIED from this side: which of the three your deployment sends.** It
 cannot be settled without calling one, and this package is the wrong place to
-guess. What is settled is that two of the three make the *diagnostic call itself*
+guess. What is settled is that two of the three make the _diagnostic call itself_
 fail for the credential it exists to diagnose.
 
 So: if `get_current_user()` raises a validation error naming `role`, **do not
@@ -92,11 +92,11 @@ diagnosis and the wrong move everywhere else.
 Retry the identical call with the other credential type. The difference between
 the two results carries more information than the status code does.
 
-| key | session | what it is |
-| --- | ------- | ---------- |
-| 403 | 200     | credential-type reachability. No scope change helps. Use a session. |
+| key | session | what it is                                                           |
+| --- | ------- | -------------------------------------------------------------------- |
+| 403 | 200     | credential-type reachability. No scope change helps. Use a session.  |
 | 403 | 403     | an actual authorization decision. Now look at roles and permissions. |
-| 403 | 401     | your session is not valid. You have measured nothing yet. |
+| 403 | 401     | your session is not valid. You have measured nothing yet.            |
 
 ```bash
 # DO — measure the whole surface once, with both credentials
@@ -147,6 +147,6 @@ you, it was not evidence — whatever it printed.
 
 ## What none of this establishes
 
-That a route you *can* reach is doing what you think. Reachability is admission,
+That a route you _can_ reach is doing what you think. Reachability is admission,
 not correctness, and not enforcement. A route that admits you when it should not
 returns `200`, and no probe in this package can see that.

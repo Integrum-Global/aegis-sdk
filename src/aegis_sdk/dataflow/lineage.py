@@ -31,9 +31,10 @@ from __future__ import annotations
 import builtins
 from typing import TYPE_CHECKING, Any, Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import ConfigDict
 
 from .._http import encode_path_param
+from .._tolerant import TolerantModel
 
 if TYPE_CHECKING:
     from .._http import HTTPClient
@@ -44,7 +45,7 @@ if TYPE_CHECKING:
 _RESERVED_SEGMENTS = frozenset({"graph", "export", "user"})
 
 
-class LineageRecord(BaseModel):
+class LineageRecord(TolerantModel):
     """A single external-agent invocation record (``LineageRecordResponse``).
 
     Extra keys are tolerated rather than rejected: this record grows on the
@@ -90,7 +91,7 @@ class LineageRecord(BaseModel):
     updated_at: str | None = None
 
 
-class LineagePage(BaseModel):
+class LineagePage(TolerantModel):
     """One page of invocation lineages (``LineageListResponse``)."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -101,7 +102,7 @@ class LineagePage(BaseModel):
     limit: int
 
 
-class LineageGraph(BaseModel):
+class LineageGraph(TolerantModel):
     """Invocation graph (``LineageGraphResponse``).
 
     Nodes and edges stay untyped dicts because the server declares them as

@@ -136,12 +136,17 @@ the same remedy applies.
 
 ## 3c. `project.urls.Documentation` — CLOSED
 
-This repository has a published home — `esperie-enterprise/aegis-sdk` — and
-`pyproject.toml`'s `Documentation` URL points at it:
-`https://github.com/esperie-enterprise/aegis-sdk/tree/main/src/aegis_sdk/docs`.
+The `Documentation` URL no longer names a host at all. It previously pointed
+into the private platform repository, which was neither resolvable from outside
+nor a name that belonged in a partner-facing descriptor; it was then repointed
+at a second repository that is ALSO private, and the entry was marked closed
+here on that basis — a closure that did not hold, because a partner cannot read
+a private repository either.
 
-It previously pointed into the private platform repository, which was neither
-resolvable from outside nor a name that belonged in a partner-facing descriptor.
+⚠ THIS REPOSITORY IS PUBLISHED PER DEPLOYMENT. The address a partner clones from
+belongs to the deployment, not to this file, and canon does not know it. Any
+absolute URL written here is therefore wrong for every reader except one, which
+is why the field is now absent rather than repointed a third time.
 Kept here as a closed entry rather than deleted, so the next reader does not
 re-open a decision that has been taken. The documentation itself ships in this
 tree under `src/aegis_sdk/docs/`.

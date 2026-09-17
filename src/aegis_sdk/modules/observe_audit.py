@@ -25,16 +25,17 @@ separate orchestrator pass registers it on ``AgenticOSClient``.
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import ConfigDict
 
 from .._http import encode_path_param
+from .._tolerant import TolerantModel
 
 # ============================================================================
 # Response Models (local — mirror the server response shape exactly)
 # ============================================================================
 
 
-class AuditLogEntry(BaseModel):
+class AuditLogEntry(TolerantModel):
     """Single audit log entry (already snake_case on the wire)."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -53,7 +54,7 @@ class AuditLogEntry(BaseModel):
     created_at: str
 
 
-class AuditLogListResult(BaseModel):
+class AuditLogListResult(TolerantModel):
     """Paginated audit log list response."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -62,7 +63,7 @@ class AuditLogListResult(BaseModel):
     total: int
 
 
-class AlertThresholdListResult(BaseModel):
+class AlertThresholdListResult(TolerantModel):
     """Paginated alert-threshold list response.
 
     Mirrors the ``list_thresholds`` return — ``{records, total}``. The threshold rows are the
@@ -77,7 +78,7 @@ class AlertThresholdListResult(BaseModel):
     total: int
 
 
-class AlertLifecycleResult(BaseModel):
+class AlertLifecycleResult(TolerantModel):
     """Confirmation of an alert lifecycle transition (acknowledge / resolve).
 
     Mirrors ``AlertLifecycleResponse`` —

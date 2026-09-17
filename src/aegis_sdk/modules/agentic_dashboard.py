@@ -24,16 +24,17 @@ on ``AgenticOSClient``.
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from .._http import encode_path_param
+from .._tolerant import TolerantModel
 
 # ============================================================================
 # Response Models (local — mirror the server response shape exactly)
 # ============================================================================
 
 
-class AgentContext(BaseModel):
+class AgentContext(TolerantModel):
     """User's shadow agent context (already snake_case on the wire)."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -45,7 +46,7 @@ class AgentContext(BaseModel):
     permission_level: str | None = None
 
 
-class LastAgentAction(BaseModel):
+class LastAgentAction(TolerantModel):
     """Most recent agent activity event (already snake_case on the wire)."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -56,7 +57,7 @@ class LastAgentAction(BaseModel):
     objective_id: str | None = None
 
 
-class DashboardStats(BaseModel):
+class DashboardStats(TolerantModel):
     """
     Dashboard statistics for the Agentic OS home page.
 
@@ -83,7 +84,7 @@ class DashboardStats(BaseModel):
     last_agent_action: LastAgentAction | None = Field(None, alias="lastAgentAction")
 
 
-class InboxResponse(BaseModel):
+class InboxResponse(TolerantModel):
     """
     Task inbox response.
 
@@ -98,7 +99,7 @@ class InboxResponse(BaseModel):
     total: int
 
 
-class ActivityFeedItem(BaseModel):
+class ActivityFeedItem(TolerantModel):
     """Single activity feed item (already snake_case on the wire)."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -114,7 +115,7 @@ class ActivityFeedItem(BaseModel):
     timestamp: str
 
 
-class ActivityFeedResponse(BaseModel):
+class ActivityFeedResponse(TolerantModel):
     """Activity feed response."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -123,7 +124,7 @@ class ActivityFeedResponse(BaseModel):
     total: int
 
 
-class ClaimResult(BaseModel):
+class ClaimResult(TolerantModel):
     """Result of claiming a task from the inbox."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -132,7 +133,7 @@ class ClaimResult(BaseModel):
     request: dict[str, Any]
 
 
-class ValidateResult(BaseModel):
+class ValidateResult(TolerantModel):
     """
     Result of validating (approve/reject/revise) a completed request.
 
@@ -148,7 +149,7 @@ class ValidateResult(BaseModel):
     notification: dict[str, Any] | None = None
 
 
-class PoolSummary(BaseModel):
+class PoolSummary(TolerantModel):
     """Task pool summary (list view)."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -160,7 +161,7 @@ class PoolSummary(BaseModel):
     active_tasks: int
 
 
-class PoolListResponse(BaseModel):
+class PoolListResponse(TolerantModel):
     """List of task pools."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -169,7 +170,7 @@ class PoolListResponse(BaseModel):
     total: int
 
 
-class PoolDetail(BaseModel):
+class PoolDetail(TolerantModel):
     """Single task pool detail (includes claim/pool timeout fields)."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -185,7 +186,7 @@ class PoolDetail(BaseModel):
     claim_timeout: str
 
 
-class DriftMetrics(BaseModel):
+class DriftMetrics(TolerantModel):
     """Drift metrics rollup.
 
     Mirrors ``DriftMetrics`` — camelCase
@@ -199,7 +200,7 @@ class DriftMetrics(BaseModel):
     recovery_rate: float = Field(0.0, alias="recoveryRate")
 
 
-class DriftStatus(BaseModel):
+class DriftStatus(TolerantModel):
     """Complete drift status for an agent.
 
     Mirrors ``DriftStatusResponse`` —
@@ -220,7 +221,7 @@ class DriftStatus(BaseModel):
     metrics: DriftMetrics
 
 
-class DriftRecoveryRequest(BaseModel):
+class DriftRecoveryRequest(TolerantModel):
     """Drift recovery request record.
 
     Mirrors ``DriftRecoveryRequestResponse`` — camelCase on the wire. The route wraps this under a
@@ -243,7 +244,7 @@ class DriftRecoveryRequest(BaseModel):
     review_notes: str | None = Field(None, alias="reviewNotes")
 
 
-class DriftTrigger(BaseModel):
+class DriftTrigger(TolerantModel):
     """Drift trigger detail on an alert.
 
     Mirrors ``DriftTriggerResponse``.
@@ -259,7 +260,7 @@ class DriftTrigger(BaseModel):
     metrics: dict[str, Any] | None = None
 
 
-class DriftAlert(BaseModel):
+class DriftAlert(TolerantModel):
     """Active drift alert across agents.
 
     Mirrors ``DriftAlertResponse`` —
@@ -285,7 +286,7 @@ class DriftAlert(BaseModel):
     notes: str | None = None
 
 
-class ReasoningTraceRecord(BaseModel):
+class ReasoningTraceRecord(TolerantModel):
     """Single redacted reasoning trace (governance decision review).
 
     Mirrors ``ReasoningTraceRecord`` — all field names camelCase on the wire. Content is redacted
@@ -312,7 +313,7 @@ class ReasoningTraceRecord(BaseModel):
     organization_id: str = Field(alias="organizationId")
 
 
-class ReasoningTraceListResponse(BaseModel):
+class ReasoningTraceListResponse(TolerantModel):
     """Paginated reasoning-trace list.
 
     Mirrors ``ReasoningTraceListResponse`` — ``{records, total}``.

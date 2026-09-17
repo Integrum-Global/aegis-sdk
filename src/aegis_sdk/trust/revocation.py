@@ -14,12 +14,13 @@ Operations:
 
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from .._http import encode_path_param
+from .._tolerant import TolerantModel
 
 
-class RevocationResult(BaseModel):
+class RevocationResult(TolerantModel):
     """Outcome of revoking trust for one agent.
 
     Carries a human-readable ``message`` and ``reason`` alongside the fields
@@ -33,7 +34,7 @@ class RevocationResult(BaseModel):
     reason: str | None = None
 
 
-class IncompleteRevocationJob(BaseModel):
+class IncompleteRevocationJob(TolerantModel):
     """A cascade revocation that did not complete.
 
     While a job sits in this state, some of the agents it names may STILL hold
@@ -55,7 +56,7 @@ class IncompleteRevocationJob(BaseModel):
     updated_at: str
 
 
-class RevocationJobResumeResult(BaseModel):
+class RevocationJobResumeResult(TolerantModel):
     """Outcome of resuming an incomplete cascade revocation.
 
     ``timed_out`` reports whether the RESUME itself ran out of time. A resume

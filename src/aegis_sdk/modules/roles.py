@@ -24,12 +24,13 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from .._http import encode_path_param
+from .._tolerant import TolerantModel
 
 
-class Role(BaseModel):
+class Role(TolerantModel):
     """An organization role — the accountability anchor a unit is built from.
 
     Note:
@@ -86,7 +87,7 @@ class Role(BaseModel):
     updated_at: str
 
 
-class RoleList(BaseModel):
+class RoleList(TolerantModel):
     """Paginated role list."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -95,7 +96,7 @@ class RoleList(BaseModel):
     total: int = 0
 
 
-class RoleHierarchyNode(BaseModel):
+class RoleHierarchyNode(TolerantModel):
     """One node of the reporting tree.
 
     ``children`` nests recursively. Roots are roles with no parent, or whose
@@ -122,7 +123,7 @@ class RoleHierarchyNode(BaseModel):
 RoleHierarchyNode.model_rebuild()
 
 
-class RoleHierarchy(BaseModel):
+class RoleHierarchy(TolerantModel):
     """Response envelope for the reporting-tree read."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -131,7 +132,7 @@ class RoleHierarchy(BaseModel):
     total: int = 0
 
 
-class RoleAgentEntry(BaseModel):
+class RoleAgentEntry(TolerantModel):
     """An agent linked to a role."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -143,7 +144,7 @@ class RoleAgentEntry(BaseModel):
     role_id: str
 
 
-class RoleAgents(BaseModel):
+class RoleAgents(TolerantModel):
     """Response envelope for the role-agents read."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -152,7 +153,7 @@ class RoleAgents(BaseModel):
     total: int = 0
 
 
-class RoleUserEntry(BaseModel):
+class RoleUserEntry(TolerantModel):
     """A user attached to a role.
 
     ``assignment_type`` distinguishes the role's single canonical assignee
@@ -169,7 +170,7 @@ class RoleUserEntry(BaseModel):
     assignment_type: str = "assigned"
 
 
-class RoleUsers(BaseModel):
+class RoleUsers(TolerantModel):
     """Response envelope for the role-users read."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -178,7 +179,7 @@ class RoleUsers(BaseModel):
     total: int = 0
 
 
-class RoleDeleted(BaseModel):
+class RoleDeleted(TolerantModel):
     """Confirmation message returned by the delete route."""
 
     model_config = ConfigDict(populate_by_name=True)

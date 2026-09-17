@@ -3,6 +3,8 @@
 Verified against the server ``organization-units`` router(mounted at ``/api/v1``)).
 """
 
+from __future__ import annotations
+
 from typing import TYPE_CHECKING, Any
 
 from .._http import encode_path_param
@@ -14,7 +16,7 @@ if TYPE_CHECKING:
 class OrganizationUnitsModule:
     """Organization unit management (create + get)."""
 
-    def __init__(self, http_client: "HTTPClient") -> None:
+    def __init__(self, http_client: HTTPClient) -> None:
         self._http = http_client
 
     async def create(
@@ -81,5 +83,42 @@ class OrganizationUnitsModule:
         """
         resp: dict[str, Any] = await self._http.request(
             "GET", f"/api/v1/organization-units/{encode_path_param(unit_id)}"
+        )
+        return resp
+    async def list(
+        self,
+        parent_unit_id: str | None = None,
+        unit_type: str | None = None,
+        include_archived: bool = False,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> dict[str, Any]:
+        """List organization units in the caller's organization.
+
+        Server: ``GET /api/v1/organization-units`` (``organization_units.py:459``).
+        This route is API-key-aware: a key holding ``units:read`` /
+        ``organizations:read`` is admitted, not only a session persona.
+
+        Args:
+            parent_unit_id: Filter by parent unit.
+            unit_type: Filter by unit type.
+            include_archived: Include archived units (default False).
+            limit: Maximum results (1-200, server default 50).
+            offset: Pagination offset.
+
+        Returns:
+            ``{"records": [...], "total": int}``.
+        """
+        params: dict[str, Any] = {
+            "include_archived": include_archived,
+            "limit": limit,
+            "offset": offset,
+        }
+        if parent_unit_id is not None:
+            params["parent_unit_id"] = parent_unit_id
+        if unit_type is not None:
+            params["unit_type"] = unit_type
+        resp: dict[str, Any] = await self._http.request(
+            "GET", "/api/v1/organization-units", params=params
         )
         return resp

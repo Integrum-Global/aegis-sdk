@@ -52,16 +52,17 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from .._http import encode_path_param
+from .._tolerant import TolerantModel
 
 # ---------------------------------------------------------------------------
 # Response models -- Pools (verified `_pool_to_response`)
 # ---------------------------------------------------------------------------
 
 
-class PoolConfig(BaseModel):
+class PoolConfig(TolerantModel):
     """Pool configuration (response shape)."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -73,7 +74,7 @@ class PoolConfig(BaseModel):
     required_capabilities: list[str] = Field(default_factory=list, alias="requiredCapabilities")
 
 
-class EscalationChainItem(BaseModel):
+class EscalationChainItem(TolerantModel):
     """A single escalation-chain step (response shape)."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -86,7 +87,7 @@ class EscalationChainItem(BaseModel):
     order: int = 0
 
 
-class AdminPool(BaseModel):
+class AdminPool(TolerantModel):
     """Task pool (response shape)."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -106,14 +107,14 @@ class AdminPool(BaseModel):
     updated_at: str = Field("", alias="updatedAt")
 
 
-class PoolListResult(BaseModel):
+class PoolListResult(TolerantModel):
     """Paginated pool-list envelope."""
 
     records: list[AdminPool] = Field(default_factory=list)
     total: int = 0
 
 
-class PoolStats(BaseModel):
+class PoolStats(TolerantModel):
     """Live pool statistics."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -131,7 +132,7 @@ class PoolStats(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-class AgentAssignment(BaseModel):
+class AgentAssignment(TolerantModel):
     """Agent-role assignment (response shape)."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -147,21 +148,21 @@ class AgentAssignment(BaseModel):
     created_by: str = Field("", alias="createdBy")
 
 
-class AssignmentListResult(BaseModel):
+class AssignmentListResult(TolerantModel):
     """Paginated assignment-list envelope."""
 
     records: list[AgentAssignment] = Field(default_factory=list)
     total: int = 0
 
 
-class BulkDeleteError(BaseModel):
+class BulkDeleteError(TolerantModel):
     """A single failed id in a bulk-delete response."""
 
     id: str
     error: str
 
 
-class BulkDeleteResult(BaseModel):
+class BulkDeleteResult(TolerantModel):
     """Bulk agent-assignment delete result."""
 
     deleted: int = 0
@@ -173,7 +174,7 @@ class BulkDeleteResult(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-class RoleHierarchyNode(BaseModel):
+class RoleHierarchyNode(TolerantModel):
     """A node in the role hierarchy tree."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -190,7 +191,7 @@ class RoleHierarchyNode(BaseModel):
 RoleHierarchyNode.model_rebuild()
 
 
-class RoleHierarchyResult(BaseModel):
+class RoleHierarchyResult(TolerantModel):
     """Role hierarchy envelope."""
 
     roots: list[RoleHierarchyNode] = Field(default_factory=list)
@@ -203,7 +204,7 @@ class RoleHierarchyResult(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-class AccessAgent(BaseModel):
+class AccessAgent(TolerantModel):
     """Agent visible at a role, with its access classification."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -214,7 +215,7 @@ class AccessAgent(BaseModel):
     permission_level: str = Field("read_only", alias="permissionLevel")
 
 
-class AccessTreeNode(BaseModel):
+class AccessTreeNode(TolerantModel):
     """Role node in the access tree, with nested children."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -232,13 +233,13 @@ class AccessTreeNode(BaseModel):
 AccessTreeNode.model_rebuild()
 
 
-class AccessTreeResult(BaseModel):
+class AccessTreeResult(TolerantModel):
     """Envelope for GET /admin/access/tree."""
 
     roots: list[AccessTreeNode] = Field(default_factory=list)
 
 
-class AccessMatrixCell(BaseModel):
+class AccessMatrixCell(TolerantModel):
     """Single cell of the role x agent access matrix."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -249,7 +250,7 @@ class AccessMatrixCell(BaseModel):
     permission_level: str | None = Field(None, alias="permissionLevel")
 
 
-class AccessMatrixRow(BaseModel):
+class AccessMatrixRow(TolerantModel):
     """A single row of the access matrix (one per role)."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -259,21 +260,21 @@ class AccessMatrixRow(BaseModel):
     cells: list[AccessMatrixCell] = Field(default_factory=list)
 
 
-class AccessMatrixAgent(BaseModel):
+class AccessMatrixAgent(TolerantModel):
     """Compact agent descriptor for matrix column headers."""
 
     id: str
     name: str = ""
 
 
-class AccessMatrixResult(BaseModel):
+class AccessMatrixResult(TolerantModel):
     """Envelope for GET /admin/access/matrix."""
 
     roles: list[AccessMatrixRow] = Field(default_factory=list)
     agents: list[AccessMatrixAgent] = Field(default_factory=list)
 
 
-class AccessAuditEntry(BaseModel):
+class AccessAuditEntry(TolerantModel):
     """A single access grant/revoke/modify audit record."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -291,14 +292,14 @@ class AccessAuditEntry(BaseModel):
     timestamp: str = ""
 
 
-class AccessAuditResult(BaseModel):
+class AccessAuditResult(TolerantModel):
     """Envelope for GET /admin/access/audit."""
 
     records: list[AccessAuditEntry] = Field(default_factory=list)
     total: int = 0
 
 
-class AccessExportResult(BaseModel):
+class AccessExportResult(TolerantModel):
     """JSON-format envelope for POST /admin/access/export
     ( -- the ``format="json"`` branch this module
     always requests; see module docstring's Known limitation)."""

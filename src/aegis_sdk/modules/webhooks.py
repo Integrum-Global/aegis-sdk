@@ -19,12 +19,13 @@ Provides webhook management for event-driven integrations.
 import builtins
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from .._http import encode_path_param
+from .._tolerant import TolerantModel
 
 
-class Webhook(BaseModel):
+class Webhook(TolerantModel):
     """
     Webhook model.
 
@@ -53,7 +54,7 @@ class WebhookWithSecret(Webhook):
     secret: str = Field(repr=False)  # signing secret shown once -- hidden from repr/str (H1)
 
 
-class WebhookDelivery(BaseModel):
+class WebhookDelivery(TolerantModel):
     """
     Webhook delivery record.
 
@@ -78,7 +79,7 @@ class WebhookDelivery(BaseModel):
     delivered_at: str | None = Field(None, alias="deliveredAt")
 
 
-class TestResult(BaseModel):
+class TestResult(TolerantModel):
     """Webhook test result."""
 
     model_config = ConfigDict(populate_by_name=True)

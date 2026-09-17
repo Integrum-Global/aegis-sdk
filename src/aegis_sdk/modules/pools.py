@@ -29,12 +29,13 @@ Provides agent pool management, task claiming, and escalation features.
 import builtins
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from .._http import encode_path_param
+from .._tolerant import TolerantModel
 
 
-class PoolConfig(BaseModel):
+class PoolConfig(TolerantModel):
     """Pool configuration."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -44,7 +45,7 @@ class PoolConfig(BaseModel):
     capability_requirements: list[str] | None = Field(None, alias="capabilityRequirements")
 
 
-class Pool(BaseModel):
+class Pool(TolerantModel):
     """Agent pool model."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -68,7 +69,7 @@ class Pool(BaseModel):
     updated_at: str = Field(alias="updatedAt")
 
 
-class PoolMember(BaseModel):
+class PoolMember(TolerantModel):
     """Pool membership model."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -84,7 +85,7 @@ class PoolMember(BaseModel):
     updated_at: str = Field(alias="updatedAt")
 
 
-class PoolUtilization(BaseModel):
+class PoolUtilization(TolerantModel):
     """Pool utilization metrics."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -98,7 +99,7 @@ class PoolUtilization(BaseModel):
     escalation_rate: float = Field(alias="escalationRate")
 
 
-class PoolTaskResult(BaseModel):
+class PoolTaskResult(TolerantModel):
     """
     Outcome of a task claim, release, or claim-timeout change.
 
@@ -116,7 +117,7 @@ class PoolTaskResult(BaseModel):
     error: str | None = None
 
 
-class PoolTaskList(BaseModel):
+class PoolTaskList(TolerantModel):
     """
     A page of pending pool tasks.
 
@@ -130,7 +131,7 @@ class PoolTaskList(BaseModel):
     total: int = 0
 
 
-class PoolSummaryList(BaseModel):
+class PoolSummaryList(TolerantModel):
     """A page of pool summaries; records are backend-shaped and unmodelled."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -139,7 +140,7 @@ class PoolSummaryList(BaseModel):
     count: int = 0
 
 
-class PoolRosterEnvelope(BaseModel):
+class PoolRosterEnvelope(TolerantModel):
     """The pools a user belongs to; entries are backend-shaped and unmodelled."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -148,7 +149,7 @@ class PoolRosterEnvelope(BaseModel):
     total: int = 0
 
 
-class EscalationChainItem(BaseModel):
+class EscalationChainItem(TolerantModel):
     """Escalation chain step."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -159,7 +160,7 @@ class EscalationChainItem(BaseModel):
     timeout_minutes: int = Field(alias="timeoutMinutes")
 
 
-class EscalationConfig(BaseModel):
+class EscalationConfig(TolerantModel):
     """Escalation configuration for a pool."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -173,7 +174,7 @@ class EscalationConfig(BaseModel):
     )
 
 
-class PendingEscalation(BaseModel):
+class PendingEscalation(TolerantModel):
     """Pending escalation record."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -189,7 +190,7 @@ class PendingEscalation(BaseModel):
     current_step: int = Field(alias="currentStep")
 
 
-class EscalationEvent(BaseModel):
+class EscalationEvent(TolerantModel):
     """Escalation history event."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -204,7 +205,7 @@ class EscalationEvent(BaseModel):
     created_by: str | None = Field(None, alias="createdBy")
 
 
-class EscalationStats(BaseModel):
+class EscalationStats(TolerantModel):
     """Escalation statistics."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -219,7 +220,7 @@ class EscalationStats(BaseModel):
     period_end: str | None = Field(None, alias="periodEnd")
 
 
-class PseudoRequest(BaseModel):
+class PseudoRequest(TolerantModel):
     """Human-in-the-loop request."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -241,7 +242,7 @@ class PseudoRequest(BaseModel):
     updated_at: str = Field(alias="updatedAt")
 
 
-class RequestStats(BaseModel):
+class RequestStats(TolerantModel):
     """Request statistics."""
 
     model_config = ConfigDict(populate_by_name=True)

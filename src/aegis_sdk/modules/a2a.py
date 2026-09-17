@@ -12,12 +12,13 @@ Provides programmatic access to A2A orchestration operations:
 
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from .._http import encode_path_param
+from .._tolerant import TolerantModel
 
 
-class AgentCapability(BaseModel):
+class AgentCapability(TolerantModel):
     """Agent capability model."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -27,7 +28,7 @@ class AgentCapability(BaseModel):
     keywords: list[str] = Field(default_factory=list)
 
 
-class A2AModelCard(BaseModel):
+class A2AModelCard(TolerantModel):
     """A2A model card for agent."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -43,7 +44,7 @@ class A2AModelCard(BaseModel):
     model_id: str | None = Field(None, alias="modelId")
 
 
-class DiscoveredAgent(BaseModel):
+class DiscoveredAgent(TolerantModel):
     """Discovered A2A agent."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -56,7 +57,7 @@ class DiscoveredAgent(BaseModel):
     match_score: float | None = Field(None, alias="matchScore")
 
 
-class RouteResult(BaseModel):
+class RouteResult(TolerantModel):
     """Result of task routing."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -67,7 +68,7 @@ class RouteResult(BaseModel):
     reasoning: str | None = None
 
 
-class InvokeResult(BaseModel):
+class InvokeResult(TolerantModel):
     """
     Result of agent invocation.
 
@@ -85,7 +86,7 @@ class InvokeResult(BaseModel):
     error: str | None = None
 
 
-class OrchestrateResult(BaseModel):
+class OrchestrateResult(TolerantModel):
     """
     Result of multi-agent orchestration.
 

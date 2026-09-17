@@ -12,9 +12,10 @@ import warnings
 from collections.abc import AsyncIterator
 from typing import TYPE_CHECKING, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from .._http import encode_path_param
+from .._tolerant import TolerantModel
 from ..exceptions import ValidationError
 from .models import (
     Agent,
@@ -38,7 +39,7 @@ if TYPE_CHECKING:
 # ---------------------------------------------------------------------------
 
 
-class TestDraftResult(BaseModel):
+class TestDraftResult(TolerantModel):
     """Result of a non-persisted draft test execution.
 
     Mirrors the API's ``TestDraftResponse`` (snake_case emit).
@@ -53,7 +54,7 @@ class TestDraftResult(BaseModel):
     is_test: bool = True
 
 
-class AccessibleAgent(BaseModel):
+class AccessibleAgent(TolerantModel):
     """An agent the current user can assign objectives to.
 
     Mirrors the per-record transform the endpoint applies (snake_case emit;
@@ -79,7 +80,7 @@ class AccessibleAgent(BaseModel):
     workspace_id: str | None = None
 
 
-class DelegateAgent(BaseModel):
+class DelegateAgent(TolerantModel):
     """A delegate (shadow) agent summary.
 
     Mirrors the API's ``DelegateAgentSummary`` (snake_case emit).
@@ -101,7 +102,7 @@ class DelegateAgent(BaseModel):
     updated_at: str
 
 
-class DelegateAgentList(BaseModel):
+class DelegateAgentList(TolerantModel):
     """Paginated delegate-agent roster.
 
     Mirrors the API's ``DelegateAgentListResponse`` (``{records, total}``).
@@ -111,7 +112,7 @@ class DelegateAgentList(BaseModel):
     total: int
 
 
-class DelegateDashboardSummary(BaseModel):
+class DelegateDashboardSummary(TolerantModel):
     """Delegate-agent dashboard rollup.
 
     Mirrors the summary dict the endpoint returns. The canonical
@@ -132,7 +133,7 @@ class DelegateDashboardSummary(BaseModel):
     unhealthy_delegate_agents: int = 0
 
 
-class DelegateAgentCreateResult(BaseModel):
+class DelegateAgentCreateResult(TolerantModel):
     """Envelope returned when creating a delegate agent from a role.
 
     Mirrors the ``{ agent, role, trust_chain }`` envelope the endpoint
@@ -146,7 +147,7 @@ class DelegateAgentCreateResult(BaseModel):
     trust_chain: dict[str, Any] | None = None
 
 
-class DelegateAgentActivityItem(BaseModel):
+class DelegateAgentActivityItem(TolerantModel):
     """One entry in a delegate agent's activity log."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -159,7 +160,7 @@ class DelegateAgentActivityItem(BaseModel):
     metadata: dict[str, Any] | None = None
 
 
-class DelegateAgentHealth(BaseModel):
+class DelegateAgentHealth(TolerantModel):
     """
     A delegate agent's health rollup.
 
@@ -185,7 +186,7 @@ class DelegateAgentHealth(BaseModel):
     trust_progress_percent: int = Field(0, alias="trustProgressPercent")
 
 
-class ObjectiveAnalysis(BaseModel):
+class ObjectiveAnalysis(TolerantModel):
     """
     What the platform makes of a stated objective.
 
@@ -204,7 +205,7 @@ class ObjectiveAnalysis(BaseModel):
     recommended_preset: str | None = None
 
 
-class AgentStatusItem(BaseModel):
+class AgentStatusItem(TolerantModel):
     """
     One agent's status.
 
@@ -224,7 +225,7 @@ class AgentStatusItem(BaseModel):
     last_active_at: str | None = None
 
 
-class AgentStatusList(BaseModel):
+class AgentStatusList(TolerantModel):
     """A page of agent statuses."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -233,7 +234,7 @@ class AgentStatusList(BaseModel):
     total: int = 0
 
 
-class SubagentItem(BaseModel):
+class SubagentItem(TolerantModel):
     """One subagent belonging to a manager agent."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -245,7 +246,7 @@ class SubagentItem(BaseModel):
     description: str | None = None
 
 
-class SubagentList(BaseModel):
+class SubagentList(TolerantModel):
     """A manager agent's subagents."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -254,7 +255,7 @@ class SubagentList(BaseModel):
     total: int = 0
 
 
-class DataSourceList(BaseModel):
+class DataSourceList(TolerantModel):
     """
     An agent's data sources.
 
@@ -268,7 +269,7 @@ class DataSourceList(BaseModel):
     total: int = 0
 
 
-class ManifestGovernance(BaseModel):
+class ManifestGovernance(TolerantModel):
     """
     The governance envelope a manifest registration establishes.
 
@@ -284,7 +285,7 @@ class ManifestGovernance(BaseModel):
     constraints: dict[str, Any] | None = None
 
 
-class ManifestRegistration(BaseModel):
+class ManifestRegistration(TolerantModel):
     """
     The result of registering an agent from a manifest.
 
@@ -303,7 +304,7 @@ class ManifestRegistration(BaseModel):
     governance: ManifestGovernance
 
 
-class PipelineExecutionStart(BaseModel):
+class PipelineExecutionStart(TolerantModel):
     """Result of starting a pipeline execution.
 
     Mirrors the API's ``StartExecutionResponse`` (camelCase emit —
@@ -315,7 +316,7 @@ class PipelineExecutionStart(BaseModel):
     execution_id: str = Field(alias="executionId")
 
 
-class PipelineNodeExecution(BaseModel):
+class PipelineNodeExecution(TolerantModel):
     """A single node's execution status within a pipeline run.
 
     Mirrors the API's ``NodeExecution`` (camelCase emit).
@@ -331,7 +332,7 @@ class PipelineNodeExecution(BaseModel):
     output: Any | None = None
 
 
-class PipelineExecutionLog(BaseModel):
+class PipelineExecutionLog(TolerantModel):
     """A single log entry from a pipeline run.
 
     Mirrors the API's ``ExecutionLog`` (camelCase ``nodeId``).
@@ -347,7 +348,7 @@ class PipelineExecutionLog(BaseModel):
     data: dict[str, Any] | None = None
 
 
-class PipelineExecutionStatus(BaseModel):
+class PipelineExecutionStatus(TolerantModel):
     """Full status of a pipeline execution run.
 
     Mirrors the API's ``ExecutionStatusResponse`` and the
@@ -371,7 +372,7 @@ class PipelineExecutionStatus(BaseModel):
     error: str | None = None
 
 
-class PipelineExecutionHistory(BaseModel):
+class PipelineExecutionHistory(TolerantModel):
     """Paginated pipeline-execution history for one pipeline.
 
     Mirrors the API's ``ExecutionHistoryResponse``. NOTE: the envelope keys

@@ -50,7 +50,7 @@ Including this file. Every count, field name and method name in the shipped
 material was true of one build.
 
 ```bash
-# DO — settle it against the package you installed
+# DO — settle it against the client source in this repository
 python -m aegis_sdk.handbook.check     # every named surface still exists?
 python -c "from aegis_sdk.handbook.check import declared_operations as d; \
 print(len(d()))"                        # how many operations this client declares
@@ -86,12 +86,12 @@ about to build is an attack, not an integration.
 
 Four states, and they need different actions:
 
-| client | server | what it is |
-| ------ | ------ | ---------- |
-| wraps  | serves | ordinary |
-| wraps  | absent | a client defect — the method 404s for everyone |
+| client | server | what it is                                      |
+| ------ | ------ | ----------------------------------------------- |
+| wraps  | serves | ordinary                                        |
+| wraps  | absent | a client defect — the method 404s for everyone  |
 | absent | serves | unwrapped; call it through the raw request path |
-| absent | absent | genuinely not a capability |
+| absent | absent | genuinely not a capability                      |
 
 **Why:** rows two and three are the expensive ones and they look alike from a
 distance. Row two sends an architect to the platform team about a client bug; row

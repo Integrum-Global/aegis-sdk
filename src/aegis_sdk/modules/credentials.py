@@ -21,12 +21,13 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from .._http import encode_path_param
+from .._tolerant import TolerantModel
 
 
-class CredentialMetadata(BaseModel):
+class CredentialMetadata(TolerantModel):
     """A stored credential, without its value.
 
     Note:
@@ -64,7 +65,7 @@ class CredentialMetadata(BaseModel):
     metadata: dict[str, Any] | None = None
 
 
-class CredentialValue(BaseModel):
+class CredentialValue(TolerantModel):
     """A decrypted credential value.
 
     Handle as a secret: it is the plaintext, and the platform recorded an audit
@@ -76,7 +77,7 @@ class CredentialValue(BaseModel):
     value: str
 
 
-class CredentialTypes(BaseModel):
+class CredentialTypes(TolerantModel):
     """The credential types the platform accepts."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -84,7 +85,7 @@ class CredentialTypes(BaseModel):
     types: list[str] = Field(default_factory=list)
 
 
-class CredentialStatuses(BaseModel):
+class CredentialStatuses(TolerantModel):
     """The credential status values the platform declares.
 
     Note:

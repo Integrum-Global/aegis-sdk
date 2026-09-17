@@ -34,12 +34,13 @@ Framework evaluation, scoring and reporting — COMPUTE ONLY, never enforcement
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from .._http import HTTPClient, encode_path_param
+from .._tolerant import TolerantModel
 
 
-class AuditVerificationResult(BaseModel):
+class AuditVerificationResult(TolerantModel):
     """Audit log verification result."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -50,7 +51,7 @@ class AuditVerificationResult(BaseModel):
     error: str | None = None
 
 
-class AuditEntry(BaseModel):
+class AuditEntry(TolerantModel):
     """Audit log entry."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -73,7 +74,7 @@ class AuditEntry(BaseModel):
     sequence_number: int = Field(alias="sequenceNumber")
 
 
-class ComplianceCheck(BaseModel):
+class ComplianceCheck(TolerantModel):
     """Individual compliance check result."""
 
     name: str
@@ -83,7 +84,7 @@ class ComplianceCheck(BaseModel):
     remediation: str | None = None
 
 
-class HIPAAStatus(BaseModel):
+class HIPAAStatus(TolerantModel):
     """HIPAA compliance status."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -101,7 +102,7 @@ class HIPAAStatus(BaseModel):
     transmission_security: list[ComplianceCheck] = Field(alias="transmissionSecurity")
 
 
-class HIPAASettings(BaseModel):
+class HIPAASettings(TolerantModel):
     """HIPAA mode settings."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -120,7 +121,7 @@ class HIPAASettings(BaseModel):
     account_lockout_minutes: int = Field(alias="accountLockoutMinutes")
 
 
-class HIPAAEnableResult(BaseModel):
+class HIPAAEnableResult(TolerantModel):
     """HIPAA enable result."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -132,7 +133,7 @@ class HIPAAEnableResult(BaseModel):
     settings_applied: dict[str, Any] = Field(alias="settingsApplied")
 
 
-class HIPAADisableResult(BaseModel):
+class HIPAADisableResult(TolerantModel):
     """HIPAA disable result."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -144,7 +145,7 @@ class HIPAADisableResult(BaseModel):
     reason: str
 
 
-class EvidenceItem(BaseModel):
+class EvidenceItem(TolerantModel):
     """SOC 2 evidence item."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -156,7 +157,7 @@ class EvidenceItem(BaseModel):
     control_reference: str = Field(alias="controlReference")
 
 
-class SOC2EvidenceSummary(BaseModel):
+class SOC2EvidenceSummary(TolerantModel):
     """SOC 2 evidence summary."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -169,7 +170,7 @@ class SOC2EvidenceSummary(BaseModel):
     period_days: int = Field(alias="periodDays")
 
 
-class SOC2Evidence(BaseModel):
+class SOC2Evidence(TolerantModel):
     """SOC 2 evidence package."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -183,7 +184,7 @@ class SOC2Evidence(BaseModel):
     cc8_change_management: list[EvidenceItem] = Field(alias="cc8ChangeManagement")
 
 
-class RetentionPolicy(BaseModel):
+class RetentionPolicy(TolerantModel):
     """Data retention policy."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -204,7 +205,7 @@ class RetentionPolicy(BaseModel):
     updated_at: str = Field(alias="updatedAt")
 
 
-class RetentionExecutionResult(BaseModel):
+class RetentionExecutionResult(TolerantModel):
     """Retention policy execution result."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -214,7 +215,7 @@ class RetentionExecutionResult(BaseModel):
     dry_run: bool = Field(alias="dryRun")
 
 
-class ComplianceDashboard(BaseModel):
+class ComplianceDashboard(TolerantModel):
     """Compliance dashboard summary."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -225,7 +226,7 @@ class ComplianceDashboard(BaseModel):
     last_updated: str = Field(alias="lastUpdated")
 
 
-class ChainIntegrity(BaseModel):
+class ChainIntegrity(TolerantModel):
     """Result of the most recent audit-chain verification sweep.
 
     ⚠ ``ok=False`` does **not** mean the chain is broken. It also means the
@@ -248,7 +249,7 @@ class ChainIntegrity(BaseModel):
     error: str | None = None
 
 
-class TrustHealth(BaseModel):
+class TrustHealth(TolerantModel):
     """Trust-chain health counters for the organization.
 
     ⚠ ``percentage`` is deliberately **nullable, and must not be defaulted**.

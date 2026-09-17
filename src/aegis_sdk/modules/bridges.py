@@ -33,16 +33,17 @@ from __future__ import annotations
 import builtins
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from .._http import HTTPClient, encode_path_param
+from .._tolerant import TolerantModel
 
 # ===================
 # Models
 # ===================
 
 
-class StandingBridge(BaseModel):
+class StandingBridge(TolerantModel):
     """A permanent, role-anchored collaboration channel between two units."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -84,7 +85,7 @@ class StandingBridge(BaseModel):
     trust_consistent: bool = True
 
 
-class StandingBridgeList(BaseModel):
+class StandingBridgeList(TolerantModel):
     """A page of standing bridges."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -93,7 +94,7 @@ class StandingBridgeList(BaseModel):
     total: int = 0
 
 
-class OverdueBridge(BaseModel):
+class OverdueBridge(TolerantModel):
     """A standing bridge past its periodic-review date."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -106,7 +107,7 @@ class OverdueBridge(BaseModel):
     days_overdue: int | None = None
 
 
-class InteractionCheck(BaseModel):
+class InteractionCheck(TolerantModel):
     """Whether one interaction type is permitted over a standing bridge."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -118,7 +119,7 @@ class InteractionCheck(BaseModel):
     reason: str | None = None
 
 
-class BridgeReview(BaseModel):
+class BridgeReview(TolerantModel):
     """The recorded outcome of a periodic bridge review."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -130,7 +131,7 @@ class BridgeReview(BaseModel):
     reviewed_at: str
 
 
-class ScopedBridge(BaseModel):
+class ScopedBridge(TolerantModel):
     """A temporary channel bounded by a workspace or an objective."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -159,7 +160,7 @@ class ScopedBridge(BaseModel):
     updated_at: str
 
 
-class Participant(BaseModel):
+class Participant(TolerantModel):
     """One participating unit of a scoped bridge.
 
     ``unit_id`` is the only field the server guarantees: it is the key every
@@ -178,7 +179,7 @@ class Participant(BaseModel):
     added_at: str | None = None
 
 
-class ScopedBridgeList(BaseModel):
+class ScopedBridgeList(TolerantModel):
     """A page of scoped bridges."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -187,7 +188,7 @@ class ScopedBridgeList(BaseModel):
     total: int = 0
 
 
-class AdHocBridge(BaseModel):
+class AdHocBridge(TolerantModel):
     """A request/approve channel raised against a unit, with an expiry."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -213,7 +214,7 @@ class AdHocBridge(BaseModel):
     updated_at: str
 
 
-class DeleteResult(BaseModel):
+class DeleteResult(TolerantModel):
     """Server acknowledgement of a delete."""
 
     model_config = ConfigDict(populate_by_name=True)

@@ -21,12 +21,13 @@ Provides notification management and real-time streaming.
 import builtins
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from .._http import encode_path_param
+from .._tolerant import TolerantModel
 
 
-class Notification(BaseModel):
+class Notification(TolerantModel):
     """Notification model."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -45,7 +46,7 @@ class Notification(BaseModel):
     metadata: dict[str, Any] | None = None
 
 
-class NotificationStats(BaseModel):
+class NotificationStats(TolerantModel):
     """Notification statistics."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -55,7 +56,7 @@ class NotificationStats(BaseModel):
     by_type: dict[str, int] = Field(alias="byType")
 
 
-class NotificationChannel(BaseModel):
+class NotificationChannel(TolerantModel):
     """Notification channel model."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -70,7 +71,7 @@ class NotificationChannel(BaseModel):
     updated_at: str = Field(alias="updatedAt")
 
 
-class ChannelTestResult(BaseModel):
+class ChannelTestResult(TolerantModel):
     """Channel test result."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -80,7 +81,7 @@ class ChannelTestResult(BaseModel):
     latency_ms: float | None = Field(None, alias="latencyMs")
 
 
-class NotificationPreferences(BaseModel):
+class NotificationPreferences(TolerantModel):
     """User notification preferences."""
 
     model_config = ConfigDict(populate_by_name=True)

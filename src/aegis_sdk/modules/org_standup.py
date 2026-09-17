@@ -47,9 +47,10 @@ surface when the hierarchy routes were added here.
 
 from typing import TYPE_CHECKING, Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from .._http import encode_path_param
+from .._tolerant import TolerantModel
 
 if TYPE_CHECKING:
     from .._http import HTTPClient
@@ -60,7 +61,7 @@ if TYPE_CHECKING:
 # ---------------------------------------------------------------------------
 
 
-class Organization(BaseModel):
+class Organization(TolerantModel):
     """Organization record (organizations.py::OrganizationResponse).
 
     The server emits ONE response model for create, get and list, so these
@@ -90,7 +91,7 @@ class Organization(BaseModel):
     expires_in: int | None = None
 
 
-class OrganizationList(BaseModel):
+class OrganizationList(TolerantModel):
     """Paginated organization list (``{records, total}``)."""
 
     records: list[Organization]
@@ -102,7 +103,7 @@ class OrganizationList(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-class OrganizationUnit(BaseModel):
+class OrganizationUnit(TolerantModel):
     """Organization unit record (organization_units.py::UnitResponse)."""
 
     id: str
@@ -137,7 +138,7 @@ class OrganizationUnit(BaseModel):
     updated_at: str
 
 
-class OrganizationUnitList(BaseModel):
+class OrganizationUnitList(TolerantModel):
     """Paginated organization-unit list (``{records, total}``)."""
 
     records: list[OrganizationUnit]
@@ -149,7 +150,7 @@ class OrganizationUnitList(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-class OrganizationRole(BaseModel):
+class OrganizationRole(TolerantModel):
     """Organization role record (organization_roles.py::RoleResponse)."""
 
     id: str
@@ -185,7 +186,7 @@ class OrganizationRole(BaseModel):
     updated_at: str
 
 
-class OrganizationRoleList(BaseModel):
+class OrganizationRoleList(TolerantModel):
     """Paginated organization-role list (``{records, total}``)."""
 
     records: list[OrganizationRole]
@@ -197,7 +198,7 @@ class OrganizationRoleList(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-class Team(BaseModel):
+class Team(TolerantModel):
     """Team record (teams.py::TeamResponse)."""
 
     id: str
@@ -208,14 +209,14 @@ class Team(BaseModel):
     updated_at: str
 
 
-class TeamList(BaseModel):
+class TeamList(TolerantModel):
     """Paginated team list (``{records, total}``)."""
 
     records: list[Team]
     total: int
 
 
-class TeamMember(BaseModel):
+class TeamMember(TolerantModel):
     """Team member record (teams.py::TeamMemberResponse)."""
 
     id: str
@@ -230,7 +231,7 @@ class TeamMember(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-class ValidationIssue(BaseModel):
+class ValidationIssue(TolerantModel):
     """Single validation issue with node reference (organization_builder.py::ValidationIssue)."""
 
     node_id: str
@@ -238,7 +239,7 @@ class ValidationIssue(BaseModel):
     severity: str
 
 
-class ValidationResult(BaseModel):
+class ValidationResult(TolerantModel):
     """Org-structure validation result (organization_builder.py::ValidationResultResponse)."""
 
     valid: bool
@@ -246,7 +247,7 @@ class ValidationResult(BaseModel):
     warnings: list[ValidationIssue] = Field(default_factory=list)
 
 
-class DeploymentResult(BaseModel):
+class DeploymentResult(TolerantModel):
     """Org-builder deployment result (organization_builder.py::DeploymentResultResponse).
 
     ``status`` mirrors the frontend ``DeploymentStatus`` union the backend
@@ -269,7 +270,7 @@ class DeploymentResult(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-class CompilationResult(BaseModel):
+class CompilationResult(TolerantModel):
     """Outcome of a full organizational compilation."""
 
     org_id: str
@@ -283,7 +284,7 @@ class CompilationResult(BaseModel):
     compilation_time_ms: int
 
 
-class CompilationPreview(BaseModel):
+class CompilationPreview(TolerantModel):
     """What a compilation WOULD generate. Nothing is created."""
 
     agent_count: int
@@ -294,41 +295,41 @@ class CompilationPreview(BaseModel):
     estimated_time_seconds: float
 
 
-class AgentsGenerated(BaseModel):
+class AgentsGenerated(TolerantModel):
     """Delegate agents generated for organizational roles."""
 
     agents: list[dict[str, Any]] = Field(default_factory=list)
     count: int
 
 
-class TrustChainsGenerated(BaseModel):
+class TrustChainsGenerated(TolerantModel):
     """Trust chains generated from the reporting hierarchy."""
 
     trust_chains: list[dict[str, Any]] = Field(default_factory=list)
     count: int
 
 
-class ConstraintsGenerated(BaseModel):
+class ConstraintsGenerated(TolerantModel):
     """Constraint envelopes generated from templates."""
 
     constraints: list[dict[str, Any]] = Field(default_factory=list)
     count: int
 
 
-class TemplatesList(BaseModel):
+class TemplatesList(TolerantModel):
     """Built-in constraint templates, by authority level."""
 
     templates: list[dict[str, Any]] = Field(default_factory=list)
 
 
-class RollbackResult(BaseModel):
+class RollbackResult(TolerantModel):
     """Outcome of rolling a deployment back."""
 
     success: bool
     message: str
 
 
-class YAMLImportResult(BaseModel):
+class YAMLImportResult(TolerantModel):
     """Outcome of importing an organization from YAML."""
 
     units_created: int
@@ -364,7 +365,7 @@ class UnitTreeNode(OrganizationUnit):
 UnitTreeNode.model_rebuild()
 
 
-class HierarchyValidation(BaseModel):
+class HierarchyValidation(TolerantModel):
     """Result of validating the unit hierarchy (orphans, cycles)."""
 
     valid: bool
@@ -374,7 +375,7 @@ class HierarchyValidation(BaseModel):
     root_count: int | None = None
 
 
-class IsolationDomains(BaseModel):
+class IsolationDomains(TolerantModel):
     """The tenant's registered hard-isolation plane set.
 
     Canonical Aegis ships ZERO planes — the vocabulary is tenant-supplied.
@@ -383,7 +384,7 @@ class IsolationDomains(BaseModel):
     isolation_domains: list[str] = Field(default_factory=list)
 
 
-class UnitSummary(BaseModel):
+class UnitSummary(TolerantModel):
     """Lightweight unit projection.
 
     ``has_primary_role`` carries the D/T/R grammar invariant: a department or
@@ -398,7 +399,7 @@ class UnitSummary(BaseModel):
     has_primary_role: bool
 
 
-class CascadeResult(BaseModel):
+class CascadeResult(TolerantModel):
     """What a unit move changed BESIDES the unit itself.
 
     Moving a unit re-parents everything under it: ceilings recompute,
@@ -421,7 +422,7 @@ class UnitMoveResult(OrganizationUnit):
     cascade: CascadeResult
 
 
-class PostureCeiling(BaseModel):
+class PostureCeiling(TolerantModel):
     """The CARE posture ceiling for a unit.
 
     ⚠ This is the ONE camelCase response on this module's surface. Every other
@@ -442,7 +443,7 @@ class PostureCeiling(BaseModel):
     allowed_postures: list[str] = Field(default_factory=list, alias="allowedPostures")
 
 
-class RoleConstraints(BaseModel):
+class RoleConstraints(TolerantModel):
     """A role's effective constraint envelope."""
 
     max_cost_usd: float
@@ -451,7 +452,7 @@ class RoleConstraints(BaseModel):
     max_actions_per_hour: int
 
 
-class RoleValidation(BaseModel):
+class RoleValidation(TolerantModel):
     """Result of validating a role against the D/T/R grammar."""
 
     valid: bool

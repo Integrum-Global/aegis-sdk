@@ -27,9 +27,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import ConfigDict
 
 from .._http import encode_path_param
+from .._tolerant import TolerantModel
 
 if TYPE_CHECKING:
     from .._http import HTTPClient
@@ -47,7 +48,7 @@ PostureCeiling = Literal[
 ]
 
 
-class TaskAgent(BaseModel):
+class TaskAgent(TolerantModel):
     """
     Task agent record.
 
@@ -91,7 +92,7 @@ class TaskAgent(BaseModel):
     updated_at: str | None = None
 
 
-class TaskAgentList(BaseModel):
+class TaskAgentList(TolerantModel):
     """Paginated task-agent library roster (``{records, count, limit, offset}``)."""
 
     records: list[TaskAgent]
@@ -100,7 +101,7 @@ class TaskAgentList(BaseModel):
     offset: int
 
 
-class TaskAgentTestResult(BaseModel):
+class TaskAgentTestResult(TolerantModel):
     """Result of testing a task agent with a sample prompt (direct LLM call)."""
 
     agent_id: str

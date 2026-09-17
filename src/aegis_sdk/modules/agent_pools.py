@@ -36,15 +36,16 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from .._http import encode_path_param
+from .._tolerant import TolerantModel
 
 if TYPE_CHECKING:
     from .._http import HTTPClient
 
 
-class AgentPoolList(BaseModel):
+class AgentPoolList(TolerantModel):
     """
     A page of agent pools.
 
@@ -61,7 +62,7 @@ class AgentPoolList(BaseModel):
     offset: int | None = None
 
 
-class AgentPoolMemberList(BaseModel):
+class AgentPoolMemberList(TolerantModel):
     """
     A pool's role members.
 

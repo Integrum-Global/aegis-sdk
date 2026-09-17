@@ -24,11 +24,12 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field
 
 from .._http import encode_path_param
+from .._tolerant import TolerantModel
 from ..exceptions import AgenticOSError
 from ..types import TrustPosture
 
 
-class _WireModel(BaseModel):
+class _WireModel(TolerantModel):
     """Base for models parsed directly from a posture endpoint's JSON body.
 
     The posture endpoints emit camelCase keys. Each field below therefore
@@ -134,7 +135,7 @@ class PostureTransitionRecord(_WireModel):
     metadata: dict[str, Any] | None = None
 
 
-class PostureChangeResult(BaseModel):
+class PostureChangeResult(TolerantModel):
     """The outcome of a posture-change call.
 
     A posture change has two possible outcomes and they demand OPPOSITE next

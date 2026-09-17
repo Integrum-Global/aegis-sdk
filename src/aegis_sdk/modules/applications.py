@@ -54,9 +54,10 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import Field
 
 from .._http import encode_path_param
+from .._tolerant import TolerantModel
 
 PostureCeiling = Literal[
     "pseudo", "supervised", "shared_planning", "continuous_insight", "delegated"
@@ -73,7 +74,7 @@ ApplicationStatusTarget = Literal["active", "suspended", "archived", "rejected"]
 # ---------------------------------------------------------------------------
 
 
-class Application(BaseModel):
+class Application(TolerantModel):
     """Application record (response shape)."""
 
     id: str
@@ -102,14 +103,14 @@ class Application(BaseModel):
     operator_count: int = 0
 
 
-class ApplicationListResult(BaseModel):
+class ApplicationListResult(TolerantModel):
     """Paginated application-list envelope."""
 
     records: list[Application] = Field(default_factory=list)
     total: int = 0
 
 
-class ApplicationSummary(BaseModel):
+class ApplicationSummary(TolerantModel):
     """Lightweight application summary DTO (verified)."""
 
     id: str
@@ -120,7 +121,7 @@ class ApplicationSummary(BaseModel):
     agent_count: int | None = None
 
 
-class FreezeStatus(BaseModel):
+class FreezeStatus(TolerantModel):
     """Content freeze state (response shape)."""
 
     is_frozen: bool
@@ -138,7 +139,7 @@ class FreezeStatus(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-class ToolAgentGrant(BaseModel):
+class ToolAgentGrant(TolerantModel):
     """Application-to-tool-agent grant record."""
 
     id: str
@@ -155,7 +156,7 @@ class ToolAgentGrant(BaseModel):
     revoked_at: str | None = None
 
 
-class GrantListResult(BaseModel):
+class GrantListResult(TolerantModel):
     """Envelope for GET /{app_id}/grants."""
 
     records: list[ToolAgentGrant] = Field(default_factory=list)
@@ -167,7 +168,7 @@ class GrantListResult(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-class InvocationPolicy(BaseModel):
+class InvocationPolicy(TolerantModel):
     """Per-application-agent invocation policy."""
 
     id: str
@@ -189,7 +190,7 @@ class InvocationPolicy(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-class DelegationMatrixEntry(BaseModel):
+class DelegationMatrixEntry(TolerantModel):
     """A single parameter x permission delegation-matrix entry."""
 
     id: str
@@ -204,7 +205,7 @@ class DelegationMatrixEntry(BaseModel):
     updated_at: str = ""
 
 
-class DelegationMatrixResult(BaseModel):
+class DelegationMatrixResult(TolerantModel):
     """Envelope for GET/PUT .../delegation-matrix."""
 
     records: list[DelegationMatrixEntry] = Field(default_factory=list)
@@ -217,7 +218,7 @@ class DelegationMatrixResult(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-class ApplicationOperator(BaseModel):
+class ApplicationOperator(TolerantModel):
     """Operator (user) assigned to an application."""
 
     id: str
@@ -227,14 +228,14 @@ class ApplicationOperator(BaseModel):
     created_at: str = ""
 
 
-class OperatorListResult(BaseModel):
+class OperatorListResult(TolerantModel):
     """Envelope for GET /{app_id}/operators."""
 
     records: list[ApplicationOperator] = Field(default_factory=list)
     total: int = 0
 
 
-class NotificationListResult(BaseModel):
+class NotificationListResult(TolerantModel):
     """Envelope for GET /{app_id}/notifications.
 
     Individual notification shape (``ConstraintChangeNotification``) is not
@@ -245,7 +246,7 @@ class NotificationListResult(BaseModel):
     total: int = 0
 
 
-class InvocationListResult(BaseModel):
+class InvocationListResult(TolerantModel):
     """Envelope for GET /{app_id}/invocations (verified --
     ``{"records": [...], "total": n}``).
     """

@@ -13,11 +13,8 @@ The distribution name in `pyproject.toml` is `agentic-os-sdk`, it is
 source:
 
 ```bash
-# From a local checkout of the SDK repository
+# From your local checkout of the SDK repository — the one you cloned to get here
 pip install -e .
-
-# Or directly from git (requires repository access)
-pip install "git+https://github.com/esperie-enterprise/aegis-sdk.git"
 ```
 
 The SDK requires Python 3.10+ and depends on `httpx` and `pydantic`.

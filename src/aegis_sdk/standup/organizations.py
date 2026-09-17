@@ -3,6 +3,8 @@
 Verified against the server ``organizations`` router(mounted at ``/api/v1``)).
 """
 
+from __future__ import annotations
+
 from typing import TYPE_CHECKING, Any
 
 from .._http import encode_path_param
@@ -14,7 +16,7 @@ if TYPE_CHECKING:
 class OrganizationsModule:
     """Organization management (create + get)."""
 
-    def __init__(self, http_client: "HTTPClient") -> None:
+    def __init__(self, http_client: HTTPClient) -> None:
         self._http = http_client
 
     async def create(
@@ -68,5 +70,30 @@ class OrganizationsModule:
         """
         resp: dict[str, Any] = await self._http.request(
             "GET", f"/api/v1/organizations/{encode_path_param(org_id)}"
+        )
+        return resp
+    async def list(
+        self,
+        status: str | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> dict[str, Any]:
+        """List organizations visible to the caller.
+
+        Server: ``GET /api/v1/organizations`` (``organizations.py:377``).
+
+        Args:
+            status: Optional status filter.
+            limit: Maximum results (1-100, server default 50).
+            offset: Pagination offset.
+
+        Returns:
+            ``{"records": [...], "total": int}``.
+        """
+        params: dict[str, Any] = {"limit": limit, "offset": offset}
+        if status is not None:
+            params["status"] = status
+        resp: dict[str, Any] = await self._http.request(
+            "GET", "/api/v1/organizations", params=params
         )
         return resp

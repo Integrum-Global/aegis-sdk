@@ -46,9 +46,10 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 from typing import TYPE_CHECKING, Any
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import ConfigDict
 
 from .._http import encode_path_param
+from .._tolerant import TolerantModel
 
 if TYPE_CHECKING:
     from .._http import HTTPClient
@@ -59,7 +60,7 @@ if TYPE_CHECKING:
 # ===================
 
 
-class ExternalAgent(BaseModel):
+class ExternalAgent(TolerantModel):
     """
     External agent record (``ExternalAgentResponse``, snake_case).
 
@@ -95,7 +96,7 @@ class ExternalAgent(BaseModel):
     updated_at: str
 
 
-class ExternalAgentList(BaseModel):
+class ExternalAgentList(TolerantModel):
     """Paginated external-agent roster (``ExternalAgentListResponse``)."""
 
     agents: list[ExternalAgent]
@@ -104,7 +105,7 @@ class ExternalAgentList(BaseModel):
     offset: int
 
 
-class ExternalAgentInvokeResult(BaseModel):
+class ExternalAgentInvokeResult(TolerantModel):
     """Result of invoking an external agent (``InvokeExternalAgentResponse``)."""
 
     invocation_id: str
@@ -114,7 +115,7 @@ class ExternalAgentInvokeResult(BaseModel):
     metadata: dict[str, Any] | None = None
 
 
-class ExternalAgentInvocation(BaseModel):
+class ExternalAgentInvocation(TolerantModel):
     """
     External-agent invocation history record
     (``ExternalAgentInvocationResponse``).
@@ -141,7 +142,7 @@ class ExternalAgentInvocation(BaseModel):
 # ===================
 
 
-class Gateway(BaseModel):
+class Gateway(TolerantModel):
     """
     Nexus gateway record (encrypted API key never returned on the wire --
     ``GatewayService`` pops ``api_key_encrypted`` before every response).
@@ -161,7 +162,7 @@ class Gateway(BaseModel):
     updated_at: str
 
 
-class GatewayList(BaseModel):
+class GatewayList(TolerantModel):
     """Gateway roster envelope (``{"gateways": [...]}``)."""
 
     gateways: list[Gateway]
@@ -172,7 +173,7 @@ class GatewayList(BaseModel):
 # ===================
 
 
-class Deployment(BaseModel):
+class Deployment(TolerantModel):
     """Agent-to-gateway deployment record."""
 
     id: str
@@ -198,7 +199,7 @@ class Deployment(BaseModel):
     updated_at: str
 
 
-class DeploymentList(BaseModel):
+class DeploymentList(TolerantModel):
     """Deployment roster envelope (``{"deployments": [...]}``)."""
 
     deployments: list[Deployment]

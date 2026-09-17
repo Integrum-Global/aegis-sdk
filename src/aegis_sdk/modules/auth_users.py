@@ -63,9 +63,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from .._http import encode_path_param
+from .._tolerant import TolerantModel
 
 if TYPE_CHECKING:
     from .._http import HTTPClient
@@ -76,7 +77,7 @@ if TYPE_CHECKING:
 # ---------------------------------------------------------------------------
 
 
-class UserRecord(BaseModel):
+class UserRecord(TolerantModel):
     """User record (``UserResponse``, snake_case)."""
 
     id: str
@@ -92,14 +93,14 @@ class UserRecord(BaseModel):
     updated_at: str
 
 
-class UserList(BaseModel):
+class UserList(TolerantModel):
     """``{records, total}`` envelope (``UserListResponse``)."""
 
     records: list[UserRecord]
     total: int
 
 
-class MessageResult(BaseModel):
+class MessageResult(TolerantModel):
     """Simple ``{"message": ...}`` envelope shared by several endpoints."""
 
     message: str
@@ -110,7 +111,7 @@ class MessageResult(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-class APIKeyRegenerated(BaseModel):
+class APIKeyRegenerated(TolerantModel):
     """Result of rotating an API key's secret (``CreateAPIKeyResponse``). The full key is shown ONLY in this response —
     it cannot be retrieved again. Callers MUST NOT log ``key``."""
 
@@ -131,13 +132,13 @@ class APIKeyRegenerated(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-class PermissionsResult(BaseModel):
+class PermissionsResult(TolerantModel):
     """``PermissionsResponse``."""
 
     permissions: list[str]
 
 
-class OrganizationMembership(BaseModel):
+class OrganizationMembership(TolerantModel):
     """``OrganizationMembership``."""
 
     id: str
@@ -149,13 +150,13 @@ class OrganizationMembership(BaseModel):
     joined_via: str
 
 
-class OrganizationsResult(BaseModel):
+class OrganizationsResult(TolerantModel):
     """``OrganizationsResponse``."""
 
     organizations: list[OrganizationMembership]
 
 
-class SwitchOrgResult(BaseModel):
+class SwitchOrgResult(TolerantModel):
     """``SwitchOrganizationResponse``."""
 
     access_token: str = Field(repr=False)  # bearer credential -- hidden from repr/str (H1)
@@ -165,7 +166,7 @@ class SwitchOrgResult(BaseModel):
     active_organization: OrganizationMembership
 
 
-class VerifyEmailResult(BaseModel):
+class VerifyEmailResult(TolerantModel):
     """``VerifyEmailResponse``."""
 
     message: str
@@ -177,7 +178,7 @@ class VerifyEmailResult(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-class InvitationRecord(BaseModel):
+class InvitationRecord(TolerantModel):
     """``InvitationResponse``."""
 
     id: str
@@ -190,7 +191,7 @@ class InvitationRecord(BaseModel):
     created_at: str
 
 
-class InvitationWithToken(BaseModel):
+class InvitationWithToken(TolerantModel):
     """``InvitationWithTokenResponse`` — the token is
     shown ONLY on create; callers MUST NOT log ``token``."""
 
@@ -205,14 +206,14 @@ class InvitationWithToken(BaseModel):
     created_at: str
 
 
-class InvitationList(BaseModel):
+class InvitationList(TolerantModel):
     """``InvitationListResponse``."""
 
     records: list[InvitationRecord]
     total: int
 
 
-class AcceptInvitationResult(BaseModel):
+class AcceptInvitationResult(TolerantModel):
     """``AcceptInvitationResponse``."""
 
     message: str
@@ -228,7 +229,7 @@ class AcceptInvitationResult(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-class SSOConnection(BaseModel):
+class SSOConnection(TolerantModel):
     """SSO connection record — shape verified against
     ``SSOService.create_connection``/``get_org_connections``
     (582-589). The encrypted
@@ -250,13 +251,13 @@ class SSOConnection(BaseModel):
     updated_at: str
 
 
-class SSOConnectionList(BaseModel):
+class SSOConnectionList(TolerantModel):
     """``{"connections": [...]}`` envelope."""
 
     connections: list[SSOConnection] = Field(default_factory=list)
 
 
-class SSOProviders(BaseModel):
+class SSOProviders(TolerantModel):
     """Which built-in login-page SSO providers are configured.
 
     Per-provider booleans only — derived server-side from whether the env
@@ -266,7 +267,7 @@ class SSOProviders(BaseModel):
     providers: dict[str, bool] = Field(default_factory=dict)
 
 
-class SSOInitiation(BaseModel):
+class SSOInitiation(TolerantModel):
     """An OIDC authorization URL plus the CSRF ``state`` bound to it.
 
     ``state`` is single-use and stored server-side with a TTL; the callback
@@ -278,7 +279,7 @@ class SSOInitiation(BaseModel):
     state: str
 
 
-class SAMLInitiation(BaseModel):
+class SAMLInitiation(TolerantModel):
     """A SAML AuthnRequest URL plus its single-use ``relay_state``.
 
     ``relay_state`` is the SAML CSRF / flow-replay token. The ACS validates the
@@ -290,7 +291,7 @@ class SAMLInitiation(BaseModel):
     relay_state: str
 
 
-class SSODeleteResult(BaseModel):
+class SSODeleteResult(TolerantModel):
     """``{"status": "deleted"}`` — the delete-connection acknowledgement."""
 
     status: str
@@ -301,7 +302,7 @@ class SSODeleteResult(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-class StartTrialResult(BaseModel):
+class StartTrialResult(TolerantModel):
     """``StartTrialResponse`` — pinned wire shape
     per an automated envelope-shape check on the platform side."""
 
@@ -324,7 +325,7 @@ AccessType = Literal["direct", "inherited", "none"]
 PermissionLevel = Literal["full", "limited", "read_only"]
 
 
-class AccessAgent(BaseModel):
+class AccessAgent(TolerantModel):
     """``AccessAgent``."""
 
     id: str
@@ -335,7 +336,7 @@ class AccessAgent(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
 
-class AccessTreeNode(BaseModel):
+class AccessTreeNode(TolerantModel):
     """``AccessTreeNode`` — recursive role tree."""
 
     id: str
@@ -353,13 +354,13 @@ class AccessTreeNode(BaseModel):
 AccessTreeNode.model_rebuild()
 
 
-class AccessTreeResult(BaseModel):
+class AccessTreeResult(TolerantModel):
     """``AccessTreeResponse``."""
 
     roots: list[AccessTreeNode] = Field(default_factory=list)
 
 
-class AccessMatrixCell(BaseModel):
+class AccessMatrixCell(TolerantModel):
     """``AccessMatrixCell``."""
 
     role_id: str = Field(..., alias="roleId")
@@ -370,7 +371,7 @@ class AccessMatrixCell(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
 
-class AccessMatrixRow(BaseModel):
+class AccessMatrixRow(TolerantModel):
     """``AccessMatrixRow``."""
 
     role_id: str = Field(..., alias="roleId")
@@ -380,21 +381,21 @@ class AccessMatrixRow(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
 
-class AccessMatrixAgent(BaseModel):
+class AccessMatrixAgent(TolerantModel):
     """``AccessMatrixAgent``."""
 
     id: str
     name: str
 
 
-class AccessMatrixResult(BaseModel):
+class AccessMatrixResult(TolerantModel):
     """``AccessMatrixResponse``."""
 
     roles: list[AccessMatrixRow] = Field(default_factory=list)
     agents: list[AccessMatrixAgent] = Field(default_factory=list)
 
 
-class AccessAuditEntry(BaseModel):
+class AccessAuditEntry(TolerantModel):
     """``AccessAuditEntry``."""
 
     id: str
@@ -412,7 +413,7 @@ class AccessAuditEntry(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
 
-class AccessAuditResult(BaseModel):
+class AccessAuditResult(TolerantModel):
     """``AccessAuditResponse``."""
 
     records: list[AccessAuditEntry] = Field(default_factory=list)

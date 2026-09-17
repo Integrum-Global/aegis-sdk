@@ -11,7 +11,9 @@ from datetime import datetime
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import ConfigDict, Field, field_validator, model_validator
+
+from ._tolerant import TolerantModel, tolerant_null
 
 logger = logging.getLogger(__name__)
 
@@ -210,7 +212,7 @@ class DelegationStatus(str, Enum):
 # =============================================================================
 
 
-class BaseEntityModel(BaseModel):
+class BaseEntityModel(TolerantModel):
     """Base model for all entity types with common fields."""
 
     model_config = ConfigDict(
@@ -220,7 +222,7 @@ class BaseEntityModel(BaseModel):
     )
 
 
-class TimestampMixin(BaseModel):
+class TimestampMixin(TolerantModel):
     """Mixin for models with timestamps."""
 
     created_at: datetime
@@ -232,7 +234,7 @@ class TimestampMixin(BaseModel):
 # =============================================================================
 
 
-class PaginatedResponse[T](BaseModel):
+class PaginatedResponse[T](TolerantModel):
     """
     Paginated response wrapper.
 
@@ -376,7 +378,7 @@ class Agent(BaseEntityModel, TimestampMixin):
         return data
 
 
-class AgentCreate(BaseModel):
+class AgentCreate(TolerantModel):
     """Agent creation payload.
 
     Field-for-field mirror of the server ``CreateAgentRequest``. Every field the server accepts is
@@ -472,7 +474,7 @@ class AgentCreate(BaseModel):
         return body
 
 
-class AgentUpdate(BaseModel):
+class AgentUpdate(TolerantModel):
     """Agent update payload (all fields optional).
 
     Field-for-field mirror of the server ``UpdateAgentRequest``. See :class:`AgentCreate` for the
@@ -556,7 +558,7 @@ class Skill(BaseEntityModel, TimestampMixin):
     organization_id: str
 
 
-class SkillCreate(BaseModel):
+class SkillCreate(TolerantModel):
     """Skill creation payload."""
 
     name: str
@@ -565,7 +567,7 @@ class SkillCreate(BaseModel):
     config: dict[str, Any] = Field(default_factory=dict)
 
 
-class SkillUpdate(BaseModel):
+class SkillUpdate(TolerantModel):
     """Skill update payload (all fields optional)."""
 
     name: str | None = None
@@ -578,7 +580,7 @@ class SkillUpdate(BaseModel):
 # =============================================================================
 
 
-class PipelineNode(BaseModel):
+class PipelineNode(TolerantModel):
     """Pipeline node definition."""
 
     id: str
@@ -589,7 +591,7 @@ class PipelineNode(BaseModel):
     position: dict[str, float] | None = None
 
 
-class PipelineConnection(BaseModel):
+class PipelineConnection(TolerantModel):
     """Pipeline connection between nodes."""
 
     source_node_id: str
@@ -616,7 +618,7 @@ class Pipeline(BaseEntityModel, TimestampMixin):
     workspace_id: str
 
 
-class PipelineCreate(BaseModel):
+class PipelineCreate(TolerantModel):
     """Pipeline creation payload."""
 
     name: str
@@ -627,7 +629,7 @@ class PipelineCreate(BaseModel):
     workspace_id: str | None = None
 
 
-class PipelineUpdate(BaseModel):
+class PipelineUpdate(TolerantModel):
     """Pipeline update payload (all fields optional)."""
 
     name: str | None = None
@@ -657,7 +659,7 @@ class PipelineExecution(BaseEntityModel):
 # =============================================================================
 
 
-class User(BaseModel):
+class User(TolerantModel):
     """User model.
 
     Mirrors the server ``UserResponse``.
@@ -696,9 +698,16 @@ class User(BaseModel):
     # path) keeps its current meaning with no call-site change. The other two
     # stay None/empty for a user session -- an API key is the only principal
     # that has them, and this response never describes another principal's key.
-    auth_type: str = "user"
+    # ⛔ THESE TWO ARE THE ONLY ``tolerant_null`` FIELDS IN THE SDK, AND THAT IS
+    # DELIBERATE. Tolerance is opt-in: every other defaulted field still raises
+    # on an explicit null. Both are marked because the server's OWN default is
+    # what gets substituted — canon declares ``auth_type: str = "user"`` itself —
+    # so the substitution is a faithful reading of "absent" rather than this
+    # SDK's guess. A field whose default GRANTS something must NOT be marked:
+    # see the module docstring in ``_tolerant.py``.
+    auth_type: str = tolerant_null("user")
     api_key_id: str | None = None
-    api_key_scopes: list[str] = Field(default_factory=list)
+    api_key_scopes: list[str] = tolerant_null(default_factory=list)
 
     @property
     def full_name(self) -> str:
@@ -712,7 +721,7 @@ class User(BaseModel):
         return self.name
 
 
-class AuthToken(BaseModel):
+class AuthToken(TolerantModel):
     """Authentication token response, with the authenticated user attached.
 
     Mirrors the server's nested envelope
@@ -731,7 +740,7 @@ class AuthToken(BaseModel):
     user: User | None = None
 
 
-class APIKey(BaseModel):
+class APIKey(TolerantModel):
     """API key model.
 
     Mirrors the server's ``APIKeyResponse``.
@@ -796,7 +805,7 @@ class APIKeyCreated(APIKey):
     key: str = Field(repr=False)  # full secret, shown once -- never log this
 
 
-class APIKeyCreate(BaseModel):
+class APIKeyCreate(TolerantModel):
     """API key creation payload."""
 
     name: str
@@ -809,7 +818,7 @@ class APIKeyCreate(BaseModel):
 # =============================================================================
 
 
-class Objective(BaseModel):
+class Objective(TolerantModel):
     """Objective model - top-level work unit."""
 
     id: str
@@ -828,7 +837,7 @@ class Objective(BaseModel):
     completed_at: datetime | None = None
 
 
-class ObjectiveCreate(BaseModel):
+class ObjectiveCreate(TolerantModel):
     """Objective creation payload."""
 
     title: str
@@ -839,7 +848,7 @@ class ObjectiveCreate(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
-class ObjectiveUpdate(BaseModel):
+class ObjectiveUpdate(TolerantModel):
     """Objective update payload."""
 
     title: str | None = None
@@ -849,7 +858,7 @@ class ObjectiveUpdate(BaseModel):
     metadata: dict[str, Any] | None = None
 
 
-class Request(BaseModel):
+class Request(TolerantModel):
     """Request model - work item within an objective."""
 
     id: str
@@ -867,27 +876,27 @@ class Request(BaseModel):
     completed_at: datetime | None = None
 
 
-class RequestClaim(BaseModel):
+class RequestClaim(TolerantModel):
     """Request claim payload."""
 
     agent_id: str
 
 
-class RequestComplete(BaseModel):
+class RequestComplete(TolerantModel):
     """Request completion payload."""
 
     result: dict[str, Any]
     artifacts: list[str] = Field(default_factory=list)
 
 
-class RequestEscalate(BaseModel):
+class RequestEscalate(TolerantModel):
     """Request escalation payload."""
 
     reason: str
     target_id: str | None = None  # Who to escalate to
 
 
-class Finding(BaseModel):
+class Finding(TolerantModel):
     """Finding attached to a request."""
 
     id: str
@@ -898,7 +907,7 @@ class Finding(BaseModel):
     created_at: datetime
 
 
-class Session(BaseModel):
+class Session(TolerantModel):
     """Work session model."""
 
     id: str
@@ -913,7 +922,7 @@ class Session(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
-class SessionMessage(BaseModel):
+class SessionMessage(TolerantModel):
     """Message within a session."""
 
     id: str
@@ -924,7 +933,7 @@ class SessionMessage(BaseModel):
     created_at: datetime
 
 
-class SessionArtifact(BaseModel):
+class SessionArtifact(TolerantModel):
     """Artifact created during a session."""
 
     id: str
@@ -935,7 +944,7 @@ class SessionArtifact(BaseModel):
     created_at: datetime
 
 
-class SessionContext(BaseModel):
+class SessionContext(TolerantModel):
     """Session context information."""
 
     session_id: str
@@ -944,7 +953,7 @@ class SessionContext(BaseModel):
     active_tools: list[str]
 
 
-class Subagent(BaseModel):
+class Subagent(TolerantModel):
     """Spawned subagent within a session."""
 
     id: str
@@ -961,7 +970,7 @@ class Subagent(BaseModel):
 # =============================================================================
 
 
-class TrustGenesisRecord(BaseModel):
+class TrustGenesisRecord(TolerantModel):
     """Genesis record within an established trust chain.
 
     Mirrors the server ``GenesisRecord`` response model. Note ``constraints`` is a
@@ -976,7 +985,7 @@ class TrustGenesisRecord(BaseModel):
     constraints: list[str] = Field(default_factory=list)
 
 
-class TrustHumanOriginInfo(BaseModel):
+class TrustHumanOriginInfo(TolerantModel):
     """Human who authorized an agent action (EATP origin tracking).
 
     Mirrors the server ``HumanOriginResponse``.
@@ -991,7 +1000,7 @@ class TrustHumanOriginInfo(BaseModel):
     authenticated_at: str | None = None
 
 
-class TrustDelegationRecord(BaseModel):
+class TrustDelegationRecord(TolerantModel):
     """A single delegation entry within an established trust chain.
 
     Mirrors the server ``DelegationRecord``.
@@ -1005,7 +1014,7 @@ class TrustDelegationRecord(BaseModel):
     expires_at: str | None = None
 
 
-class EstablishedTrustChain(BaseModel):
+class EstablishedTrustChain(TolerantModel):
     """Trust chain returned by ``POST /trust/establish``.
 
     Mirrors the server ``TrustChain`` response model. Distinct from the legacy
@@ -1020,7 +1029,7 @@ class EstablishedTrustChain(BaseModel):
     human_origin: TrustHumanOriginInfo | None = None
 
 
-class AffectedTrustAgent(BaseModel):
+class AffectedTrustAgent(TolerantModel):
     """An agent affected by a cascade revocation preview.
 
     Mirrors the server ``AffectedAgent``.
@@ -1033,7 +1042,7 @@ class AffectedTrustAgent(BaseModel):
     status: str = "valid"
 
 
-class CascadeRevocationResult(BaseModel):
+class CascadeRevocationResult(TolerantModel):
     """Result of a cascade trust revocation.
 
     Mirrors the server ``CascadeRevocationResult``, returned by both
@@ -1048,7 +1057,7 @@ class CascadeRevocationResult(BaseModel):
     completed_at: str
 
 
-class TrustChain(BaseModel):
+class TrustChain(TolerantModel):
     """Trust chain model.
 
     Previously required ``id``, ``human_origin_id``,
@@ -1073,7 +1082,7 @@ class TrustChain(BaseModel):
     human_origin: TrustHumanOriginInfo | None = None
 
 
-class TrustChainEstablish(BaseModel):
+class TrustChainEstablish(TolerantModel):
     """Trust chain establishment payload."""
 
     agent_id: str
@@ -1082,7 +1091,7 @@ class TrustChainEstablish(BaseModel):
     constraints: dict[str, Any] = Field(default_factory=dict)
 
 
-class TrustVerification(BaseModel):
+class TrustVerification(TolerantModel):
     """Trust verification request."""
 
     agent_id: str
@@ -1091,7 +1100,7 @@ class TrustVerification(BaseModel):
     context: dict[str, Any] = Field(default_factory=dict)
 
 
-class TrustVerificationResult(BaseModel):
+class TrustVerificationResult(TolerantModel):
     """Trust verification result."""
 
     allowed: bool
@@ -1100,7 +1109,7 @@ class TrustVerificationResult(BaseModel):
     constraints_applied: list[str] = Field(default_factory=list)
 
 
-class DelegationPath(BaseModel):
+class DelegationPath(TolerantModel):
     """Delegation path in a trust chain."""
 
     chain_id: str
@@ -1108,7 +1117,7 @@ class DelegationPath(BaseModel):
     depth: int
 
 
-class AgentTrustContext(BaseModel):
+class AgentTrustContext(TolerantModel):
     """Trust context for an agent."""
 
     agent_id: str
@@ -1119,7 +1128,7 @@ class AgentTrustContext(BaseModel):
     delegation_depth: int
 
 
-class TrustDelegation(BaseModel):
+class TrustDelegation(TolerantModel):
     """Trust delegation model."""
 
     id: str
@@ -1133,7 +1142,7 @@ class TrustDelegation(BaseModel):
     revoked_at: datetime | None = None
 
 
-class TrustDelegationCreate(BaseModel):
+class TrustDelegationCreate(TolerantModel):
     """Trust delegation creation payload."""
 
     delegator_id: str
@@ -1142,7 +1151,7 @@ class TrustDelegationCreate(BaseModel):
     constraints: dict[str, Any] = Field(default_factory=dict)
 
 
-class RevocationImpact(BaseModel):
+class RevocationImpact(TolerantModel):
     """Preview of cascade revocation impact.
 
     Mirrors the server ``RevocationImpactPreview`` returned by
@@ -1161,7 +1170,7 @@ class RevocationImpact(BaseModel):
     warnings: list[str] = Field(default_factory=list)
 
 
-class TrustPostureInfo(BaseModel):
+class TrustPostureInfo(TolerantModel):
     """Trust posture information."""
 
     agent_id: str
@@ -1171,21 +1180,21 @@ class TrustPostureInfo(BaseModel):
     metrics: dict[str, Any] = Field(default_factory=dict)
 
 
-class PostureProgressionRequest(BaseModel):
+class PostureProgressionRequest(TolerantModel):
     """Posture progression request payload."""
 
     target_posture: TrustPosture
     justification: str
 
 
-class PostureOverride(BaseModel):
+class PostureOverride(TolerantModel):
     """Posture override payload."""
 
     new_posture: TrustPosture
     reason: str
 
 
-class PostureMetrics(BaseModel):
+class PostureMetrics(TolerantModel):
     """Posture progression metrics."""
 
     agent_id: str
@@ -1197,7 +1206,7 @@ class PostureMetrics(BaseModel):
     progression_score: float
 
 
-class TrustAuditEntry(BaseModel):
+class TrustAuditEntry(TolerantModel):
     """Trust audit log entry."""
 
     id: str
@@ -1210,7 +1219,7 @@ class TrustAuditEntry(BaseModel):
     chain_id: str | None = None
 
 
-class TrustAuditQuery(BaseModel):
+class TrustAuditQuery(TolerantModel):
     """Trust audit query parameters."""
 
     agent_id: str | None = None
@@ -1225,14 +1234,14 @@ class TrustAuditQuery(BaseModel):
 # =============================================================================
 
 
-class StreamEvent(BaseModel):
+class StreamEvent(TolerantModel):
     """Server-Sent Event (SSE) wrapper."""
 
     event: str
     data: dict[str, Any]
 
 
-class ExecutionEvent(BaseModel):
+class ExecutionEvent(TolerantModel):
     """Agent execution streaming event."""
 
     event_type: str  # "started", "thinking", "output", "completed", "error"
@@ -1245,14 +1254,14 @@ class ExecutionEvent(BaseModel):
 # =============================================================================
 
 
-class SuccessResponse(BaseModel):
+class SuccessResponse(TolerantModel):
     """Generic success response."""
 
     success: bool = True
     message: str | None = None
 
 
-class ErrorResponse(BaseModel):
+class ErrorResponse(TolerantModel):
     """Error response model."""
 
     error: str
@@ -1326,7 +1335,7 @@ class InvoiceStatus(str, Enum):
 # =============================================================================
 
 
-class Subscription(BaseModel):
+class Subscription(TolerantModel):
     """Subscription model."""
 
     id: str
@@ -1343,7 +1352,7 @@ class Subscription(BaseModel):
     stripe_subscription_id: str
 
 
-class SubscribeRequest(BaseModel):
+class SubscribeRequest(TolerantModel):
     """Subscription creation payload."""
 
     plan_id: str
@@ -1351,20 +1360,20 @@ class SubscribeRequest(BaseModel):
     payment_method_id: str | None = None
 
 
-class UpgradeRequest(BaseModel):
+class UpgradeRequest(TolerantModel):
     """Subscription upgrade payload."""
 
     new_plan_id: str
     prorate: bool = True
 
 
-class CancelRequest(BaseModel):
+class CancelRequest(TolerantModel):
     """Subscription cancellation payload."""
 
     at_period_end: bool = True
 
 
-class Plan(BaseModel):
+class Plan(TolerantModel):
     """Subscription plan model."""
 
     id: str
@@ -1377,13 +1386,13 @@ class Plan(BaseModel):
     contact_sales: bool = False
 
 
-class PlanFeatures(BaseModel):
+class PlanFeatures(TolerantModel):
     """Plan features list."""
 
     features: list[str]
 
 
-class TierComparison(BaseModel):
+class TierComparison(TolerantModel):
     """Plan tier comparison result."""
 
     tier1: PlanTier
@@ -1396,7 +1405,7 @@ class TierComparison(BaseModel):
     price_difference_monthly: int
 
 
-class PortalSession(BaseModel):
+class PortalSession(TolerantModel):
     """Stripe customer portal session."""
 
     url: str
@@ -1407,7 +1416,7 @@ class PortalSession(BaseModel):
 # =============================================================================
 
 
-class License(BaseModel):
+class License(TolerantModel):
     """License model for self-hosted deployments."""
 
     license_id: str
@@ -1429,7 +1438,7 @@ class License(BaseModel):
     created_at: str | None = None
 
 
-class LicenseGenerate(BaseModel):
+class LicenseGenerate(TolerantModel):
     """License generation payload."""
 
     customer_id: str
@@ -1452,7 +1461,7 @@ class LicenseGenerate(BaseModel):
     grace_period_days: int = 30
 
 
-class LicenseValidation(BaseModel):
+class LicenseValidation(TolerantModel):
     """License validation response."""
 
     valid: bool
@@ -1462,7 +1471,7 @@ class LicenseValidation(BaseModel):
     next_check_days: int = 7
 
 
-class LicenseValidationRequest(BaseModel):
+class LicenseValidationRequest(TolerantModel):
     """License validation (phone-home) request."""
 
     license_id: str
@@ -1472,7 +1481,7 @@ class LicenseValidationRequest(BaseModel):
     usage: dict[str, Any] | None = None
 
 
-class LicenseUsage(BaseModel):
+class LicenseUsage(TolerantModel):
     """License usage telemetry."""
 
     license_id: str
@@ -1480,7 +1489,7 @@ class LicenseUsage(BaseModel):
     total_validations: int
 
 
-class LicenseStatus(BaseModel):
+class LicenseStatus(TolerantModel):
     """Current license status."""
 
     valid: bool
@@ -1495,7 +1504,7 @@ class LicenseStatus(BaseModel):
     error: str | None = None
 
 
-class Edition(BaseModel):
+class Edition(TolerantModel):
     """License edition information."""
 
     name: str
@@ -1508,7 +1517,7 @@ class Edition(BaseModel):
 # =============================================================================
 
 
-class ResourceUsage(BaseModel):
+class ResourceUsage(TolerantModel):
     """Usage for a single resource type."""
 
     limit: int
@@ -1518,7 +1527,7 @@ class ResourceUsage(BaseModel):
     unlimited: bool = False
 
 
-class Usage(BaseModel):
+class Usage(TolerantModel):
     """Current usage against quotas."""
 
     agent_execution: ResourceUsage
@@ -1527,7 +1536,7 @@ class Usage(BaseModel):
     api_call: ResourceUsage
 
 
-class UsageHistory(BaseModel):
+class UsageHistory(TolerantModel):
     """Historical usage data."""
 
     date: str
@@ -1536,7 +1545,7 @@ class UsageHistory(BaseModel):
     limit: int
 
 
-class UsageBreakdown(BaseModel):
+class UsageBreakdown(TolerantModel):
     """Usage breakdown by dimension."""
 
     resource_type: ResourceType
@@ -1545,7 +1554,7 @@ class UsageBreakdown(BaseModel):
     by_date: dict[str, int] | None = None
 
 
-class Quota(BaseModel):
+class Quota(TolerantModel):
     """Quota for a resource type."""
 
     resource_type: ResourceType
@@ -1555,14 +1564,14 @@ class Quota(BaseModel):
     unlimited: bool = False
 
 
-class QuotaUpdate(BaseModel):
+class QuotaUpdate(TolerantModel):
     """Quota update payload."""
 
     resource_type: ResourceType
     new_limit: int
 
 
-class QuotaCheck(BaseModel):
+class QuotaCheck(TolerantModel):
     """Quota limit check result."""
 
     resource_type: ResourceType
@@ -1578,7 +1587,7 @@ class QuotaCheck(BaseModel):
 # =============================================================================
 
 
-class InvoiceLineItem(BaseModel):
+class InvoiceLineItem(TolerantModel):
     """Invoice line item."""
 
     description: str
@@ -1587,7 +1596,7 @@ class InvoiceLineItem(BaseModel):
     currency: str = "usd"
 
 
-class Invoice(BaseModel):
+class Invoice(TolerantModel):
     """Invoice model."""
 
     id: str
@@ -1603,7 +1612,7 @@ class Invoice(BaseModel):
     lines: list[InvoiceLineItem]
 
 
-class InvoicesResponse(BaseModel):
+class InvoicesResponse(TolerantModel):
     """Paginated invoices response."""
 
     invoices: list[Invoice]

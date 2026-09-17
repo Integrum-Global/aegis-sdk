@@ -32,12 +32,13 @@ Two related governance surfaces:
 
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from .._http import encode_path_param
+from .._tolerant import TolerantModel
 
 
-class DecisionOption(BaseModel):
+class DecisionOption(TolerantModel):
     """A selectable option on a decision."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -49,7 +50,7 @@ class DecisionOption(BaseModel):
     requires_justification: bool = False
 
 
-class ReviewSummary(BaseModel):
+class ReviewSummary(TolerantModel):
     """Summary of the review items that produced a decision.
 
     Note:
@@ -65,7 +66,7 @@ class ReviewSummary(BaseModel):
     pending_items: list[dict[str, Any]] = Field(default_factory=list)
 
 
-class DecisionListItem(BaseModel):
+class DecisionListItem(TolerantModel):
     """One row of the pending-decision inbox."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -80,7 +81,7 @@ class DecisionListItem(BaseModel):
     options_count: int = 0
 
 
-class DecisionDetail(BaseModel):
+class DecisionDetail(TolerantModel):
     """A decision with its options, context and resolution state.
 
     Note:
@@ -114,7 +115,7 @@ class DecisionDetail(BaseModel):
     created_at: str = ""
 
 
-class DecisionResult(BaseModel):
+class DecisionResult(TolerantModel):
     """Outcome of resolving or cancelling a decision."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -126,7 +127,7 @@ class DecisionResult(BaseModel):
     action_type: str | None = None
 
 
-class ReviewDecision(BaseModel):
+class ReviewDecision(TolerantModel):
     """A recorded review verdict against a request.
 
     Note:

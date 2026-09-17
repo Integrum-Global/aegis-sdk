@@ -41,12 +41,13 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from .._http import encode_path_param
+from .._tolerant import TolerantModel
 
 
-class KillActivation(BaseModel):
+class KillActivation(TolerantModel):
     """One kill-switch activation.
 
     Note:
@@ -92,7 +93,7 @@ class KillActivation(BaseModel):
     clearance_reason: str = Field("", alias="clearanceReason")
 
 
-class KillActivationList(BaseModel):
+class KillActivationList(TolerantModel):
     """Envelope for the open-activations read."""
 
     model_config = ConfigDict(populate_by_name=True)

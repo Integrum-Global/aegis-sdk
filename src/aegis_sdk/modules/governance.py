@@ -34,12 +34,13 @@ Provides governance, RBAC, policies, and data classification management.
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from .._http import encode_path_param
+from .._tolerant import TolerantModel
 
 
-class Permission(BaseModel):
+class Permission(TolerantModel):
     """Permission model."""
 
     id: str
@@ -49,7 +50,7 @@ class Permission(BaseModel):
     description: str | None = None
 
 
-class Role(BaseModel):
+class Role(TolerantModel):
     """Role model."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -64,7 +65,7 @@ class Role(BaseModel):
     updated_at: str = Field(alias="updatedAt")
 
 
-class UserPermissions(BaseModel):
+class UserPermissions(TolerantModel):
     """User permissions response."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -73,7 +74,7 @@ class UserPermissions(BaseModel):
     permissions: list[str]
 
 
-class PermissionCheck(BaseModel):
+class PermissionCheck(TolerantModel):
     """Result of a single permission check.
 
     Wire shape verified against ``CheckPermissionResponse`` at -- snake_case, NO Pydantic alias
@@ -84,7 +85,7 @@ class PermissionCheck(BaseModel):
     reason: str | None = None
 
 
-class HandlingRequirements(BaseModel):
+class HandlingRequirements(TolerantModel):
     """Data handling requirements."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -95,7 +96,7 @@ class HandlingRequirements(BaseModel):
     audit_logging: bool = Field(False, alias="auditLogging")
 
 
-class Classification(BaseModel):
+class Classification(TolerantModel):
     """Data classification model."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -117,7 +118,7 @@ class Classification(BaseModel):
     updated_at: str = Field(alias="updatedAt")
 
 
-class PolicyCondition(BaseModel):
+class PolicyCondition(TolerantModel):
     """ABAC policy condition."""
 
     field: str
@@ -125,7 +126,7 @@ class PolicyCondition(BaseModel):
     value: Any
 
 
-class PolicyPrincipals(BaseModel):
+class PolicyPrincipals(TolerantModel):
     """Policy principals (who the policy applies to)."""
 
     users: list[str] | None = None
@@ -134,7 +135,7 @@ class PolicyPrincipals(BaseModel):
     agents: list[str] | None = None
 
 
-class PolicyResources(BaseModel):
+class PolicyResources(TolerantModel):
     """Policy resources (what the policy applies to)."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -144,7 +145,7 @@ class PolicyResources(BaseModel):
     work_units: list[str] | None = Field(None, alias="workUnits")
 
 
-class TimeRestrictions(BaseModel):
+class TimeRestrictions(TolerantModel):
     """Time-based access restrictions."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -155,7 +156,7 @@ class TimeRestrictions(BaseModel):
     timezone: str | None = None
 
 
-class AccessPolicy(BaseModel):
+class AccessPolicy(TolerantModel):
     """Access policy model."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -181,7 +182,7 @@ class AccessPolicy(BaseModel):
     updated_at: str = Field(alias="updatedAt")
 
 
-class AccessEvaluation(BaseModel):
+class AccessEvaluation(TolerantModel):
     """Access evaluation result."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -194,7 +195,7 @@ class AccessEvaluation(BaseModel):
     max_duration_minutes: int | None = Field(None, alias="maxDurationMinutes")
 
 
-class Consent(BaseModel):
+class Consent(TolerantModel):
     """Consent record model."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -220,7 +221,7 @@ class Consent(BaseModel):
     updated_at: str = Field(alias="updatedAt")
 
 
-class LineageNode(BaseModel):
+class LineageNode(TolerantModel):
     """Data lineage node."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -231,7 +232,7 @@ class LineageNode(BaseModel):
     metadata: dict[str, Any] | None = None
 
 
-class LineageEdge(BaseModel):
+class LineageEdge(TolerantModel):
     """Data lineage edge."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -242,7 +243,7 @@ class LineageEdge(BaseModel):
     edge_type: str = Field(alias="edgeType")  # derives_from, feeds_into, copies_to
 
 
-class LineageGraph(BaseModel):
+class LineageGraph(TolerantModel):
     """Data lineage graph."""
 
     model_config = ConfigDict(populate_by_name=True)

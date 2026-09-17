@@ -38,15 +38,16 @@ from __future__ import annotations
 import builtins
 from typing import TYPE_CHECKING, Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from .._http import encode_path_param
+from .._tolerant import TolerantModel
 
 if TYPE_CHECKING:
     from .._http import HTTPClient
 
 
-class WorkspaceMember(BaseModel):
+class WorkspaceMember(TolerantModel):
     """A person attached to a workspace, with their role in it."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -61,7 +62,7 @@ class WorkspaceMember(BaseModel):
     invited_by: str | None = Field(None, alias="invitedBy")
 
 
-class WorkspaceWorkUnit(BaseModel):
+class WorkspaceWorkUnit(TolerantModel):
     """A work unit attached to a workspace, with its trust state."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -77,7 +78,7 @@ class WorkspaceWorkUnit(BaseModel):
     department: str | None = None
 
 
-class Workspace(BaseModel):
+class Workspace(TolerantModel):
     """
     A workspace with its full composition.
 
@@ -107,7 +108,7 @@ class Workspace(BaseModel):
     archived_at: str | None = Field(None, alias="archivedAt")
 
 
-class WorkspaceSummary(BaseModel):
+class WorkspaceSummary(TolerantModel):
     """
     A workspace without its member / work-unit detail.
 
@@ -133,7 +134,7 @@ class WorkspaceSummary(BaseModel):
     expires_at: str | None = Field(None, alias="expiresAt")
 
 
-class WorkspaceMessage(BaseModel):
+class WorkspaceMessage(TolerantModel):
     """Message envelope returned by archive, delete and document detach."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -141,7 +142,7 @@ class WorkspaceMessage(BaseModel):
     message: str
 
 
-class WorkspaceDocument(BaseModel):
+class WorkspaceDocument(TolerantModel):
     """A document seeded into a workspace.
 
     ``classification`` is the DOCUMENT's own sensitivity, not the workspace's
@@ -161,7 +162,7 @@ class WorkspaceDocument(BaseModel):
     workspace_id: str | None = Field(None, alias="workspaceId")
 
 
-class WorkspaceDocumentAttachment(BaseModel):
+class WorkspaceDocumentAttachment(TolerantModel):
     """The result of attaching a document, including the RESULTING mark.
 
     ``contains_classification`` is the workspace's containment high-water mark

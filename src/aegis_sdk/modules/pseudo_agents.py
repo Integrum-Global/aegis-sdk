@@ -44,12 +44,13 @@ session-token-only today.
 import builtins
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from .._http import encode_path_param
+from .._tolerant import TolerantModel
 
 
-class ChannelConfig(BaseModel):
+class ChannelConfig(TolerantModel):
     """A routing channel that carries requests to operators."""
 
     model_config = ConfigDict(populate_by_name=True, extra="allow")
@@ -60,7 +61,7 @@ class ChannelConfig(BaseModel):
     config: dict[str, Any] = Field(default_factory=dict)
 
 
-class OperatorAvailability(BaseModel):
+class OperatorAvailability(TolerantModel):
     """When an operator is available to take requests."""
 
     model_config = ConfigDict(populate_by_name=True, extra="allow")
@@ -70,7 +71,7 @@ class OperatorAvailability(BaseModel):
     exclude_dates: builtins.list[str] | None = Field(default=None, alias="excludeDates")
 
 
-class PseudoOperator(BaseModel):
+class PseudoOperator(TolerantModel):
     """A person who can handle this pseudo agent's requests."""
 
     model_config = ConfigDict(populate_by_name=True, extra="allow")
@@ -83,7 +84,7 @@ class PseudoOperator(BaseModel):
     availability: OperatorAvailability | None = None
 
 
-class EscalationConfig(BaseModel):
+class EscalationConfig(TolerantModel):
     """What happens when nobody responds in time.
 
     ``final_action`` decides the outcome once ``max_escalations`` is exhausted:
@@ -103,7 +104,7 @@ class EscalationConfig(BaseModel):
     default_response: dict[str, Any] | None = Field(default=None, alias="defaultResponse")
 
 
-class ResponseSchemaField(BaseModel):
+class ResponseSchemaField(TolerantModel):
     """One field of the form an operator fills in."""
 
     model_config = ConfigDict(populate_by_name=True, extra="allow")
@@ -117,7 +118,7 @@ class ResponseSchemaField(BaseModel):
     validation: dict[str, Any] | None = None
 
 
-class ResponseSchema(BaseModel):
+class ResponseSchema(TolerantModel):
     """The shape of the answer an operator is asked for."""
 
     model_config = ConfigDict(populate_by_name=True, extra="allow")
@@ -126,7 +127,7 @@ class ResponseSchema(BaseModel):
     default_values: dict[str, Any] | None = Field(default=None, alias="defaultValues")
 
 
-class PseudoAgentConfig(BaseModel):
+class PseudoAgentConfig(TolerantModel):
     """How a pseudo agent routes work to people."""
 
     model_config = ConfigDict(populate_by_name=True, extra="allow")
@@ -143,7 +144,7 @@ class PseudoAgentConfig(BaseModel):
     allow_reassign: bool = Field(default=True, alias="allowReassign")
 
 
-class TrustSetup(BaseModel):
+class TrustSetup(TolerantModel):
     """Trust arrangement to establish alongside the pseudo agent.
 
     ``mode`` is one of ``establish``, ``delegate`` or ``skip``; it defaults to
@@ -157,7 +158,7 @@ class TrustSetup(BaseModel):
     expiration_days: int | None = Field(default=None, alias="expirationDays")
 
 
-class PseudoAgent(BaseModel):
+class PseudoAgent(TolerantModel):
     """A human-in-the-loop work unit."""
 
     model_config = ConfigDict(populate_by_name=True, extra="allow")
@@ -178,7 +179,7 @@ class PseudoAgent(BaseModel):
     capabilities: builtins.list[str] = Field(default_factory=list)
 
 
-class PseudoAgentPage(BaseModel):
+class PseudoAgentPage(TolerantModel):
     """One page of pseudo agents."""
 
     model_config = ConfigDict(populate_by_name=True, extra="allow")
@@ -190,7 +191,7 @@ class PseudoAgentPage(BaseModel):
     has_more: bool = Field(default=False, alias="hasMore")
 
 
-class ChannelTestResult(BaseModel):
+class ChannelTestResult(TolerantModel):
     """Outcome of probing a routing channel."""
 
     model_config = ConfigDict(populate_by_name=True, extra="allow")
@@ -202,7 +203,7 @@ class ChannelTestResult(BaseModel):
     tested_at: str = Field(alias="testedAt")
 
 
-class PseudoRequest(BaseModel):
+class PseudoRequest(TolerantModel):
     """A request routed to human operators."""
 
     model_config = ConfigDict(populate_by_name=True, extra="allow")

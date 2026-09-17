@@ -36,9 +36,10 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING, Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import Field
 
 from .._http import encode_path_param
+from .._tolerant import TolerantModel
 
 if TYPE_CHECKING:
     from .._http import HTTPClient
@@ -51,7 +52,7 @@ ALLOWED_TOOL_AGENT_STATUS_TARGETS: frozenset[str] = frozenset(
 )
 
 
-class ToolAgent(BaseModel):
+class ToolAgent(TolerantModel):
     """Tool agent record (registry.ToolAgentResponse, snake_case)."""
 
     id: str
@@ -84,14 +85,14 @@ class ToolAgent(BaseModel):
     consumer_count: int = 0
 
 
-class ToolAgentList(BaseModel):
+class ToolAgentList(TolerantModel):
     """Paginated tool-agent registry roster (``{records, total}``)."""
 
     records: list[ToolAgent]
     total: int
 
 
-class ToolAgentInvocationResult(BaseModel):
+class ToolAgentInvocationResult(TolerantModel):
     """Result of a governance-gated tool-agent invocation."""
 
     content: str
@@ -110,7 +111,7 @@ class ToolAgentInvocationResult(BaseModel):
     verification_zone: Literal["auto_approved", "flagged", "held", "blocked"]
 
 
-class ConstraintSource(BaseModel):
+class ConstraintSource(TolerantModel):
     """A single inheritance level contributing constraints to an agent."""
 
     label: str
@@ -118,7 +119,7 @@ class ConstraintSource(BaseModel):
     level: str
 
 
-class ToolAgentEnvelopeSummary(BaseModel):
+class ToolAgentEnvelopeSummary(TolerantModel):
     """Operating-envelope summary for the agent-configuration side panel."""
 
     agent_id: str

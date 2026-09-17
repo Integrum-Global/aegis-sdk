@@ -14,12 +14,13 @@ Operations:
 
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from .._http import encode_path_param
+from .._tolerant import TolerantModel
 
 
-class RegisteredAgent(BaseModel):
+class RegisteredAgent(TolerantModel):
     """An agent as returned by registration."""
 
     model_config = ConfigDict(populate_by_name=True, extra="allow")
@@ -34,7 +35,7 @@ class RegisteredAgent(BaseModel):
     last_heartbeat: str | None = None
 
 
-class DiscoveredTrustAgent(BaseModel):
+class DiscoveredTrustAgent(TolerantModel):
     """An agent discovered through the trust registry.
 
     Discovery reads TRUST CHAINS, not the agent table: an agent with no chain
@@ -49,7 +50,7 @@ class DiscoveredTrustAgent(BaseModel):
     human_origin: dict[str, Any] | None = None
 
 
-class AgentRegistryMetadata(BaseModel):
+class AgentRegistryMetadata(TolerantModel):
     """Registry metadata for one agent, projected from its trust chain."""
 
     model_config = ConfigDict(populate_by_name=True, extra="allow")
@@ -62,7 +63,7 @@ class AgentRegistryMetadata(BaseModel):
     human_origin: dict[str, Any] | None = None
 
 
-class HeartbeatResult(BaseModel):
+class HeartbeatResult(TolerantModel):
     """Acknowledgement of a recorded heartbeat."""
 
     model_config = ConfigDict(populate_by_name=True, extra="allow")

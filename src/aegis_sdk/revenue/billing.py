@@ -16,12 +16,13 @@ it reads as a guarantee the API never made.
 
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from .._http import HTTPClient, encode_path_param
+from .._tolerant import TolerantModel
 
 
-class ResourceUsage(BaseModel):
+class ResourceUsage(TolerantModel):
     """Usage of ONE resource type within a period."""
 
     quantity: str
@@ -29,7 +30,7 @@ class ResourceUsage(BaseModel):
     unit: str
 
 
-class UsageSummary(BaseModel):
+class UsageSummary(TolerantModel):
     """Aggregated usage and cost for a window.
 
     ``quantity`` is carried as a STRING here and throughout this module,
@@ -47,7 +48,7 @@ class UsageSummary(BaseModel):
     record_count: int
 
 
-class UsageRecord(BaseModel):
+class UsageRecord(TolerantModel):
     """One metered usage record."""
 
     id: str
@@ -62,14 +63,14 @@ class UsageRecord(BaseModel):
     created_at: str
 
 
-class UsageRecordList(BaseModel):
+class UsageRecordList(TolerantModel):
     """A page of usage records."""
 
     records: list[UsageRecord] = Field(default_factory=list)
     total: int
 
 
-class BillingQuota(BaseModel):
+class BillingQuota(TolerantModel):
     """A quota row.
 
     ``limit_value`` of ``-1`` means UNLIMITED — it is a sentinel, not a
@@ -88,13 +89,13 @@ class BillingQuota(BaseModel):
     updated_at: str
 
 
-class BillingQuotaList(BaseModel):
+class BillingQuotaList(TolerantModel):
     """``{"quotas": [...]}`` envelope."""
 
     quotas: list[BillingQuota] = Field(default_factory=list)
 
 
-class BillingPeriod(BaseModel):
+class BillingPeriod(TolerantModel):
     """One billing period."""
 
     id: str
@@ -108,14 +109,14 @@ class BillingPeriod(BaseModel):
     created_at: str
 
 
-class BillingPeriodList(BaseModel):
+class BillingPeriodList(TolerantModel):
     """A page of billing periods."""
 
     records: list[BillingPeriod] = Field(default_factory=list)
     total: int
 
 
-class CostEstimate(BaseModel):
+class CostEstimate(TolerantModel):
     """An estimate. NOT a quote, and not a commitment to a price."""
 
     resource_type: str
@@ -125,13 +126,13 @@ class CostEstimate(BaseModel):
     total_cost: float
 
 
-class Pricing(BaseModel):
+class Pricing(TolerantModel):
     """Current pricing, keyed by resource type."""
 
     pricing: dict[str, Any] = Field(default_factory=dict)
 
 
-class DefaultPaymentMethodResult(BaseModel):
+class DefaultPaymentMethodResult(TolerantModel):
     """Outcome of setting the default payment method.
 
     ⚠ camelCase on the wire (``paymentMethodId``), unlike the rest of this
@@ -147,7 +148,7 @@ class DefaultPaymentMethodResult(BaseModel):
     payment_method_id: str = Field(alias="paymentMethodId")
 
 
-class BillingContact(BaseModel):
+class BillingContact(TolerantModel):
     """Billing contact details. Every field is optional server-side."""
 
     company_name: str | None = None
@@ -161,13 +162,13 @@ class BillingContact(BaseModel):
     tax_id: str | None = None
 
 
-class BillingContactEnvelope(BaseModel):
+class BillingContactEnvelope(TolerantModel):
     """``{"contact": {...}}`` envelope."""
 
     contact: BillingContact
 
 
-class AlertResource(BaseModel):
+class AlertResource(TolerantModel):
     """Per-resource alert threshold."""
 
     id: str
@@ -175,7 +176,7 @@ class AlertResource(BaseModel):
     threshold: int = 0
 
 
-class UsageAlerts(BaseModel):
+class UsageAlerts(TolerantModel):
     """Usage-alert settings."""
 
     global_enabled: bool = False
@@ -183,13 +184,13 @@ class UsageAlerts(BaseModel):
     resources: list[AlertResource] = Field(default_factory=list)
 
 
-class UsageAlertsEnvelope(BaseModel):
+class UsageAlertsEnvelope(TolerantModel):
     """``{"alerts": {...}}`` envelope."""
 
     alerts: UsageAlerts
 
 
-class MeteredItem(BaseModel):
+class MeteredItem(TolerantModel):
     """A metered subscription item attached to the org's subscription."""
 
     organization_id: str
@@ -197,7 +198,7 @@ class MeteredItem(BaseModel):
     metered_items: dict[str, str] = Field(default_factory=dict)
 
 
-class ReconcileResult(BaseModel):
+class ReconcileResult(TolerantModel):
     """Outcome of reconciling reported metered usage against internal usage.
 
     An UNDER-report self-heals: internal usage exceeding what was reported is
@@ -213,7 +214,7 @@ class ReconcileResult(BaseModel):
     dimensions: dict[str, Any] = Field(default_factory=dict)
 
 
-class PaymentMethodSetup(BaseModel):
+class PaymentMethodSetup(TolerantModel):
     """Result of a payment-method setup request.
 
     Mirrors the wire shape emitted by ``POST /api/v1/billing/setup-payment-method``

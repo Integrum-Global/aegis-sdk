@@ -32,9 +32,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import Field
 
 from .._http import encode_path_param
+from .._tolerant import TolerantModel
 
 # ---------------------------------------------------------------------------
 # Response models (verified -- no Pydantic alias
@@ -43,7 +44,7 @@ from .._http import encode_path_param
 # ---------------------------------------------------------------------------
 
 
-class Provider(BaseModel):
+class Provider(TolerantModel):
     """LLM provider status (response shape)."""
 
     name: str
@@ -56,13 +57,13 @@ class Provider(BaseModel):
     rate_limit_tpm: int = 0
 
 
-class ProvidersListResult(BaseModel):
+class ProvidersListResult(TolerantModel):
     """Envelope for GET /llm/providers."""
 
     providers: list[Provider] = Field(default_factory=list)
 
 
-class ModelCapabilities(BaseModel):
+class ModelCapabilities(TolerantModel):
     """Model capabilities."""
 
     vision: bool = False
@@ -72,7 +73,7 @@ class ModelCapabilities(BaseModel):
     code_interpreter: bool = False
 
 
-class LlmModel(BaseModel):
+class LlmModel(TolerantModel):
     """LLM model metadata (response shape)."""
 
     model_id: str
@@ -92,7 +93,7 @@ class LlmModel(BaseModel):
     avg_latency_ms: int = 0
 
 
-class ModelsListResult(BaseModel):
+class ModelsListResult(TolerantModel):
     """Envelope for GET /llm/models."""
 
     provider: str = ""
@@ -102,13 +103,13 @@ class ModelsListResult(BaseModel):
     fallback: bool = False
 
 
-class AllModelsResult(BaseModel):
+class AllModelsResult(TolerantModel):
     """Envelope for GET /llm/models/all."""
 
     models: dict[str, list[LlmModel]] = Field(default_factory=dict)
 
 
-class ModelValidationResult(BaseModel):
+class ModelValidationResult(TolerantModel):
     """Result of POST /llm/models/validate."""
 
     is_valid: bool
@@ -118,7 +119,7 @@ class ModelValidationResult(BaseModel):
     model: LlmModel | None = None
 
 
-class CacheRefreshResult(BaseModel):
+class CacheRefreshResult(TolerantModel):
     """Result of POST /llm/providers/{provider}/refresh."""
 
     success: bool = False
@@ -127,7 +128,7 @@ class CacheRefreshResult(BaseModel):
     fallback: bool = False
 
 
-class ProviderHealth(BaseModel):
+class ProviderHealth(TolerantModel):
     """Result of GET /llm/providers/{provider}/health."""
 
     provider: str
@@ -140,7 +141,7 @@ class ProviderHealth(BaseModel):
     checked_at: str = ""
 
 
-class ModelMetadata(BaseModel):
+class ModelMetadata(TolerantModel):
     """Result of GET /llm/models/{provider}/{model_id}/metadata."""
 
     model_id: str

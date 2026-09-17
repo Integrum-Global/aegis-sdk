@@ -12,12 +12,13 @@ Operations:
 
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from .._http import encode_path_param
+from .._tolerant import TolerantModel
 
 
-class PipelineAgentStatus(BaseModel):
+class PipelineAgentStatus(TolerantModel):
     """Trust status of one agent within a pipeline validation."""
 
     model_config = ConfigDict(populate_by_name=True, extra="allow")
@@ -30,7 +31,7 @@ class PipelineAgentStatus(BaseModel):
     human_origin: dict[str, Any] | None = None
 
 
-class PipelineTrustValidation(BaseModel):
+class PipelineTrustValidation(TolerantModel):
     """Result of validating trust across a pipeline.
 
     ``all_valid`` is ``False`` if ANY agent lacks a chain, is missing a
@@ -50,7 +51,7 @@ class PipelineTrustValidation(BaseModel):
     agent_statuses: list[PipelineAgentStatus] = Field(default_factory=list)
 
 
-class PipelineAgentTrust(BaseModel):
+class PipelineAgentTrust(TolerantModel):
     """One agent's trust status in the context of a pipeline."""
 
     model_config = ConfigDict(populate_by_name=True, extra="allow")

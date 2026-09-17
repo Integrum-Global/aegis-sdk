@@ -17,12 +17,13 @@ Operations:
 import builtins
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from .._http import encode_path_param
+from .._tolerant import TolerantModel
 
 
-class OrganizationalAuthority(BaseModel):
+class OrganizationalAuthority(TolerantModel):
     """An organizational signing authority.
 
     Mirrors the platform's ``OrganizationalAuthority`` response model.
@@ -38,7 +39,7 @@ class OrganizationalAuthority(BaseModel):
     created_at: str
 
 
-class AuthorityDisplay(BaseModel):
+class AuthorityDisplay(TolerantModel):
     """An authority enriched for display, with its established-agent count.
 
     The display routes return the authority fields above plus a merged agent
@@ -62,7 +63,7 @@ class AuthorityDisplay(BaseModel):
     agent_count: int | None = Field(None, alias="agentCount")
 
 
-class AuthorityAgent(BaseModel):
+class AuthorityAgent(TolerantModel):
     """An agent whose genesis was established under an authority."""
 
     model_config = ConfigDict(populate_by_name=True)

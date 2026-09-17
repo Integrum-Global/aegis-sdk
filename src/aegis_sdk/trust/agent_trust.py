@@ -20,12 +20,13 @@ enforcement path does not consult them.
 
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from .._http import encode_path_param
+from .._tolerant import TolerantModel
 
 
-class AgentTrustSummary(BaseModel):
+class AgentTrustSummary(TolerantModel):
     """Compact trust summary for an agent.
 
     When the agent has no trust chain the platform returns ``has_trust=False``
@@ -44,7 +45,7 @@ class AgentTrustSummary(BaseModel):
     human_origin: dict[str, Any] | None = None
 
 
-class AgentWithTrust(BaseModel):
+class AgentWithTrust(TolerantModel):
     """An agent composed with its trust chain.
 
     Note:
@@ -74,7 +75,7 @@ class AgentWithTrust(BaseModel):
     expires_at: str | None = None
 
 
-class CapabilitySummaryEntry(BaseModel):
+class CapabilitySummaryEntry(TolerantModel):
     """One capability with its provenance."""
 
     model_config = ConfigDict(populate_by_name=True, extra="allow")
@@ -84,7 +85,7 @@ class CapabilitySummaryEntry(BaseModel):
     status: str
 
 
-class TrustScoreDimension(BaseModel):
+class TrustScoreDimension(TolerantModel):
     """One dimension of the display-only trust radar."""
 
     model_config = ConfigDict(populate_by_name=True, extra="allow")
@@ -97,7 +98,7 @@ class TrustScoreDimension(BaseModel):
     evidence_summary: str | None = Field(None, alias="evidenceSummary")
 
 
-class AgentTrustScore(BaseModel):
+class AgentTrustScore(TolerantModel):
     """Display-only trust grade and 5-dimension radar for an agent.
 
     DISPLAY ONLY. This is computed from recorded evidence for presentation and
@@ -118,7 +119,7 @@ class AgentTrustScore(BaseModel):
     dimensions: list[TrustScoreDimension] = Field(default_factory=list)
 
 
-class CareBudgetDimension(BaseModel):
+class CareBudgetDimension(TolerantModel):
     """One CARE constraint dimension with its limit and consumption.
 
     ``used`` is ``None`` and ``available`` is ``False`` for any dimension with
@@ -139,7 +140,7 @@ class CareBudgetDimension(BaseModel):
     binding: str | None = None
 
 
-class AgentCareBudget(BaseModel):
+class AgentCareBudget(TolerantModel):
     """Display-only 5-dimension CARE budget for an agent.
 
     DISPLAY ONLY -- no enforcement decision reads this projection.

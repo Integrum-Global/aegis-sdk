@@ -34,15 +34,16 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from .._http import encode_path_param
+from .._tolerant import TolerantModel
 
 if TYPE_CHECKING:
     from .._http import HTTPClient
 
 
-class LineageNode(BaseModel):
+class LineageNode(TolerantModel):
     """A node in the data-lineage graph (``LineageNodeResponse``).
 
     ``schema_def`` carries the server's ``schema`` field, renamed because
@@ -69,7 +70,7 @@ class LineageNode(BaseModel):
     updated_at: str | None = Field(None, alias="updatedAt")
 
 
-class LineageEdge(BaseModel):
+class LineageEdge(TolerantModel):
     """An edge in the data-lineage graph (``LineageEdgeResponse``)."""
 
     model_config = ConfigDict(populate_by_name=True, extra="allow")
@@ -92,7 +93,7 @@ class LineageEdge(BaseModel):
     updated_at: str | None = Field(None, alias="updatedAt")
 
 
-class LineageTraversal(BaseModel):
+class LineageTraversal(TolerantModel):
     """The result of walking one direction from a node.
 
     ``path`` is the ordered node-id walk the server took, which is what makes a

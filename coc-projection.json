@@ -93,7 +93,7 @@
     {
       "dest": ".claude/agents/aegis-sdk-specialist.md",
       "source": "src/aegis_sdk/coc/agents/aegis-sdk-specialist.md",
-      "source_sha256_16": "68069a69dfd764ec"
+      "source_sha256_16": "7076aaab3d687caa"
     },
     {
       "dest": ".claude/commands/construct.md",
@@ -168,12 +168,12 @@
     {
       "dest": ".claude/skills/client-model-fidelity/SKILL.md",
       "source": "src/aegis_sdk/coc/guardrails/client-model-fidelity.md",
-      "source_sha256_16": "7cb3b0f21e666022"
+      "source_sha256_16": "3f6b1bdbd7a0d562"
     },
     {
       "dest": ".claude/skills/credential-reachability/SKILL.md",
       "source": "src/aegis_sdk/coc/guardrails/credential-reachability.md",
-      "source_sha256_16": "d42316ed7afaf4aa"
+      "source_sha256_16": "3ed65aedc17b4e85"
     },
     {
       "dest": ".claude/skills/day-two-operations/SKILL.md",
@@ -223,7 +223,7 @@
     {
       "dest": ".claude/skills/working-against-a-deployment/SKILL.md",
       "source": "src/aegis_sdk/coc/skills/working-against-a-deployment.md",
-      "source_sha256_16": "5297f65326a35f12"
+      "source_sha256_16": "c74f338d340a6215"
     },
     {
       "dest": ".codex/hooks.json",
@@ -258,7 +258,7 @@
     {
       "dest": ".codex/prompts/specialist-aegis-sdk-specialist.md",
       "source": "src/aegis_sdk/coc/agents/aegis-sdk-specialist.md",
-      "source_sha256_16": "68069a69dfd764ec"
+      "source_sha256_16": "7076aaab3d687caa"
     },
     {
       "dest": ".codex/skills/billing-integrity/SKILL.md",
@@ -268,12 +268,12 @@
     {
       "dest": ".codex/skills/client-model-fidelity/SKILL.md",
       "source": "src/aegis_sdk/coc/guardrails/client-model-fidelity.md",
-      "source_sha256_16": "7cb3b0f21e666022"
+      "source_sha256_16": "3f6b1bdbd7a0d562"
     },
     {
       "dest": ".codex/skills/credential-reachability/SKILL.md",
       "source": "src/aegis_sdk/coc/guardrails/credential-reachability.md",
-      "source_sha256_16": "d42316ed7afaf4aa"
+      "source_sha256_16": "3ed65aedc17b4e85"
     },
     {
       "dest": ".codex/skills/day-two-operations/SKILL.md",
@@ -323,7 +323,7 @@
     {
       "dest": ".codex/skills/working-against-a-deployment/SKILL.md",
       "source": "src/aegis_sdk/coc/skills/working-against-a-deployment.md",
-      "source_sha256_16": "5297f65326a35f12"
+      "source_sha256_16": "c74f338d340a6215"
     },
     {
       "dest": ".gemini/agents/aegis-operator.md",
@@ -333,7 +333,7 @@
     {
       "dest": ".gemini/agents/aegis-sdk-specialist.md",
       "source": "src/aegis_sdk/coc/agents/aegis-sdk-specialist.md",
-      "source_sha256_16": "68069a69dfd764ec"
+      "source_sha256_16": "7076aaab3d687caa"
     },
     {
       "dest": ".gemini/commands/construct.toml",
@@ -368,12 +368,12 @@
     {
       "dest": ".gemini/skills/client-model-fidelity/SKILL.md",
       "source": "src/aegis_sdk/coc/guardrails/client-model-fidelity.md",
-      "source_sha256_16": "7cb3b0f21e666022"
+      "source_sha256_16": "3f6b1bdbd7a0d562"
     },
     {
       "dest": ".gemini/skills/credential-reachability/SKILL.md",
       "source": "src/aegis_sdk/coc/guardrails/credential-reachability.md",
-      "source_sha256_16": "d42316ed7afaf4aa"
+      "source_sha256_16": "3ed65aedc17b4e85"
     },
     {
       "dest": ".gemini/skills/day-two-operations/SKILL.md",
@@ -423,22 +423,22 @@
     {
       "dest": ".gemini/skills/working-against-a-deployment/SKILL.md",
       "source": "src/aegis_sdk/coc/skills/working-against-a-deployment.md",
-      "source_sha256_16": "5297f65326a35f12"
+      "source_sha256_16": "c74f338d340a6215"
     },
     {
       "dest": "AGENTS.md",
       "source": "coc-context.md",
-      "source_sha256_16": "81b3ec1aebac0686"
+      "source_sha256_16": "4d06da48d1e52b12"
     },
     {
       "dest": "CLAUDE.md",
       "source": "coc-context.md",
-      "source_sha256_16": "81b3ec1aebac0686"
+      "source_sha256_16": "4d06da48d1e52b12"
     },
     {
       "dest": "GEMINI.md",
       "source": "coc-context.md",
-      "source_sha256_16": "81b3ec1aebac0686"
+      "source_sha256_16": "4d06da48d1e52b12"
     }
   ]
 }

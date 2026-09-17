@@ -114,9 +114,10 @@ from __future__ import annotations
 import builtins
 from typing import TYPE_CHECKING, Any
 
-from pydantic import BaseModel, Field
+from pydantic import Field
 
 from .._http import encode_path_param
+from .._tolerant import TolerantModel
 
 if TYPE_CHECKING:
     from .._http import HTTPClient
@@ -127,7 +128,7 @@ if TYPE_CHECKING:
 # ---------------------------------------------------------------------------
 
 
-class KnowledgeItem(BaseModel):
+class KnowledgeItem(TolerantModel):
     """Knowledge item (KnowledgeResponse, snake_case)."""
 
     id: str
@@ -158,27 +159,27 @@ class KnowledgeItem(BaseModel):
     updated_at: str
 
 
-class KnowledgeItemList(BaseModel):
+class KnowledgeItemList(TolerantModel):
     """Paginated knowledge listing (``{records, total}``)."""
 
     records: list[KnowledgeItem]
     total: int
 
 
-class MessageResult(BaseModel):
+class MessageResult(TolerantModel):
     """Simple message response (MessageResponse)."""
 
     message: str
 
 
-class KnowledgeReviewResult(BaseModel):
+class KnowledgeReviewResult(TolerantModel):
     """Result of a review-lifecycle transition (ReviewResponse)."""
 
     review_id: str
     status: str
 
 
-class KnowledgeRevisionResult(BaseModel):
+class KnowledgeRevisionResult(TolerantModel):
     """Result of creating a draft revision (RevisionResponse)."""
 
     new_knowledge_id: str
@@ -191,7 +192,7 @@ class KnowledgeRevisionResult(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-class KnowledgeSharePolicy(BaseModel):
+class KnowledgeSharePolicy(TolerantModel):
     """Knowledge-share-policy record (PolicyResponse, snake_case)."""
 
     id: str
@@ -215,7 +216,7 @@ class KnowledgeSharePolicy(BaseModel):
     updated_at: str
 
 
-class KnowledgeSharePolicyList(BaseModel):
+class KnowledgeSharePolicyList(TolerantModel):
     """Paginated KSP listing (``{records, total}``)."""
 
     records: list[KnowledgeSharePolicy]
@@ -227,7 +228,7 @@ class KnowledgeSharePolicyList(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-class KnowledgeCategory(BaseModel):
+class KnowledgeCategory(TolerantModel):
     """Knowledge category record (KnowledgeCategoryResponse)."""
 
     id: str
@@ -252,7 +253,7 @@ class KnowledgeCategory(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-class RecordsEnvelope(BaseModel):
+class RecordsEnvelope(TolerantModel):
     """Generic ``{records, total}`` envelope for un-typed list endpoints."""
 
     records: list[dict[str, Any]] = Field(default_factory=list)

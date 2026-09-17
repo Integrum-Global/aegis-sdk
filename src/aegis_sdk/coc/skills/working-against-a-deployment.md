@@ -5,27 +5,27 @@ description: Connect to a running Aegis, authenticate, submit an objective, read
 
 # Working against a deployed Aegis
 
-You have a URL, a credential, and this package. You do not have the platform
-source and you cannot boot it. This is the path from that starting point to a
-completed piece of work.
+You have a URL, a credential, and this repository, cloned and open. You do not
+have the platform source and you cannot boot it. This is the path from that
+starting point to a completed piece of work.
 
 **The prose for each step is in the shipped handbook and is not repeated here.**
 Duplicating it would produce two copies that drift, and the handbook's copy is
-the one that is anchor-checked. This skill is the *order of operations* and the
+the one that is anchor-checked. This skill is the _order of operations_ and the
 decisions between the steps.
 
 Chapters are named by **title**, not by number. The shipped handbook is being
 renumbered, and a number printed here would be a reference that resolves today
 and misleads next month.
 
-| Step                | Handbook chapter        |
-| ------------------- | ----------------------- |
-| First login         | *First login*           |
-| Submit an objective | *Submitting an objective* |
-| Your inbox          | *Your inbox*            |
-| Something is held   | *When something is held* |
-| What you can see    | *What you can see*      |
-| Calling the API     | *The API surface*       |
+| Step                | Handbook chapter          |
+| ------------------- | ------------------------- |
+| First login         | _First login_             |
+| Submit an objective | _Submitting an objective_ |
+| Your inbox          | _Your inbox_              |
+| Something is held   | _When something is held_  |
+| What you can see    | _What you can see_        |
+| Calling the API     | _The API surface_         |
 
 ## Step 0 — Establish what you are holding, before anything else
 
@@ -105,8 +105,7 @@ skill adds:
 **Never resolve a hold by widening the credential that hit it.** If a hold is a
 governance decision, widening is not the remedy. If a refusal is the credential
 trap in step 1, widening does nothing at all, because scopes are not consulted
-on that path — you end the day holding a more powerful credential and the same
-403. Widening a credential to clear an undiagnosed refusal is the wrong move in
+on that path — you end the day holding a more powerful credential and the same 403. Widening a credential to clear an undiagnosed refusal is the wrong move in
 both branches, which is what makes it worth a rule.
 
 ## Step 5 — Before you report anything as working

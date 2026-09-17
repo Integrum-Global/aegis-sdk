@@ -93,9 +93,6 @@ markers = [
     "timeout(seconds): per-test wall-clock budget",
 ]
 
-[project.urls]
-Documentation = "https://github.com/esperie-enterprise/aegis-sdk/tree/main/src/aegis_sdk/docs"
-
 [tool.hatch.version]
 path = "src/aegis_sdk/_version.py"
 

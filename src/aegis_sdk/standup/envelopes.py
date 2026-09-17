@@ -1,11 +1,22 @@
-"""Role envelopes module — typed create/get for the vertical-standup path.
+"""Role envelopes module — create/get/list for the vertical-standup path.
 
-Verified against the server ``role-envelopes`` router(mounted at ``/api/v1``)).
+Verified against the server ``role-envelopes`` router (mounted at ``/api/v1``).
+
+⛔ THE ENVELOPE LIFECYCLE IS SPLIT ACROSS TWO MODULES. ``create`` (here)
+defaults to ``status="draft"``, and ``activate`` does NOT exist on this
+module — it lives on ``client.trust_posture``
+(``activate_role_envelope`` / ``suspend_role_envelope`` /
+``update_role_envelope`` / ``delete_role_envelope``). A caller holding only
+``client.role_envelopes`` can create an envelope and has no way to make it
+effective. Reaching for ``client.trust_posture`` to finish is required, not
+optional.
 
 NOTE: the server ``CreateRoleEnvelopeRequest`` uses ``extra="forbid"`` +
 ``populate_by_name=True``, so this module sends ONLY the
 declared field names — any extra key is rejected 422.
 """
+
+from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
@@ -18,7 +29,7 @@ if TYPE_CHECKING:
 class RoleEnvelopesModule:
     """Operating-envelope (Layer-1 standing) management (create + get)."""
 
-    def __init__(self, http_client: "HTTPClient") -> None:
+    def __init__(self, http_client: HTTPClient) -> None:
         self._http = http_client
 
     async def create(
@@ -68,5 +79,48 @@ class RoleEnvelopesModule:
         """
         resp: dict[str, Any] = await self._http.request(
             "GET", f"/api/v1/role-envelopes/{encode_path_param(envelope_id)}"
+        )
+        return resp
+    async def list(
+        self,
+        defining_role_id: str,
+        status: str | None = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> dict[str, Any]:
+        """List role envelopes for ONE supervising role.
+
+        Server: ``GET /api/v1/role-envelopes`` (``role_envelope.py:355``),
+        gated on scope ``roles:read``.
+
+        ⛔ ``defining_role_id`` is REQUIRED and is not a convenience filter.
+        The service exposes NO org-wide enumeration path by design, and the
+        server returns ``400`` rather than an empty list when it is missing
+        (``role_envelope.py:365-380``). An idempotency check across a whole
+        org must therefore ITERATE role-by-role; there is no single call that
+        answers "does this envelope already exist anywhere".
+
+        Sent on the wire as ``definingRoleId`` -- the server binds the
+        parameter name via ``Query(alias=...)``.
+
+        Args:
+            defining_role_id: Supervisor role whose envelopes to list.
+            status: Optional status filter (``draft``/``active``/``suspended``).
+            limit: Maximum results (1-500, server default 100).
+            offset: Pagination offset.
+
+        Returns:
+            ``{"records": [...], "total": int}`` -- raw persisted rows, with
+            ``constraint_config_json`` as a JSON **string**, not an object.
+        """
+        params: dict[str, Any] = {
+            "definingRoleId": defining_role_id,
+            "limit": limit,
+            "offset": offset,
+        }
+        if status is not None:
+            params["status"] = status
+        resp: dict[str, Any] = await self._http.request(
+            "GET", "/api/v1/role-envelopes", params=params
         )
         return resp

@@ -54,9 +54,10 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from .._http import encode_path_param
+from .._tolerant import TolerantModel
 
 SettingsCategory = Literal[
     "general", "appearance", "ontology", "notifications", "security", "preferences"
@@ -70,7 +71,7 @@ ExportFormat = Literal["json", "yaml"]
 # ---------------------------------------------------------------------------
 
 
-class NotificationSettings(BaseModel):
+class NotificationSettings(TolerantModel):
     """Notification settings."""
 
     email: bool = True
@@ -79,7 +80,7 @@ class NotificationSettings(BaseModel):
     digest: bool = True
 
 
-class SecuritySettings(BaseModel):
+class SecuritySettings(TolerantModel):
     """Security settings."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -89,7 +90,7 @@ class SecuritySettings(BaseModel):
     ip_whitelist: list[str] = Field(default_factory=list, alias="ipWhitelist")
 
 
-class OrganizationSettings(BaseModel):
+class OrganizationSettings(TolerantModel):
     """Organization settings (response shape)."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -106,7 +107,7 @@ class OrganizationSettings(BaseModel):
     updated_at: str = Field("", alias="updatedAt")
 
 
-class UserSettings(BaseModel):
+class UserSettings(TolerantModel):
     """Current user's settings (response shape)."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -127,7 +128,7 @@ class UserSettings(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-class SettingsBackup(BaseModel):
+class SettingsBackup(TolerantModel):
     """A settings backup."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -140,7 +141,7 @@ class SettingsBackup(BaseModel):
     auto_backup: bool = Field(False, alias="autoBackup")
 
 
-class SettingsConflict(BaseModel):
+class SettingsConflict(TolerantModel):
     """A single unresolved import/restore conflict."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -152,7 +153,7 @@ class SettingsConflict(BaseModel):
     reason: str = ""
 
 
-class SettingsImportResult(BaseModel):
+class SettingsImportResult(TolerantModel):
     """Result of an import/restore apply."""
 
     success: bool
@@ -167,7 +168,7 @@ class SettingsImportResult(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-class SettingsExport(BaseModel):
+class SettingsExport(TolerantModel):
     """Portable settings export."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -179,7 +180,7 @@ class SettingsExport(BaseModel):
     data: dict[str, Any] = Field(default_factory=dict)
 
 
-class SettingsImportPreviewChange(BaseModel):
+class SettingsImportPreviewChange(TolerantModel):
     """A single non-conflicting proposed change."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -190,7 +191,7 @@ class SettingsImportPreviewChange(BaseModel):
     new_value: Any = Field(None, alias="newValue")
 
 
-class SettingsImportPreview(BaseModel):
+class SettingsImportPreview(TolerantModel):
     """Diff-only preview of an uploaded export file."""
 
     valid: bool
@@ -206,7 +207,7 @@ class SettingsImportPreview(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-class SettingsActor(BaseModel):
+class SettingsActor(TolerantModel):
     """The user who made a settings change."""
 
     id: str
@@ -215,7 +216,7 @@ class SettingsActor(BaseModel):
     avatar: str | None = None
 
 
-class SettingsChange(BaseModel):
+class SettingsChange(TolerantModel):
     """A single recorded field change."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -225,7 +226,7 @@ class SettingsChange(BaseModel):
     new_value: Any = Field(None, alias="newValue")
 
 
-class SettingsAuditLog(BaseModel):
+class SettingsAuditLog(TolerantModel):
     """A single settings-audit record."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -240,7 +241,7 @@ class SettingsAuditLog(BaseModel):
     revertable: bool = False
 
 
-class SettingsAuditList(BaseModel):
+class SettingsAuditList(TolerantModel):
     """Paginated settings-audit list."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -260,7 +261,7 @@ class SettingsAuditList(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-class SiteConfig(BaseModel):
+class SiteConfig(TolerantModel):
     """Tenant site / branding configuration."""
 
     id: str | None = None

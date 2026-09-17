@@ -27,15 +27,16 @@ list responses use the ``{items, total, page, pageSize}`` envelope.
 
 from typing import TYPE_CHECKING, Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from .._http import encode_path_param
+from .._tolerant import TolerantModel
 
 if TYPE_CHECKING:
     from .._http import HTTPClient
 
 
-class Specialist(BaseModel):
+class Specialist(TolerantModel):
     """
     Specialist definition (agent-authoring console).
 
@@ -64,7 +65,7 @@ class Specialist(BaseModel):
     timeout_seconds: int | None = Field(default=None, alias="timeoutSeconds")
 
 
-class SpecialistList(BaseModel):
+class SpecialistList(TolerantModel):
     """Paginated specialist roster (``{items, total, page, pageSize}``)."""
 
     model_config = ConfigDict(populate_by_name=True)

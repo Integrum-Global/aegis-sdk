@@ -93,9 +93,10 @@ nothing to any caller's manifest and mounts no route until it is enabled.
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from .._http import HTTPClient, encode_path_param
+from .._tolerant import TolerantModel
 
 #: Navigation sections a surface may join. Closed server-side — an architect
 #: cannot invent a section, so a registration can never create a new region of
@@ -124,7 +125,7 @@ SurfaceStatus = Literal["disabled", "enabled"]
 # ============================================================================
 
 
-class SurfaceManifestEntry(BaseModel):
+class SurfaceManifestEntry(TolerantModel):
     """One navigation entry the calling principal may see.
 
     The rendering projection: exactly what a sidebar and a route need.
@@ -150,7 +151,7 @@ class SurfaceManifestEntry(BaseModel):
     classification: str = "restricted"
 
 
-class SurfaceManifest(BaseModel):
+class SurfaceManifest(TolerantModel):
     """``GET /api/v1/surface-registry`` — this caller's composed navigation.
 
     An object rather than a bare array, matching the backend's list-endpoint
@@ -163,7 +164,7 @@ class SurfaceManifest(BaseModel):
     surfaces: list[SurfaceManifestEntry] = Field(default_factory=list)
 
 
-class SurfaceRegistration(BaseModel):
+class SurfaceRegistration(TolerantModel):
     """The full authoring projection of one registration.
 
     ⚠ EVERY FIELD BUT ``surface_key`` IS OPTIONAL, AND THAT IS THE WIRE SHAPE,
@@ -213,7 +214,7 @@ class SurfaceRegistration(BaseModel):
     unresolvable_field: str | None = None
 
 
-class SurfaceRegistrationListResult(BaseModel):
+class SurfaceRegistrationListResult(TolerantModel):
     """``GET /registrations`` — every registration in the tenant, any status."""
 
     model_config = ConfigDict(populate_by_name=True)
@@ -221,7 +222,7 @@ class SurfaceRegistrationListResult(BaseModel):
     registrations: list[SurfaceRegistration] = Field(default_factory=list)
 
 
-class SurfaceDeleteResult(BaseModel):
+class SurfaceDeleteResult(TolerantModel):
     """Confirmation of a soft delete. The row is retained for compliance."""
 
     model_config = ConfigDict(populate_by_name=True)

@@ -9,9 +9,10 @@ import warnings
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from .._http import encode_path_param
+from .._tolerant import TolerantModel
 from ..exceptions import UnsupportedOperationError
 from ..types import (
     PaginatedResponse,
@@ -19,7 +20,7 @@ from ..types import (
 )
 
 
-class AuditRootSourceChain(BaseModel):
+class AuditRootSourceChain(TolerantModel):
     """The delegation chain from an audit entry back to its root human source.
 
     Warning:
