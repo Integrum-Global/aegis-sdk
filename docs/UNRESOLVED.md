@@ -1,6 +1,6 @@
 # Unresolved — what this repository does not settle
 
-Assembled 2026-09-09. Each entry names what is open, who decides, and what
+Assembled 2026-09-17. Each entry names what is open, who decides, and what
 would close it. Nothing here is a placeholder for work that was skipped; each is
 a decision that was deliberately not taken by the assembly.
 

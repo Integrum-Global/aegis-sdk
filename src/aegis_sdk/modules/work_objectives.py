@@ -16,17 +16,27 @@ platform's deliberate fail-closed default -- so a route gated on an operator
 PERSONA denies it. The gates compose as a CONJUNCTION, so a route carrying
 both a key-aware scope check and a plain persona check still denies the key.
 
-    /api/v1/objectives/**       PERSONA ONLY -- 403 for an API key
+    /api/v1/objectives/**       reachable with an API key holding an `agents` scope
     /api/v1/sessions/**         PERSONA ONLY -- 403 for an API key
     /api/v1/interventions/**    PERSONA ONLY -- 403 for an API key
     /api/v1/work-units/**       reachable with an API key
     /api/v1/directives/**       reachable with an API key
     /api/v1/change-requests/**  reachable with an API key
 
-So on this module the work-unit, directive and change-request methods work for
-a client built with ``api_key=``, and the objective, session and intervention
+So on this module the objective, work-unit, directive and change-request methods
+work for a client built with ``api_key=``, and the session and intervention
 methods do not. For those, authenticate with a session token instead --
 ``await client.auth.login(...)`` then ``client.set_auth_token(...)``.
+
+The objective prefix admits a key holding ANY ``agents`` scope. That gate is a
+COARSE router-level pre-filter, and the read-versus-write boundary is enforced by
+the per-route check behind it. A key holding no ``agents`` scope is refused with
+403, and the refusal names the scopes that would have admitted it. THREE objective
+routes are the exception and stay human-only -- ``GET /objectives``,
+``/objectives/{id}/admin-status`` and ``/objectives/{id}/admin-tasks`` -- because
+their persona gates ("executive or admin", "admin or architect") have no API-key
+scope analogue. The list route is the one to watch: it is the only read on this
+prefix a key cannot reach.
 
 This is a platform-side gap rather than a client limitation, and it is
 reported as such. It is written down here because a method that always 403s
@@ -1997,6 +2007,14 @@ class Directive(BaseModel):
     acknowledgments_json: str = "[]"
     acknowledgment_count: int
     status: str
+    # Read-back, server-side: without this field a
+    # RESTRICTED directive and a PUBLIC one parsed into byte-identical
+    # ``Directive`` objects -- ``extra="allow"`` above kept the value reachable
+    # via ``model_extra``, but nothing on the typed surface said it existed,
+    # so a caller could not tell a directive apart from one it should not
+    # have been able to read the content of. Declared explicitly rather than
+    # left to the extras bag, matching the server's own default.
+    classification: str = "public"
     superseded_by_id: str | None = None
     supersedes_id: str | None = None
     related_knowledge_ids_json: str = "[]"

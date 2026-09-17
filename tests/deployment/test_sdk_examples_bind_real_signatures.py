@@ -34,8 +34,8 @@ DELIBERATELY AST + ``inspect``, NOT GREP AND NOT MYPY
 -----------------------------------------------------
 grep cannot tell a keyword argument from a dict key or a prose mention. mypy
 *does* catch this class (it is how the original 11 were found), but the mypy
-gate is pinned to ``TARGET = "src/aegis/"`` (``scripts/audit/mypy_gate.py:77``),
-so ``src/aegis_sdk`` is not type-checked at the merge gate at all. Until that
+gate is scoped to the server-side platform package, not to ``src/aegis_sdk``,
+so this package is not type-checked at the merge gate at all. Until that
 changes, nothing in the required job looks at these files.
 
 WHAT A GREEN RUN DOES **NOT** ESTABLISH

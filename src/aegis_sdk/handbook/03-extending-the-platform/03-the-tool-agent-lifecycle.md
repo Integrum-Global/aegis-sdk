@@ -185,7 +185,7 @@ result = await client.tool_agents.invoke(
 ```
 
 `api:POST /api/v1/tool-agents/{id}/invoke`, returning
-`sdk:aegis_sdk.modules.tool_agents.ToolAgentInvocationResult` — the eight-field
+`sdk:aegis_sdk.modules.tool_agents.ToolAgentInvocationResult` — the nine-field
 shape 03.1 tabulates, of which `verification_zone`, `constraint_status`,
 `trust_chain_id`, `cost` and `audit_anchor_id` are the governance half.
 

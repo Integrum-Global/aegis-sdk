@@ -99,7 +99,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from .._http import encode_path_param
 
@@ -184,15 +184,37 @@ class PostureApproval(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
 
+def _literal_true(value: Any) -> bool:
+    """``True`` only for a literal JSON ``true``.
+
+    An older server omits ``alreadyPending``; absence — or any value that is
+    not literally ``true`` — must never read as "this was a duplicate". Same
+    rule as ``aegis_sdk.trust.postures`` applies to the same key.
+    """
+    return value is True
+
+
 class PostureApprovalPending(BaseModel):
     """The 202-shaped envelope PUT .../trust-posture returns when the
-    transition requires approval (``ApprovalPendingResponse``)."""
+    transition requires approval (``ApprovalPendingResponse``).
+
+    ``already_pending is True`` means this call collided with a request for the
+    SAME transition that was already pending: :attr:`approval` is THAT request
+    (its own reason, requester and ``requested_at``), and this call's reason
+    and config were NOT recorded. Re-issuing does not change that.
+    """
 
     approval_pending: bool = Field(default=True, alias="approvalPending")
     approval_id: str = Field(alias="approvalId")
     approval: PostureApproval
+    already_pending: bool = Field(default=False, alias="alreadyPending")
 
     model_config = ConfigDict(populate_by_name=True)
+
+    @field_validator("already_pending", mode="before")
+    @classmethod
+    def _already_pending_is_literal_true(cls, value: Any) -> bool:
+        return _literal_true(value)
 
 
 class MetricStatus(BaseModel):
@@ -320,8 +342,19 @@ class UpgradeRequestResult(BaseModel):
     target_posture: str | None = Field(default=None, alias="targetPosture")
     reason: str
     approval_id: str | None = Field(default=None, alias="approvalId")
+    #: ``True`` when an approval request for this transition was already
+    #: pending and is returned instead of a new one (``status`` is still
+    #: ``approval_pending``). :attr:`requested_at` is then the EARLIER request's
+    #: submission time, not this call's.
+    already_pending: bool = Field(default=False, alias="alreadyPending")
+    requested_at: str | None = Field(default=None, alias="requestedAt")
 
     model_config = ConfigDict(populate_by_name=True)
+
+    @field_validator("already_pending", mode="before")
+    @classmethod
+    def _already_pending_is_literal_true(cls, value: Any) -> bool:
+        return _literal_true(value)
 
 
 # ============================================================================
@@ -599,24 +632,40 @@ class TrustPostureModule:
     # ------------------------------------------------------------------
 
     async def approve_posture_transition(
-        self, agent_id: str, notes: str | None = None
+        self, agent_id: str, notes: str | None = None, approval_id: str | None = None
     ) -> PostureTransition:
         """
         Approve a pending posture-transition request.
 
+        ledger ``ewl-20260913-4137c62903``: parity with
+        ``aegis_sdk.trust.postures.PosturesModule.approve_transition`` — this
+        can name WHICH pending request it decides.
+
         Args:
             agent_id: Agent ID with a pending transition
             notes: Optional approval notes
+            approval_id: Which pending request to approve (the ``id`` of a
+                :class:`PostureApproval`). Optional while the agent has exactly
+                one pending request; REQUIRED in effect once it has more than
+                one — the server refuses rather than picking one.
 
         Returns:
             PostureTransition: The completed transition record
 
         Raises:
-            NotFoundError: If no pending approval exists for the agent
+            NotFoundError: If no pending approval matches (none pending, or
+                ``approval_id`` does not name a pending request for this agent)
+            ValidationError: If ``approval_id`` was omitted while more than one
+                request is pending, or the request passed its ``expires_at``
+                before a decision (it is not approvable; file a new request)
         """
         data: dict[str, Any] = {}
         if notes is not None:
             data["notes"] = notes
+        # Omitted entirely (never sent as null) when not given, so the
+        # single-pending wire body is unchanged.
+        if approval_id is not None:
+            data["approvalId"] = approval_id
         response = await self._http.request(
             "POST",
             f"/api/v1/agents/{encode_path_param(agent_id)}/trust-posture/approve",
@@ -624,24 +673,41 @@ class TrustPostureModule:
         )
         return PostureTransition(**response)
 
-    async def reject_posture_transition(self, agent_id: str, notes: str) -> PostureApproval:
+    async def reject_posture_transition(
+        self, agent_id: str, notes: str, approval_id: str | None = None
+    ) -> PostureApproval:
         """
         Reject a pending posture-transition request.
+
+        ledger ``ewl-20260913-4137c62903``: parity with
+        ``aegis_sdk.trust.postures.PosturesModule.reject_transition``. Without
+        ``approval_id``, two pending requests made every rejection a
+        ``ValidationError`` no caller could resolve.
 
         Args:
             agent_id: Agent ID with a pending transition
             notes: Rejection reason (min length 10 -- server-enforced)
+            approval_id: Which pending request to reject. Optional while the
+                agent has exactly one pending request; REQUIRED in effect once
+                it has more than one.
 
         Returns:
             PostureApproval: The now-rejected approval record
 
         Raises:
-            NotFoundError: If no pending approval exists for the agent
+            NotFoundError: If no pending approval matches (none pending, or
+                ``approval_id`` does not name a pending request for this agent)
+            ValidationError: If notes is too short, ``approval_id`` was omitted
+                while more than one request is pending, or the request passed
+                its ``expires_at`` before a decision
         """
+        json_body: dict[str, Any] = {"notes": notes}
+        if approval_id is not None:
+            json_body["approvalId"] = approval_id
         response = await self._http.request(
             "POST",
             f"/api/v1/agents/{encode_path_param(agent_id)}/trust-posture/reject",
-            json_data={"notes": notes},
+            json_data=json_body,
         )
         return PostureApproval(**response)
 

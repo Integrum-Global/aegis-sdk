@@ -152,8 +152,16 @@ class PostureChangeResult(BaseModel):
         ``approval.requested_posture`` and ``approval.expires_at``.
 
     Do not re-issue the change to "make it take". The request has already
-    been accepted; re-issuing creates a SECOND pending request against the
-    same agent (see :meth:`PosturesModule.request_progression`).
+    been accepted. Re-issuing the SAME transition while it is pending records
+    nothing new: the server returns the existing request with
+    :attr:`already_pending` set, and the re-issued reason and config are not
+    stored.
+
+    ``already_pending is True``
+        This call collided with a request for the same transition that was
+        already pending (a retry after a timeout, or another operator).
+        :attr:`approval` is THAT request, including its own reason and
+        requester.
 
     ``progression_eligible`` is deliberately absent: no posture-change
     response carries an eligibility verdict. Read one from
@@ -166,6 +174,7 @@ class PostureChangeResult(BaseModel):
     approval_id: str | None = None
     approval: PostureApprovalRecord | None = None
     transition: PostureTransitionRecord | None = None
+    already_pending: bool = False
 
 
 class ProgressionEvaluation(_WireModel):
@@ -287,6 +296,9 @@ def _parse_posture_change(
             posture=approval.current_posture,
             approval_id=approval_id or approval.id,
             approval=approval,
+            # Strictly `True`: an older server omits the key, and absence must
+            # never read as "this was a duplicate".
+            already_pending=body.get("alreadyPending") is True,
         )
 
     transition: PostureTransitionRecord = _parse_model(
@@ -412,13 +424,12 @@ class PosturesModule:
         posture it had, which ``result.posture`` reports.
 
         Warning:
-            Re-issuing a pending request does NOT resolve it — it files a
-            SECOND request against the same agent, and the two then compete
-            (see :meth:`approve_transition`). The endpoint offers no
-            idempotency key, so a retry cannot be de-duplicated server-side.
-            Before retrying after an ambiguous failure — a timeout, a dropped
-            connection — call :meth:`get_pending_approval` to find out
-            whether the first attempt was in fact recorded.
+            Re-issuing a pending request does NOT resolve it. For the SAME
+            transition the server records nothing new and returns the
+            request that is already pending, with ``result.already_pending``
+            set — so a retry after a timeout or a dropped connection is safe,
+            but this call's ``justification`` is not stored when that flag is
+            set. A request for a DIFFERENT transition is filed separately.
 
         Args:
             agent_id: Agent ID
@@ -486,10 +497,10 @@ class PosturesModule:
         rather than assuming an override took effect.
 
         Warning:
-            The endpoint offers no idempotency key. If an upward override
-            returns pending and the call is retried, the retry files a SECOND
-            request. Check :meth:`get_pending_approval` before retrying after
-            an ambiguous failure.
+            If an upward override returns pending and the call is retried for
+            the same transition, the retry returns the request already pending
+            with ``result.already_pending`` set; the retry's ``reason`` is not
+            stored.
 
         Args:
             agent_id: Agent ID
@@ -601,12 +612,10 @@ class PosturesModule:
 
         Server route: GET /agents/{agent_id}/trust-posture/pending.
 
-        This is the read that makes a posture change safe to retry. The
-        posture-change endpoint has no idempotency key, so a client cannot
-        tell an accepted-but-unacknowledged request from one that never
-        arrived. Reading the pending request answers that directly: if one is
-        already recorded, the earlier attempt landed and re-issuing it would
-        file a duplicate.
+        This read tells a client whether an earlier posture change landed. A
+        re-issued request for the same transition no longer files a duplicate
+        (the server returns the pending one, flagged ``already_pending``), but
+        reading first still answers the question without sending a write.
 
         Note:
             The endpoint returns at most ONE request. While at most one is
@@ -694,9 +703,15 @@ class PosturesModule:
         self,
         agent_id: str,
         notes: str,
+        approval_id: str | None = None,
     ) -> dict[str, Any]:
         """
         Reject a pending posture transition for an agent.
+
+        ledger ``ewl-20260913-4137c62903``: like :meth:`approve_transition`,
+        this can name WHICH pending request it decides. Without
+        ``approval_id``, two pending requests made every rejection a
+        ``ValidationError`` no caller could resolve.
 
         Server route: POST /agents/{agent_id}/trust-posture/reject
         (RejectTransitionRequest at
@@ -711,24 +726,35 @@ class PosturesModule:
         Args:
             agent_id: Agent ID
             notes: Rejection reason (server requires >= 10 characters)
+            approval_id: Which pending request to reject. Optional while the
+                agent has exactly one pending request; REQUIRED in effect once
+                it has more than one.
 
         Returns:
             Raw rejected-approval record from the server
 
         Raises:
-            NotFoundError: If no pending approval exists for the agent
-            ValidationError: If notes is too short
+            NotFoundError: If no pending approval matches (none pending, or
+                ``approval_id`` does not name a pending request for this agent)
+            ValidationError: If notes is too short, or ``approval_id`` was
+                omitted while more than one request is pending
 
         Example:
             >>> record = await client.trust.postures.reject_transition(
             ...     "agent_abc123",
-            ...     notes="Insufficient evidence for this posture level"
+            ...     notes="Insufficient evidence for this posture level",
+            ...     approval_id=pending.id,
             ... )
         """
+        # Omitted entirely (never sent as null) when not given, so the
+        # single-pending wire body is unchanged.
+        json_body: dict[str, Any] = {"notes": notes}
+        if approval_id is not None:
+            json_body["approvalId"] = approval_id
         response: dict[str, Any] = await self._http.request(
             "POST",
             f"/api/v1/agents/{encode_path_param(agent_id)}/trust-posture/reject",
-            json_data={"notes": notes},
+            json_data=json_body,
         )
         return response
 

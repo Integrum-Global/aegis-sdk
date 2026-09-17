@@ -644,11 +644,32 @@ class AuthUsersModule:
         """
         Switch the active organization; re-issues tokens with new org context.
 
+        The switch ROTATES the session rather than adding to it: the access
+        token this request authenticated with, and the refresh token minted
+        alongside it, are revoked immediately, not at their expiry. The SDK
+        does not adopt the returned token for you (the same contract as
+        ``client.auth.refresh_token``): call
+        ``client.set_auth_token(result.access_token)`` before sending further
+        requests, and keep ``result.refresh_token`` for the next refresh. A
+        request still carrying the old token is rejected with ``401``. Of
+        concurrent switches from one access token exactly one succeeds; the
+        others are refused (``403``).
+
+        An API-key client has no session to switch: its key's organization is
+        fixed at issue, and this endpoint is for session (JWT) callers.
+
         Args:
             organization_id: Organization ID to switch into
 
         Returns:
             SwitchOrgResult: fresh access/refresh tokens + active_organization
+
+        Example:
+            >>> result = await client.auth_users.auth_switch_org(org_id)
+            >>> client.set_auth_token(result.access_token)
+
+        ⛔ Do not print, log, or serialize ``result.access_token`` or
+        ``result.refresh_token``; they are hidden from ``repr()`` only.
         """
         response = await self._http.request(
             "POST",

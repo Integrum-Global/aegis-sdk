@@ -7,10 +7,13 @@ Provides pipeline management operations including:
 """
 
 import builtins
+import warnings
 from typing import TYPE_CHECKING, Any
 
 from .._http import encode_path_param, unwrap_envelope
+from ..exceptions import ServiceError
 from .models import (
+    ExecutionStatus,
     PaginatedResponse,
     Pipeline,
     PipelineConnection,
@@ -22,6 +25,12 @@ from .models import (
 
 if TYPE_CHECKING:
     from .._http import HTTPClient
+
+
+# ``GET /api/v1/pipelines/{id}/executions`` caps ``page_size`` at 100
+# (``Query(50, ge=1, le=100)``). A status-filtered listing reads every page at
+# that size, so this is the fewest requests the route allows.
+_EXECUTION_SCAN_PAGE_SIZE = 100
 
 
 class PipelinesModule:
@@ -443,23 +452,40 @@ class PipelinesModule:
         self,
         pipeline_id: str,
         inputs: dict[str, Any] | None = None,
-        wait: bool = True,
+        wait: bool | None = None,
     ) -> PipelineExecution:
         """
-        Execute pipeline with inputs.
+        Run a pipeline with inputs and return the finished run record.
+
+        Two requests, both to routes the platform serves:
+        ``POST /api/v1/executions/start`` (``{pipelineId, inputs}`` ->
+        ``{executionId}``), which answers only once the run has completed or
+        failed, then ``GET /api/v1/pipelines/{pipeline_id}/executions/{execution_id}``
+        for the run record. Starting a run requires write authority on agents
+        (``agents:execute`` for a person, the ``agents:write`` scope for an API
+        key).
+
+        This method previously POSTed ``/api/v1/pipelines/{id}/execute``, which no
+        router declares, so every call raised ``NotFoundError``.
 
         Args:
             pipeline_id: Pipeline ID
             inputs: Input values for the pipeline
-            wait: Whether to wait for completion (default True)
+            wait: DEPRECATED, and has no effect. The server has no asynchronous
+                start, so the run has always finished by the time this returns.
+                Passing any value emits ``DeprecationWarning``; it will be
+                removed in the next minor release.
 
         Returns:
-            PipelineExecution result
+            PipelineExecution: the run record. ``status`` is ``completed`` or
+            ``failed``; a failed run carries ``error``.
 
         Raises:
-            NotFoundError: If pipeline doesn't exist
-            ValidationError: If inputs don't match expected schema
-            GovernanceViolationError: If execution blocked by governance
+            NotFoundError: If the pipeline doesn't exist or belongs to another org
+            ValidationError: If the pipeline graph is invalid (the server
+                validates before it starts the run)
+            AuthorizationError: If the caller lacks write authority on agents
+            ServiceError: If the start response carries no ``executionId``
 
         Example:
             >>> result = await client.pipelines.execute(
@@ -469,15 +495,28 @@ class PipelinesModule:
             >>> print(f"Status: {result.status}")
             >>> print(f"Outputs: {result.outputs}")
         """
-        response = await self._http.request(
+        if wait is not None:
+            warnings.warn(
+                "PipelinesModule.execute(wait=...) is deprecated and has no effect: "
+                "the server has no asynchronous start, so the run has already "
+                "finished when execute() returns. Omit `wait`; it will be removed "
+                "in the next minor release.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+        started = await self._http.request(
             "POST",
-            f"/api/v1/pipelines/{encode_path_param(pipeline_id)}/execute",
-            json_data={
-                "inputs": inputs or {},
-                "wait": wait,
-            },
+            "/api/v1/executions/start",
+            json_data={"pipelineId": pipeline_id, "inputs": inputs or {}},
         )
-        return PipelineExecution(**response)
+        execution_id = started.get("executionId") if isinstance(started, dict) else None
+        if not execution_id:
+            raise ServiceError(
+                "POST /api/v1/executions/start answered without an executionId, "
+                "so the run record cannot be read back",
+                details={"response": started},
+            )
+        return await self.get_execution(pipeline_id, execution_id)
 
     async def get_execution(self, pipeline_id: str, execution_id: str) -> PipelineExecution:
         """
@@ -509,19 +548,35 @@ class PipelinesModule:
         """
         List executions for a pipeline.
 
+        ``status`` is applied by the SDK, not by the server: the route refuses a
+        ``status`` parameter with 400. Filtering one server page would report a
+        ``total`` that disagrees with its items, so when ``status`` is given the
+        SDK reads EVERY page of the pipeline's runs, filters them, and pages the
+        filtered set -- ``total`` and ``has_next`` then describe the filtered
+        runs. That costs one request per 100 runs; omit ``status`` for a single
+        request.
+
         Args:
             pipeline_id: Pipeline ID
-            status: Filter by status
-            page: Page number
+            status: Filter by status -- one of ``pending``, ``running``,
+                ``completed``, ``failed``, ``cancelled`` (a string or an
+                ``ExecutionStatus``)
+            page: Page number (1-indexed)
             page_size: Items per page
 
         Returns:
             PaginatedResponse of PipelineExecution objects
-        """
-        params: dict[str, Any] = {"page": page, "page_size": page_size}
-        if status:
-            params["status"] = status
 
+        Raises:
+            ValueError: If ``status`` is not a known execution status, or
+                ``page``/``page_size`` is below 1 -- raised before any request
+        """
+        if page < 1 or page_size < 1:
+            raise ValueError(f"page and page_size must be >= 1; got {page}, {page_size}")
+        if status is not None:
+            return await self._list_executions_with_status(pipeline_id, status, page, page_size)
+
+        params: dict[str, Any] = {"page": page, "page_size": page_size}
         response = await self._http.request(
             "GET",
             f"/api/v1/pipelines/{encode_path_param(pipeline_id)}/executions",
@@ -534,6 +589,50 @@ class PipelinesModule:
             page=response.get("page", page),
             page_size=response.get("page_size", page_size),
             has_next=response.get("has_next", False),
+        )
+
+    async def _list_executions_with_status(
+        self,
+        pipeline_id: str,
+        status: str,
+        page: int,
+        page_size: int,
+    ) -> PaginatedResponse[PipelineExecution]:
+        """Filter a pipeline's runs by status across every server page."""
+        # ``ExecutionStatus`` is a str-Enum whose hash is its NAME, not its
+        # value, so a member is normalised to its value before any comparison.
+        wanted = status.value if isinstance(status, ExecutionStatus) else status
+        known = {s.value for s in ExecutionStatus}
+        if wanted not in known:
+            raise ValueError(f"status must be one of {sorted(known)}; got {status!r}")
+
+        matching = []
+        server_page = 1
+        while True:
+            response = await self._http.request(
+                "GET",
+                f"/api/v1/pipelines/{encode_path_param(pipeline_id)}/executions",
+                params={"page": server_page, "page_size": _EXECUTION_SCAN_PAGE_SIZE},
+            )
+            items = response.get("items", [])
+            matching.extend(item for item in items if item.get("status") == wanted)
+            read_so_far = server_page * _EXECUTION_SCAN_PAGE_SIZE
+            if (
+                not items
+                or not response.get("has_next", False)
+                or read_so_far >= response.get("total", 0)
+            ):
+                break
+            server_page += 1
+
+        start = (page - 1) * page_size
+        window = matching[start : start + page_size]
+        return PaginatedResponse[PipelineExecution](
+            items=[PipelineExecution(**item) for item in window],
+            total=len(matching),
+            page=page,
+            page_size=page_size,
+            has_next=start + len(window) < len(matching),
         )
 
     async def cancel_execution(self, pipeline_id: str, execution_id: str) -> None:

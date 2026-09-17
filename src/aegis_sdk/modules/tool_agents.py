@@ -97,6 +97,12 @@ class ToolAgentInvocationResult(BaseModel):
     content: str
     model: str
     usage: dict[str, Any] = Field(default_factory=dict)
+    # Which path produced the result. Mirrors the server's
+    # ``InvokeToolAgentResponse.dispatch_path`` AND its default, so a server that
+    # predates the field reads as the LLM path it was. ``"builtin_tool"`` means a
+    # named built-in tool ran with no model call: ``model``/``usage`` are empty
+    # and ``cost`` is "0" by construction, not because a model call was free.
+    dispatch_path: Literal["llm", "builtin_tool"] = "llm"
     trust_chain_id: str
     constraint_status: str
     cost: str
@@ -325,6 +331,10 @@ class ToolAgentsModule:
         message: str,
         application_id: str | None = None,
         conversation_history: list[dict[str, Any]] | None = None,
+        *,
+        tool_name: str | None = None,
+        tool_arguments: dict[str, Any] | None = None,
+        action_type: str | None = None,
     ) -> ToolAgentInvocationResult:
         """
         Invoke a tool agent through Aegis governance (trust + posture + budget gated).
@@ -337,19 +347,58 @@ class ToolAgentsModule:
                 this agent; the application budget is consumed on success.
             conversation_history: Previous conversation messages for
                 multi-turn context
+            tool_name: Name of a BUILT-IN tool to execute directly, with no
+                model round-trip. The result's ``dispatch_path`` is then
+                ``"builtin_tool"``, ``model``/``usage`` are empty and ``cost`` is
+                ``"0"``. Every governance gate applies exactly as on the LLM
+                path. An unregistered name is refused with 400
+                (``ValidationError``) -- it is never answered by the model.
+                Must be a non-empty string when given.
+            tool_arguments: Arguments for ``tool_name``, per that tool's own
+                input schema. Only valid together with ``tool_name``. Tenant
+                and identity scope are always server-derived, so a key of the
+                same name here cannot widen scope.
+            action_type: Caller-declared coarse governance CATEGORY -- not a
+                tool name. Declaring a never-delegated category (for example
+                ``financial_decisions``) is refused with 403 regardless of the
+                agent's posture; any other value does not change the outcome.
 
         Returns:
-            ToolAgentInvocationResult: LLM output + governance metadata
+            ToolAgentInvocationResult: output + governance metadata, including
+            ``dispatch_path``
 
         Raises:
+            ValueError: If ``tool_name`` is empty, or ``tool_arguments`` is given
+                without ``tool_name`` -- raised before any request, because the
+                server would silently answer from the model instead.
+            ValidationError: If the server does not recognise ``tool_name`` (400)
             GovernanceViolationError: If governance denies the invocation
             ServiceError: On fail-closed governance-service unavailability (503)
         """
+        # The server branches on ``if body.tool_name:`` and ignores
+        # ``tool_arguments`` without a name, so both of these would otherwise be
+        # a silent fall-through to the LLM that reads as success.
+        if tool_name is not None and not tool_name.strip():
+            raise ValueError(
+                "tool_name must be a non-empty tool name; omit it to use the LLM path"
+            )
+        if tool_arguments is not None and tool_name is None:
+            raise ValueError(
+                "tool_arguments requires tool_name: without a tool name the server "
+                "ignores the arguments and answers from the model"
+            )
+
         data: dict[str, Any] = {"message": message}
         if application_id:
             data["application_id"] = application_id
         if conversation_history is not None:
             data["conversation_history"] = conversation_history
+        if action_type is not None:
+            data["action_type"] = action_type
+        if tool_name is not None:
+            data["tool_name"] = tool_name
+        if tool_arguments is not None:
+            data["tool_arguments"] = tool_arguments
 
         response = await self._http.request(
             "POST", f"/api/v1/tool-agents/{encode_path_param(agent_id)}/invoke", json_data=data

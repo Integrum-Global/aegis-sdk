@@ -17,6 +17,8 @@ routers (all mounted at ``/api/v1``):
     GET  /api/v1/teams                                        -> list_teams()
     POST /api/v1/organization-builder/deploy                   -> deploy()
     PUT  /api/v1/organization-roles/{role_id}                   -> update_role()
+    DELETE /api/v1/organization-units/{unit_id}                 -> delete_unit()
+    DELETE /api/v1/organization-roles/{role_id}                 -> delete_role()
     POST /api/v1/organization-roles/{role_id}/assign-user        -> assign_user_to_role()
     POST /api/v1/teams/{team_id}/members                         -> add_team_member()
     POST /api/v1/organization-builder/validate                   -> validate_structure()
@@ -59,7 +61,20 @@ if TYPE_CHECKING:
 
 
 class Organization(BaseModel):
-    """Organization record (organizations.py::OrganizationResponse)."""
+    """Organization record (organizations.py::OrganizationResponse).
+
+    The server emits ONE response model for create, get and list, so these
+    four fields are optional rather than a separate subclass (contrast
+    ``aegis_sdk.types.APIKeyCreated``, where the server itself splits create
+    from list/get into two distinct response types). Populated ONLY by
+    ``POST /organizations``, when the creator's session was successfully
+    switched into the new org's context -- ``None`` on every GET/PUT response
+    this model also serializes, and ``None`` on create when the switch could
+    not complete. Before these were declared, a caller that constructed this
+    model from a create response (``Organization(**resp)``) had the one-time
+    credential silently dropped on the floor -- there is no second chance,
+    the server never re-emits it.
+    """
 
     id: str
     name: str
@@ -69,6 +84,10 @@ class Organization(BaseModel):
     created_by: str
     created_at: str
     updated_at: str
+    access_token: str | None = Field(default=None, repr=False)  # bearer credential -- hidden (H1)
+    refresh_token: str | None = Field(default=None, repr=False)  # bearer credential -- hidden (H1)
+    token_type: str | None = None
+    expires_in: int | None = None
 
 
 class OrganizationList(BaseModel):
@@ -685,6 +704,115 @@ class OrgStandupModule:
             json_data={"user_id": user_id},
         )
         return OrganizationRole(**response)
+
+    # -----------------------------------------------------------------------
+    # Deletes
+    #
+    # Both routes below have ALWAYS existed on the server and had NO SDK
+    # method at all -- not merely "no hard delete". A partner holding this SDK
+    # could create an organization unit or role and then had no way to remove
+    # one, by any means, which is why a rehearsal tenant could not be reset.
+    #
+    # The gap was found by sweeping the CLASS rather than the reported
+    # instance: seven server routers declare ``hard: bool = Query(False)``
+    # (bridges, roles, directives, organization-units, organization-roles,
+    # api-keys, knowledge). Four of their SDK counterparts already passed
+    # ``hard`` through; api-keys passed no ``hard``; these two had no delete
+    # method whatsoever. Core+SDK parity: a capability the
+    # partner cannot reach is not a delivered capability.
+    #
+    # The return type is ``dict[str, Any]`` rather than a new model, matching
+    # ``work_objectives.py::delete_directive`` -- the established convention
+    # in this SDK for the server's ``MessageResponse`` shape.
+    # -----------------------------------------------------------------------
+
+    async def delete_unit(self, unit_id: str, hard: bool = False) -> dict[str, Any]:
+        """
+        Delete an organization unit. Default is a SOFT delete (archives it).
+
+        Server: ``DELETE /api/v1/organization-units/{unit_id}``.
+
+        ⛔ ``hard=True`` is IRREVERSIBLE and removes the row rather than
+        archiving it. Prefer the default: an archived unit stays available to
+        forensic and audit queries, which is usually the point of keeping org
+        structure at all. ``hard=True`` is for resetting a rehearsal or demo
+        tenant.
+
+        ⚠ This route FAILS CLOSED with ``409`` when any delegate agent in the
+        unit holds trust that could not be settled. On that response
+        the unit is left COMPLETELY UNTOUCHED -- it is not partially deleted,
+        so the call is safe to retry once the trust is settled.
+
+        Requires the ``organizations:update`` permission (org_owner or
+        org_admin).
+
+        Args:
+            unit_id: Unit ID to delete.
+            hard: If True, permanently delete instead of archiving.
+                Defaults to False, matching the server's default.
+
+        Returns:
+            ``{"message": str}``
+
+        Raises:
+            NotFoundError: ``404`` — unit does not exist, or belongs to
+                another organization.
+            AuthorizationError: ``403`` — missing ``organizations:update``.
+
+        Example:
+            >>> await client.org_standup.delete_unit("unit-1")
+            >>> await client.org_standup.delete_unit("unit-1", hard=True)
+        """
+        result: dict[str, Any] = await self._http.request(
+            "DELETE",
+            f"/api/v1/organization-units/{encode_path_param(unit_id)}",
+            params={"hard": hard},
+        )
+        return result
+
+    async def delete_role(self, role_id: str, hard: bool = False) -> dict[str, Any]:
+        """
+        Delete an organization role. Default is a SOFT delete (archives it).
+
+        Server: ``DELETE /api/v1/organization-roles/{role_id}``.
+
+        ⛔ ``hard=True`` is IRREVERSIBLE and removes the row rather than
+        archiving it. Prefer the default; a role participates in reporting
+        trees and trust chains whose records outlive the role itself.
+
+        ⚠ NOT the same call as ``client.role_admin.delete()``, despite the
+        similar name. That one targets the RBAC router at ``/api/v1/roles``
+        (a permission-bearing role); this one targets an ORGANIZATION role at
+        ``/api/v1/organization-roles`` -- a position in the org chart, with an
+        occupant and a ``reports_to_role_id``. The two routers are distinct
+        and an id from one does not resolve on the other.
+
+        Requires the ``organizations:update`` permission (org_owner or
+        org_admin).
+
+        Args:
+            role_id: Organization role ID to delete.
+            hard: If True, permanently delete instead of archiving.
+                Defaults to False, matching the server's default.
+
+        Returns:
+            ``{"message": str}``
+
+        Raises:
+            NotFoundError: ``404`` — role does not exist, or belongs to
+                another organization.
+            AuthorizationError: ``403`` — missing ``organizations:update``.
+
+        Example:
+            >>> await client.org_standup.delete_role("org-role-1")
+            >>> await client.org_standup.delete_role("org-role-1", hard=True)
+        """
+        result: dict[str, Any] = await self._http.request(
+            "DELETE",
+            f"/api/v1/organization-roles/{encode_path_param(role_id)}",
+            params={"hard": hard},
+        )
+        return result
 
     async def add_team_member(
         self,

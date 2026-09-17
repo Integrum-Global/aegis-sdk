@@ -9,10 +9,15 @@ CC BY 4.0. Aegis implements those standards; it does not own them.
 
 ## Who this is for, and what it assumes
 
-You are an **architect** or an **operator**. You design the governed
-organisation, stand it up, give agents their bounds, and keep the result running
-and evidenced. You are not writing the platform's own source, and you were not
-given it — nothing here asks you to open a file you do not have.
+You are an **architect**, an **operator**, or an **engineer designing against the
+platform**. The first two design the governed organisation, stand it up, give
+agents their bounds, and keep the result running and evidenced. The third is
+building something that talks to Aegis — an integration, a service, a product
+surface — and needs to know how the platform is put together before choosing
+where to attach. Parts 01 to 05 are written for the first two; part 06 is
+written for the third, and every part is readable by all three. None of you is
+writing the platform's own source, and you were not given it — nothing here asks
+you to open a file you do not have.
 
 It assumes you can read Python and are comfortable at a shell. It does not assume
 you have used Aegis, or that you know what any of the four standards say.
@@ -34,7 +39,8 @@ nobody can rebuild, review or promote between environments. Build it in code.
 
 Every chapter in parts 01 to 04 shows the harness path. Where the console does
 the same thing, the chapter names the screen so you can find it. Part 05 covers
-the console on its own terms.
+the console on its own terms. Part 06 is neither path: it is the system-level
+picture both of them drive.
 
 ## The parts
 
@@ -45,9 +51,31 @@ the console on its own terms.
 | **03** | [Extending the platform](03-extending-the-platform/)                   | You are adding a capability — a tool, an agent, a skill, a pipeline                            |
 | **04** | [The API surface](04-the-api-surface/)                                 | You are calling Aegis over HTTP directly, debugging an authorization failure, or asking what the client does with errors, credentials, pages, load and streams |
 | **05** | [The web console](05-the-web-console/)                                 | You want to know what a screen shows, or you are the human answering a held decision           |
+| **06** | [Architecture](06-architecture/)                                       | The system-level picture. The plane split, the governance objects, where enforcement happens, and where your integration attaches |
+| **07** | [Deployment architecture](07-deployment-architecture/)                 | You are deploying the platform, sizing it, or asking where its boundaries actually fall |
 
 Read **01** in order. After that, **02** is the working reference you will return
-to; **03**, **04** and **05** are consulted rather than read through.
+to; **03**, **04**, **05**, **06** and **07** are consulted rather than read through.
+
+The tree below says which part you reach for, not which part to read next:
+
+```
+the book
+│
+├── 01  Orientation                      read in order — start here
+├── 02  Working through the harness      the spine; you return to it
+│     ├── 03  Extending the platform
+│     ├── 04  The API surface
+│     └── 05  The web console
+│
+├── 06  Architecture                     consulted from any part above
+│     └── the system-level picture: how the platform is put together,
+│         where its boundaries are, and where your integration attaches
+│
+└── 07  Deployment architecture          consulted from any part above
+      └── the reference deployment: the cluster, the network boundary,
+          the stateful services, and how identity and secrets reach them
+```
 
 ## How claims in this handbook are kept true
 
@@ -104,6 +132,16 @@ internal test suite — are not here. They describe modifying the platform sourc
 which is not part of what you were given, and nothing in them would be actionable
 from here. This is a reachability boundary, not a secrecy one: a chapter telling
 you to open a file you do not have is answering a question you cannot act on.
+
+**Part 06 does not contradict that boundary, and the distinction is worth
+drawing**, because *architecture* is a word that usually means the inside. Part
+06 does describe the platform's internals — the split between its Trust Plane and
+its Execution Plane, the governance objects and how they relate, where
+enforcement happens — but every claim it makes about them rests on an operation
+you can call or a symbol you can import, never on a file you cannot open. The
+source, the build and the internal test suite are still not in this book. What is
+in it is the shape of the system you are designing against, with the limits of an
+outside read stated rather than glossed.
 
 ## Who is accountable
 

@@ -10,7 +10,7 @@
     "`source_sha256_16` is the digest of the SOURCE at projection time, so a source",
     "edit that was never re-projected is visible here rather than only in a diff."
   ],
-  "projected_on": "2026-09-09",
+  "projected_on": "2026-09-17",
   "counts": {
     "agents": 2,
     "skills": 6,
@@ -51,6 +51,18 @@
     },
     {
       "stage": "05-the-web-console",
+      "warranted": false,
+      "commands": [],
+      "reason": "NOT drivable from a session: 0 python example(s), 0 client surface(s) — nothing here is driven through this client, so there is no session work for a command to order"
+    },
+    {
+      "stage": "06-architecture",
+      "warranted": false,
+      "commands": [],
+      "reason": "NOT drivable from a session: 0 python example(s), 7 client surface(s) — nothing here is driven through this client, so there is no session work for a command to order"
+    },
+    {
+      "stage": "07-deployment-architecture",
       "warranted": false,
       "commands": [],
       "reason": "NOT drivable from a session: 0 python example(s), 0 client surface(s) — nothing here is driven through this client, so there is no session work for a command to order"
@@ -116,7 +128,7 @@
     {
       "dest": ".claude/hooks/deployment-blast-radius.js",
       "source": "src/aegis_sdk/coc/hooks/deployment-blast-radius.js",
-      "source_sha256_16": "c3a2aaea87b0e6cc"
+      "source_sha256_16": "d536444b8ea4c33a"
     },
     {
       "dest": ".claude/hooks/lib/coc-hook.js",
@@ -171,7 +183,7 @@
     {
       "dest": ".claude/skills/diagnosing-a-refusal/SKILL.md",
       "source": "src/aegis_sdk/coc/skills/diagnosing-a-refusal.md",
-      "source_sha256_16": "69a1303ac78178ad"
+      "source_sha256_16": "586c7828149972a7"
     },
     {
       "dest": ".claude/skills/domain-surfaces/SKILL.md",
@@ -271,7 +283,7 @@
     {
       "dest": ".codex/skills/diagnosing-a-refusal/SKILL.md",
       "source": "src/aegis_sdk/coc/skills/diagnosing-a-refusal.md",
-      "source_sha256_16": "69a1303ac78178ad"
+      "source_sha256_16": "586c7828149972a7"
     },
     {
       "dest": ".codex/skills/domain-surfaces/SKILL.md",
@@ -371,7 +383,7 @@
     {
       "dest": ".gemini/skills/diagnosing-a-refusal/SKILL.md",
       "source": "src/aegis_sdk/coc/skills/diagnosing-a-refusal.md",
-      "source_sha256_16": "69a1303ac78178ad"
+      "source_sha256_16": "586c7828149972a7"
     },
     {
       "dest": ".gemini/skills/domain-surfaces/SKILL.md",
@@ -416,17 +428,17 @@
     {
       "dest": "AGENTS.md",
       "source": "coc-context.md",
-      "source_sha256_16": "9b6d8f609cdb1334"
+      "source_sha256_16": "25198b44ddf5ac0a"
     },
     {
       "dest": "CLAUDE.md",
       "source": "coc-context.md",
-      "source_sha256_16": "9b6d8f609cdb1334"
+      "source_sha256_16": "25198b44ddf5ac0a"
     },
     {
       "dest": "GEMINI.md",
       "source": "coc-context.md",
-      "source_sha256_16": "9b6d8f609cdb1334"
+      "source_sha256_16": "25198b44ddf5ac0a"
     }
   ]
 }

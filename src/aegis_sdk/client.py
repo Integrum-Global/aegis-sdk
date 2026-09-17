@@ -9,7 +9,7 @@ from .auth import AuthModule
 from .config import ClientConfig, _resolve_env
 from .core import AgentsModule, PipelinesModule, SkillsModule
 from .exceptions import ConfigurationError
-from .execution import ObjectivesModule, RequestsModule, SessionsModule
+from .execution import ArtifactsModule, ObjectivesModule, RequestsModule, SessionsModule
 from .modules import (
     A2AModule,
     AdminModule,
@@ -51,6 +51,7 @@ from .modules import (
     WorkObjectivesModule,
     WorkspacesModule,
 )
+from .modules.presentation import PresentationModule
 from .revenue import (
     BillingModule,
     FeaturesModule,
@@ -84,6 +85,22 @@ from .trust import (
     TrustObservabilityModule,
     TrustRegistryModule,
 )
+
+# isort: off
+# APPENDED AT THE END OF THE IMPORT BLOCK, not inserted alphabetically, and the
+# fence above is what makes that survive `ruff`. Several lanes append here
+# concurrently; two additions at the tail merge cleanly, while two insertions
+# "in the right place" interleave into an order neither branch produced — green
+# on each branch alone, broken only in the composed tree, which is this repo's
+# canonical composition hazard the repository's import-sort gate catches.
+#
+# ⛔ `isort: off` is NOT a lint suppression here — it is the declaration that
+# ORDER IS DELIBERATE in this region. Without it `ruff` reports I001 and the
+# blocking ruff gate reds; with it sorted, the merge hazard returns. Append new
+# tail imports BELOW this line and above `isort: on`.
+from .dataflow import DataFlowModules
+
+# isort: on
 
 
 class TrustModules:
@@ -194,6 +211,7 @@ class AgenticOSClient:
         objectives: Objective management (top-level work units)
         requests: Request management (work items within objectives)
         sessions: Work session management with streaming
+        artifacts: Artifact upload, version history, supersede, download, delete
         trust: Trust management (chains, delegations, postures, audit)
         revenue: Revenue management (subscriptions, licenses, usage, quotas, invoices)
     """
@@ -274,6 +292,8 @@ class AgenticOSClient:
         self.objectives = ObjectivesModule(self._http)
         self.requests = RequestsModule(self._http)
         self.sessions = SessionsModule(self._http)
+        self.artifacts = ArtifactsModule(self._http)
+        self.presentation = PresentationModule(self._http)
 
         # Trust modules (grouped under trust namespace)
         self.trust = TrustModules(self._http)
@@ -360,6 +380,16 @@ class AgenticOSClient:
         # persona; every authoring route additionally requires an
         # architect/admin/executive persona AND a surfaces:<verb> permission.
         self.surfaces = SurfacesModule(self._http)
+
+        # APPENDED AT THE END of the module list, not grouped beside a related
+        # surface — see the import-block note above for why the tail is the
+        # only safe insertion point while sibling lanes are appending too.
+        #
+        # Data-plane reach: invocation lineage (/api/v1/lineage) and the data
+        # lineage graph (/api/v1/data-governance/lineage). Ten routes that the
+        # SDK could not address, so a partner could read an impact analysis of
+        # a graph they had no way to build.
+        self.dataflow = DataFlowModules(self._http)
 
     @classmethod
     def from_env(cls) -> "AgenticOSClient":

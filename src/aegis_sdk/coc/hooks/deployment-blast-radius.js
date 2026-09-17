@@ -161,9 +161,49 @@ function methodOf(segment) {
 }
 
 /**
+ * The deployment base URL, under EITHER supported spelling.
+ *
+ * `AEGIS_BASE_URL` is the product's prefix and is preferred; `AGENTIC_OS_BASE_URL`
+ * is the deprecated name the SDK still reads (`config.py::_resolve_env`). BOTH are
+ * consulted, and here is why: this guard expanded only the LEGACY name, so an
+ * operator who did exactly what the env-prefix remediation instructs — migrate to
+ * `AEGIS_BASE_URL` — got NO guard output at all on a mutating call written with the
+ * variable.
+ *
+ * Confirmed by RUNNING the hook, not by reading it. Same mutating command, same
+ * non-reserved host, only the variable name varying:
+ *   - legacy name set          -> exit 2, BLOCK
+ *   - only `AEGIS_BASE_URL`    -> exit 0, {"continue":true}   <- the fail-open
+ *   - literal URL, no variable -> exit 2, BLOCK               <- the control
+ * The control is what makes the middle line evidence rather than a broken probe.
+ *
+ * The direction was fail-OPEN and it ships in the harness partners receive, so the
+ * more faithfully an architect adopted the fix, the more completely the guard went
+ * silent. Keep this ONE resolver as the single source for both the expansion and the
+ * `undecidable` fallback's "is a deployment configured" test — they were two separate
+ * reads of one hardcoded name, which is how the second was missed.
+ */
+function deploymentBaseUrl() {
+  return process.env.AEGIS_BASE_URL || process.env.AGENTIC_OS_BASE_URL || "";
+}
+
+/**
+ * The NAME of the variable that actually supplied the base URL.
+ *
+ * Remediation text must name the variable the operator really set. That defect's third
+ * symptom was the guard telling a migrated operator to "fix AGENTIC_OS_BASE_URL" —
+ * a variable they no longer set — which sends the debugging at the wrong thing.
+ */
+function deploymentBaseUrlName() {
+  if (process.env.AEGIS_BASE_URL) return "AEGIS_BASE_URL";
+  if (process.env.AGENTIC_OS_BASE_URL) return "AGENTIC_OS_BASE_URL";
+  return "AEGIS_BASE_URL";
+}
+
+/**
  * The host this segment targets: `{ host }`, `{ unresolved: true }`, or null.
  *
- * `$AGENTIC_OS_BASE_URL` IS expanded, and only that one, from this process's
+ * The deployment base URL IS expanded — under either spelling — from this process's
  * own environment — the variable whose whole purpose is to name the deployment,
  * exported by the operator per `coc-context.md`. Any OTHER unexpanded construct
  * in the URL position is reported unresolved rather than guessed: expanding
@@ -171,8 +211,11 @@ function methodOf(segment) {
  * guard, which is a confused-deputy hole and not a feature.
  */
 function targetOf(segment) {
-  const base = process.env.AGENTIC_OS_BASE_URL || "";
-  const expanded = segment.replace(/\$\{?AGENTIC_OS_BASE_URL\}?/g, base || " UNSET ");
+  const base = deploymentBaseUrl();
+  const expanded = segment.replace(
+    /\$\{?(?:AEGIS_BASE_URL|AGENTIC_OS_BASE_URL)\}?/g,
+    base || "\x00UNSET\x00"
+  );
 
   const url = expanded.match(/\bhttps?:\/\/([^\s"'/\\]+)/);
   if (url) return { host: url[1] };
@@ -290,7 +333,7 @@ function main() {
       undecidable = { segment, method };
       continue;
     }
-    if (target.host.includes(" UNSET ")) {
+    if (target.host.includes("\x00UNSET\x00")) {
       undecidable = { segment, method };
       continue;
     }
@@ -320,7 +363,7 @@ function main() {
       agent_must_report: [
         `Confirm with the operator that ${hostToBlock} is the deployment they mean, and what this ${methodToBlock} will change`,
         `Then record it: node src/aegis_sdk/coc/hooks/deployment-blast-radius.js --confirm https://${hostToBlock} --reason "<which client, which construction step, what changes>"`,
-        "If this is the wrong deployment, fix AGENTIC_OS_BASE_URL rather than re-running the command",
+        `If this is the wrong deployment, fix ${deploymentBaseUrlName()} rather than re-running the command`,
       ],
       agent_must_wait: "Do not retry the mutating call until the target is confirmed.",
       user_summary: `blast radius — unconfirmed ${methodToBlock} against ${hostToBlock}`,
@@ -331,12 +374,12 @@ function main() {
     });
   }
 
-  if (undecidable && process.env.AGENTIC_OS_BASE_URL) {
+  if (undecidable && deploymentBaseUrl()) {
     emit({
       hookEvent: "PreToolUse",
       severity: "halt-and-report",
       guardrail: GUARDRAIL,
-      what_happened: `A ${undecidable.method} is in flight to a target this guard cannot resolve, while AGENTIC_OS_BASE_URL names a live deployment (${normaliseHost(process.env.AGENTIC_OS_BASE_URL)}).`,
+      what_happened: `A ${undecidable.method} is in flight to a target this guard cannot resolve, while ${deploymentBaseUrlName()} names a live deployment (${normaliseHost(deploymentBaseUrl())}).`,
       why:
         "The host is behind a shell variable this process cannot expand, and expanding shell inside a guard is a " +
         "confused-deputy hole rather than a feature. 'I cannot tell' is not 'nothing is happening' — so this is " +

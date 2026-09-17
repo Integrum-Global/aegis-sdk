@@ -16,6 +16,7 @@
     "02-working-through-the-harness/04-trust-chains-and-postures.md": 25,
     "02-working-through-the-harness/05-objectives-and-the-work-loop.md": 27,
     "02-working-through-the-harness/06-approvals-holds-and-evidence.md": 22,
+    "02-working-through-the-harness/07-role-agents-and-re-orgs.md": 6,
     "02-working-through-the-harness/README.md": 0,
     "03-extending-the-platform/01-writing-a-tool.md": 12,
     "03-extending-the-platform/02-agents-skills-and-pipelines.md": 75,
@@ -38,6 +39,13 @@
     "05-the-web-console/05-what-you-can-see.md": 0,
     "05-the-web-console/06-the-rest-of-your-workspace.md": 0,
     "05-the-web-console/README.md": 0,
+    "06-architecture/01-what-core-and-the-sdk-are.md": 42,
+    "06-architecture/02-the-request-path.md": 28,
+    "06-architecture/03-the-governed-organization.md": 46,
+    "06-architecture/04-trust-and-the-audit-spine.md": 56,
+    "06-architecture/05-the-execution-model.md": 61,
+    "06-architecture/06-designing-against-the-platform.md": 28,
+    "06-architecture/README.md": 5,
     "README.md": 0
   }
 }

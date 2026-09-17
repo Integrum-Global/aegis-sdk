@@ -6,11 +6,14 @@ These models provide type safety and automatic validation.
 """
 
 import json
+import logging
 from datetime import datetime
 from enum import Enum
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+logger = logging.getLogger(__name__)
 
 # =============================================================================
 # Enums
@@ -253,6 +256,36 @@ class PaginatedResponse[T](BaseModel):
 # =============================================================================
 
 
+def _normalize_capabilities(parsed: list[Any]) -> list[str]:
+    """Normalise a dual-format ``capabilities_json`` list to ``list[str]``.
+
+    Accepts a bare string element as-is and reduces an object element to its
+    ``name``. Anything else -- or an object whose ``name`` is missing, empty,
+    or not a string -- is DROPPED with a WARN naming the offending element,
+    so one malformed capability degrades that single entry instead of failing
+    the whole response.
+
+    Returns a list of names; order is preserved so a caller indexing into it
+    still lines up with the surviving server elements.
+    """
+    names: list[str] = []
+    for element in parsed:
+        if isinstance(element, str):
+            names.append(element)
+            continue
+        if isinstance(element, dict):
+            name = element.get("name")
+            if isinstance(name, str) and name:
+                names.append(name)
+                continue
+        logger.warning(
+            "Dropping unparseable capability element %r: expected a string or "
+            "an object carrying a non-empty string 'name'.",
+            element,
+        )
+    return names
+
+
 class Agent(BaseEntityModel, TimestampMixin):
     """
     Agent entity model.
@@ -307,6 +340,29 @@ class Agent(BaseEntityModel, TimestampMixin):
         never a bare ``capabilities`` list. Without this, ``Agent.capabilities``
         silently stayed ``[]`` for every agent returned by the server (the
         dead-feature class).
+
+        ``capabilities_json`` is a DUAL-FORMAT column: an element is EITHER a
+        bare string (the capability name) OR an object
+        ``{name, description, keywords}``. Both shapes are live on the server
+        today and both reach this parser:
+
+        * the STRING form is what ``pseudo_agent_service`` persists at agent
+          creation, what ``api/task_agents.py``'s validator documents, and
+          what this SDK itself writes via :class:`AgentCreate`;
+        * the OBJECT form is what ``models/agent.py`` documents, and
+          ``services/objective_router.py`` and ``services/shadow_agent_factory.py``
+          each implement BOTH shapes.
+
+        So an element is normalised to its ``name`` rather than rejected. The
+        alternative -- pinning one canonical shape -- would fail every agent
+        written in the other form, which is a breaking change to a live
+        documented contract rather than a tightening; the server-side reader
+        took the same dual-format decision for the same reason.
+
+        A malformed element is DROPPED with a WARN, never raised: the same
+        forgiving-read-model principle :meth:`_coerce_unknown_agent_type`
+        records above -- one unparseable capability must not fail the whole
+        ``agents.list()`` page.
         """
         if isinstance(data, dict) and "capabilities" not in data:
             raw = data.get("capabilities_json")
@@ -316,7 +372,7 @@ class Agent(BaseEntityModel, TimestampMixin):
                 except (json.JSONDecodeError, TypeError):
                     parsed = None
                 if isinstance(parsed, list):
-                    data = {**data, "capabilities": parsed}
+                    data = {**data, "capabilities": _normalize_capabilities(parsed)}
         return data
 
 

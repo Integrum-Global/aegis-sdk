@@ -12,7 +12,7 @@ import asyncio
 import json
 import logging
 import re
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Mapping
 from typing import Any
 from urllib.parse import quote
 
@@ -165,6 +165,24 @@ def unwrap_envelope(response: Any) -> Any:
     return response["data"]
 
 
+def _message_or(error_detail: dict[str, Any], default: str) -> Any:
+    """Return the extracted error message, or ``default`` when there isn't one.
+
+    Substitutes on a FALSY value, not on an absent key. ``_extract_error_detail``
+    always emits a ``message`` key — ``exc.details["message"]`` is a documented
+    spelling, so dropping the key would ``KeyError`` anyone following the docs —
+    and sets it to ``None`` when the body carried no message at all. A plain
+    ``.get("message", default)`` would therefore return that ``None`` verbatim,
+    which is how ``str(exc)`` came to print the literal string ``'None'`` at
+    exactly the moment a caller most needs the message.
+
+    The return is deliberately untyped as ``Any`` rather than ``str``: a ``422``
+    carries a LIST of per-field validation objects in this slot, and callers
+    iterate it.
+    """
+    return error_detail.get("message") or default
+
+
 def _scrub_url_path(url: str) -> str:
     """Redact one-time tokens embedded in URL paths before logging.
 
@@ -215,6 +233,52 @@ API_KEY_PREFIX = "sk_live_"
 #: Every header this client may use to present a credential. Enumerated so a
 #: credential swap can RETIRE the header it is not using -- see
 #: :meth:`HTTPClient.set_api_key`.
+_JSON_CONTENT_TYPE = "application/json"
+
+
+def _httpx_types_the_body(httpx_kwargs: Mapping[str, Any]) -> bool:
+    """True when httpx's own body encoder will set this request's ``Content-Type``.
+
+    Mirrors ``httpx._content.encode_request``'s precedence exactly: a
+    non-mapping ``data`` and any ``content`` are raw bytes (httpx sets no type);
+    otherwise ``files`` is encoded as ``multipart/form-data; boundary=...`` and a
+    non-empty mapping ``data`` as ``application/x-www-form-urlencoded``.
+    ``json=`` is not listed: its type IS the SDK default, so applying the default
+    to it changes nothing.
+    """
+    data = httpx_kwargs.get("data")
+    if data is not None and not isinstance(data, Mapping):
+        return False
+    if httpx_kwargs.get("content") is not None:
+        return False
+    return bool(httpx_kwargs.get("files")) or bool(data)
+
+
+def _with_default_content_type(
+    headers: Mapping[str, str] | None, httpx_kwargs: Mapping[str, Any]
+) -> dict[str, str] | None:
+    """Return the per-request headers, carrying the SDK's JSON ``Content-Type`` default when due.
+
+    ``Content-Type`` describes a BODY, so it is applied here, per request, and
+    is never installed on the ``httpx.AsyncClient`` as a client-wide default.
+    It used to be: httpx only ``setdefault``s the type its encoder
+    computes, so the client default WON, and every multipart upload in the SDK
+    went out labelled ``application/json`` with no boundary. The server could
+    not parse the form and answered 422 ``body.file Field required`` — every
+    call, for every upload method — while the module tests, which mock
+    ``request()``, stayed green.
+
+    Precedence: a caller-supplied ``Content-Type`` (any case) always wins; a body
+    httpx types itself keeps httpx's type; everything else — ``json=``, raw
+    ``content=``, no body — gets ``application/json``, exactly as before.
+    """
+    if headers and any(name.lower() == "content-type" for name in headers):
+        return dict(headers)
+    if _httpx_types_the_body(httpx_kwargs):
+        return dict(headers) if headers is not None else None
+    return {**(headers or {}), "Content-Type": _JSON_CONTENT_TYPE}
+
+
 _CREDENTIAL_HEADERS: tuple[str, ...] = ("Authorization", "X-API-Key")
 
 
@@ -288,7 +352,14 @@ class HTTPClient:
             base_url=self.base_url,
             timeout=httpx.Timeout(timeout),
             verify=verify_ssl,
-            headers=self._build_headers(),
+            # Content-Type is withheld from the CLIENT defaults and applied per
+            # request by `_with_default_content_type` — see that function for
+            # the upload failure a client-wide Content-Type caused.
+            headers={
+                name: value
+                for name, value in self._build_headers().items()
+                if name.lower() != "content-type"
+            },
             limits=httpx.Limits(
                 max_connections=100,
                 max_keepalive_connections=20,
@@ -296,9 +367,16 @@ class HTTPClient:
         )
 
     def _build_headers(self) -> dict[str, str]:
-        """Build default headers for all requests."""
+        """Build the SDK's default headers.
+
+        ``Content-Type`` here is the default for a request whose body httpx does
+        not type itself. It is applied per request by
+        ``_with_default_content_type`` and is NOT installed on the underlying
+        client, because a client-wide Content-Type overrides the multipart
+        type (and boundary) httpx computes for an upload.
+        """
         headers = {
-            "Content-Type": "application/json",
+            "Content-Type": _JSON_CONTENT_TYPE,
             "Accept": "application/json",
             "X-SDK-Version": __version__,
             "X-API-Version": "v1",
@@ -402,7 +480,7 @@ class HTTPClient:
                     url=url,
                     params=params,
                     json=json_data,
-                    headers=headers,
+                    headers=_with_default_content_type(headers, kwargs),
                     **kwargs,
                 )
 
@@ -509,49 +587,49 @@ class HTTPClient:
 
         if status == 400:
             raise ValidationError(
-                error_detail.get("message", "Bad request"),
+                _message_or(error_detail, "Bad request"),
                 details=error_detail,
             )
         elif status == 401:
             raise AuthenticationError(
-                error_detail.get("message", "Invalid API key or token expired"),
+                _message_or(error_detail, "Invalid API key or token expired"),
                 details=error_detail,
             )
         elif status == 403:
             raise AuthorizationError(
-                error_detail.get("message", "Insufficient permissions"),
+                _message_or(error_detail, "Insufficient permissions"),
                 details=error_detail,
             )
         elif status == 404:
             raise NotFoundError(
-                error_detail.get("message", "Resource not found"),
+                _message_or(error_detail, "Resource not found"),
                 details=error_detail,
             )
         elif status == 422:
             raise ValidationError(
-                error_detail.get("message", "Validation failed"),
+                _message_or(error_detail, "Validation failed"),
                 details=error_detail,
             )
         elif status == 423:
             raise GovernanceViolationError(
-                error_detail.get("message", "Governance policy violation"),
+                _message_or(error_detail, "Governance policy violation"),
                 details=error_detail,
             )
         elif status == 429:
             retry_after = int(response.headers.get("Retry-After", "60"))
             raise RateLimitError(
-                error_detail.get("message", f"Rate limit exceeded. Retry after {retry_after}s"),
+                _message_or(error_detail, f"Rate limit exceeded. Retry after {retry_after}s"),
                 retry_after=retry_after,
                 details=error_detail,
             )
         elif status == 451:
             raise TrustViolationError(
-                error_detail.get("message", "EATP trust constraint violation"),
+                _message_or(error_detail, "EATP trust constraint violation"),
                 details=error_detail,
             )
         elif status >= 500:
             raise ServiceError(
-                error_detail.get("message", f"Backend error: {status}"),
+                _message_or(error_detail, f"Backend error: {status}"),
                 details=error_detail,
             )
         else:
@@ -561,38 +639,98 @@ class HTTPClient:
             )
 
     def _extract_error_detail(self, response: httpx.Response) -> dict[str, Any]:
-        """Extract error details from response body."""
+        """Extract error details from an error response body.
+
+        TWO WIRE SHAPES REACH THIS METHOD, AND ONLY ONE OF THEM IS THE ONE
+        AEGIS ACTUALLY SENDS.
+
+        The flat shape — ``{"detail": "...", "code": "..."}`` — is FastAPI's
+        default and is what this method was originally written for. Aegis
+        registers a global ``HTTPException`` handler, so **every** error the
+        platform returns is re-wrapped into a canonical ENVELOPE before it
+        leaves the server::
+
+            {"error": {"code": "FORBIDDEN",
+                       "message": "Constraint violation: ...",
+                       "details": {...},
+                       "request_id": "..."}}
+
+        Read flat, that envelope produced three wrong answers at once, all of
+        them quiet:
+
+        * ``message`` fell through to ``body.get("error")`` and became the
+          whole inner **dict**, so ``exc.message`` was not a string and
+          ``str(exc)`` rendered a Python dict repr into user-facing output;
+        * ``code`` read ``body["code"]``, which does not exist at the top
+          level, so the server's error code was reported as ``None`` on every
+          single error the platform raises;
+        * ``details`` read ``body["details"]``, likewise absent at the top
+          level, so **every structured field the server attaches was
+          discarded** — including the ``dependency`` name on a 503 and any
+          governance discriminator attached to a denial.
+
+        That last one is the load-bearing failure. A caller cannot branch on a
+        refusal it can only read as prose, so the structured channel being dead
+        forced string-matching an English sentence — which is precisely what
+        the structured channel exists to avoid.
+
+        BOTH shapes stay supported. The envelope is recognised by an ``error``
+        key whose value is a ``dict``; anything else takes the flat path
+        unchanged, so a gateway, proxy or non-Aegis server answering in
+        FastAPI's default shape still parses exactly as before. An ``error``
+        key holding a plain STRING is not an envelope — some servers use it as
+        the message itself — and is read that way.
+
+        Returns:
+            A dict carrying ``message``, ``code``, ``details``, ``request_id``
+            and ``status_code``.
+
+            The ``message`` key is ALWAYS present, and is ``None`` when the
+            body carried no message at all. It is deliberately not omitted:
+            ``exc.details["message"]`` is a documented spelling (see
+            ``modules/roles.py``), and dropping the key would turn a body with
+            no message into a ``KeyError`` for anyone following the docs.
+            :meth:`_handle_response` substitutes its per-status default on a
+            falsy value rather than on an absent key, so a caller still sees
+            ``"Insufficient permissions"`` rather than a literal ``None``.
+
+            ``message`` is passed through VERBATIM and is **not** coerced to
+            ``str``. A ``422`` legitimately carries a *list* of per-field
+            validation objects there, which callers iterate (the handbook
+            documents doing exactly that), and stringifying it would destroy
+            the most useful error body the API produces while looking like a
+            tidy-up. The dict-shaped ``message`` this method used to return is
+            fixed by recognising the envelope above, not by flattening it here.
+        """
         try:
             body = response.json()
-            if isinstance(body, dict):
-                # The platform nests EVERY handled error under a single "error"
-                # key -- code, message, details and request_id all live inside
-                # it. Reading those keys at the top level therefore yielded the
-                # whole nested dict as "message" and None for the code, on every
-                # error this server emits. Unwrap the envelope when present.
-                envelope = body.get("error")
-                nested = envelope if isinstance(envelope, dict) else None
-                source = nested if nested is not None else body
-
-                message = source.get("message") or source.get("detail")
-                if message is None and nested is None:
-                    # Flat shapes: FastAPI's own {"detail": ...}, or a server
-                    # that puts a bare string under "error".
-                    message = body.get("detail") or body.get("error")
-
-                return {
-                    "message": message,
-                    "code": source.get("code"),
-                    "details": source.get("details"),
-                    "request_id": source.get("request_id"),
-                    "status_code": response.status_code,
-                }
-            return {"message": str(body), "status_code": response.status_code}
         except (json.JSONDecodeError, ValueError):
             return {
                 "message": response.text[:500] if response.text else "Unknown error",
                 "status_code": response.status_code,
             }
+
+        if not isinstance(body, dict):
+            return {"message": str(body), "status_code": response.status_code}
+
+        envelope = body.get("error")
+        if isinstance(envelope, dict):
+            # Canonical Aegis error envelope: every field lives one level in.
+            source: dict[str, Any] = envelope
+            message = envelope.get("message") or envelope.get("detail") or envelope.get("error")
+        else:
+            # Flat/FastAPI-default shape. `envelope` here is either absent or a
+            # plain string, in which case it IS the message.
+            source = body
+            message = body.get("detail") or body.get("message") or envelope
+
+        return {
+            "message": message,
+            "code": source.get("code"),
+            "details": source.get("details"),
+            "request_id": source.get("request_id"),
+            "status_code": response.status_code,
+        }
 
     async def stream(
         self,
@@ -618,6 +756,7 @@ class HTTPClient:
             ...     print(event)
         """
         url = path if path.startswith("http") else path
+        kwargs["headers"] = _with_default_content_type(kwargs.get("headers"), kwargs)
 
         async with self._client.stream(
             method=method,

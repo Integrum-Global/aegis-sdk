@@ -16,6 +16,7 @@ find the same thing on a screen when a human needs to look at it.
 | 02.4 | [Trust chains and postures](04-trust-chains-and-postures.md)                      | Establish delegated authority, move an agent's autonomy, and revoke safely |
 | 02.5 | [Objectives and the work loop](05-objectives-and-the-work-loop.md)                | Put work in, watch it, and understand the states it passes through         |
 | 02.6 | [Approvals, holds and evidence](06-approvals-holds-and-evidence.md)               | Answer what Aegis stops to ask, and export the record afterwards           |
+| 02.7 | [Role agents, and surviving a re-org](07-role-agents-and-re-orgs.md)              | Stand up a delegate on a seat nobody occupies, and move the org chart without losing it |
 
 ## The shape of the whole thing, in one sequence
 
@@ -26,7 +27,7 @@ and the constraint direction is not obvious from any single call.
 ```
 organisation                     the tenant root
    └── unit                      a knowledge boundary, with a default classification
-        ├── head role            authority level, and the unit's primary role
+        ├── head role            authority level, and the unit's primary role — often VACANT, which is fine (02.7)
         ├── role                 reports_to another role; the reporting chain
         │    └── envelope        what this role's delegate may do — five dimensions
         │         └── agent      the delegate itself

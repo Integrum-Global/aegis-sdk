@@ -8,8 +8,9 @@ Provides agent management operations including:
 """
 
 import builtins
+import warnings
 from collections.abc import AsyncIterator
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -439,6 +440,9 @@ class AgentVersionsModule:
         Returns:
             Created version record with version number and snapshot
         """
+        # Always a JSON object, never an absent body: ``CreateVersionRequest``
+        # is a REQUIRED body parameter on the route even though every field in
+        # it is optional, so sending no body at all is refused with 422.
         json_data: dict[str, Any] = {}
         if changelog:
             json_data["changelog"] = changelog
@@ -446,7 +450,7 @@ class AgentVersionsModule:
         response = await self._http.request(
             "POST",
             f"/api/v1/agents/{encode_path_param(agent_id)}/versions",
-            json_data=json_data if json_data else None,
+            json_data=json_data,
         )
         return response
 
@@ -493,22 +497,64 @@ class AgentContextsModule:
         )
         return response
 
-    async def create(self, agent_id: str, name: str, config: dict[str, Any]) -> dict[str, Any]:
+    async def create(
+        self,
+        agent_id: str,
+        name: str,
+        config: dict[str, Any] | None = None,
+        *,
+        content_type: Literal["text", "file", "url"] | None = None,
+        content: str | None = None,
+        is_active: bool = True,
+    ) -> dict[str, Any]:
         """
         Create new context for agent.
 
+        Verified against ``AddContextRequest``
+        (``POST /api/v1/agents/{agent_id}/contexts``), which requires ``name``,
+        ``content_type`` and ``content``.
+
         Args:
             agent_id: Agent ID
-            name: Context name
-            config: Context configuration
+            name: Context name (1-100 characters)
+            config: DEPRECATED. Never a field the server reads: every call that
+                sent it was refused with 422. Passing it emits
+                ``DeprecationWarning``; it will be removed in the next minor
+                release. Use ``content_type`` and ``content``.
+            content_type: One of ``text``, ``file``, ``url`` (required)
+            content: The context content (required, non-empty)
+            is_active: Whether the context is active (default True)
 
         Returns:
             Created context object
+
+        Raises:
+            ValueError: If ``content_type`` or ``content`` is missing -- raised
+                before any request
         """
+        if config is not None:
+            warnings.warn(
+                "AgentContextsModule.create(config=...) is deprecated: the server has "
+                "no `config` field for a context and refused every such call with "
+                "422. Pass content_type= and content= instead; `config` will be "
+                "removed in the next minor release.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+        if content_type is None or not content:
+            raise ValueError(
+                "contexts.create() requires content_type ('text', 'file' or 'url') and "
+                "a non-empty content -- the server's AddContextRequest requires both"
+            )
         response = await self._http.request(
             "POST",
             f"/api/v1/agents/{encode_path_param(agent_id)}/contexts",
-            json_data={"name": name, "config": config},
+            json_data={
+                "name": name,
+                "content_type": content_type,
+                "content": content,
+                "is_active": is_active,
+            },
         )
         return response
 
@@ -551,6 +597,9 @@ class AgentContextsModule:
 
         Returns:
             Updated context object
+
+        Raises:
+            ValueError: If no field is supplied -- raised before any request
         """
         json_data: dict[str, Any] = {}
         if name is not None:
@@ -562,10 +611,24 @@ class AgentContextsModule:
         if is_active is not None:
             json_data["is_active"] = is_active
 
+        # Never a bodiless PUT. ``UpdateContextRequest`` is a REQUIRED body
+        # parameter on the route, so omitting the body is refused by FastAPI
+        # with 422 before the handler runs -- the same defect
+        # ``versions.create()`` carried, in this same file, and fixed one cycle
+        # earlier. An EMPTY object is a different and correct refusal (the
+        # handler answers 400 "No fields to update"), so there is nothing to
+        # gain from a round trip: refuse here, and say which fields would work.
+        if not json_data:
+            raise ValueError(
+                "contexts.update() requires at least one field to change "
+                "(name, content_type, content or is_active) -- the server's "
+                "UpdateContextRequest body is required"
+            )
+
         response = await self._http.request(
             "PUT",
             f"/api/v1/agents/{encode_path_param(agent_id)}/contexts/{encode_path_param(context_id)}",
-            json_data=json_data if json_data else None,
+            json_data=json_data,
         )
         return response
 
@@ -608,22 +671,56 @@ class AgentToolsModule:
         )
         return response
 
-    async def add(self, agent_id: str, tool_type: str, config: dict[str, Any]) -> dict[str, Any]:
+    async def add(
+        self,
+        agent_id: str,
+        tool_type: Literal["function", "mcp", "api"],
+        config: dict[str, Any] | None = None,
+        *,
+        name: str | None = None,
+        description: str | None = None,
+        is_enabled: bool = True,
+    ) -> dict[str, Any]:
         """
         Add tool to agent.
 
+        Verified against ``AddToolRequest``
+        (``POST /api/v1/agents/{agent_id}/tools``), which requires ``tool_type``,
+        ``name`` and ``description``. An MCP binding that references a shared
+        server registration (``config["mcpServerId"]``) must not also carry
+        inline ``url``/``headers``/``command``; the server refuses that with 422.
+
         Args:
             agent_id: Agent ID
-            tool_type: Type of tool (e.g., "mcp", "function", "api")
-            config: Tool configuration
+            tool_type: One of ``function``, ``mcp``, ``api``
+            config: Tool configuration (default ``{}``)
+            name: Tool name, 1-100 characters (required)
+            description: Tool description, 1-500 characters (required)
+            is_enabled: Whether the tool is enabled (default True)
 
         Returns:
             Created tool assignment
+
+        Raises:
+            ValueError: If ``name`` or ``description`` is missing -- raised
+                before any request
         """
+        if not name or not description:
+            raise ValueError(
+                "tools.add() requires name and description -- the server's "
+                "AddToolRequest requires both (name 1-100 characters, "
+                "description 1-500)"
+            )
         response = await self._http.request(
             "POST",
             f"/api/v1/agents/{encode_path_param(agent_id)}/tools",
-            json_data={"tool_type": tool_type, "config": config},
+            json_data={
+                "tool_type": tool_type,
+                "name": name,
+                "description": description,
+                "config": config if config is not None else {},
+                "is_enabled": is_enabled,
+            },
         )
         return response
 
@@ -640,22 +737,70 @@ class AgentToolsModule:
             f"/api/v1/agents/{encode_path_param(agent_id)}/tools/{encode_path_param(tool_id)}",
         )
 
-    async def update(self, agent_id: str, tool_id: str, config: dict[str, Any]) -> dict[str, Any]:
+    async def update(
+        self,
+        agent_id: str,
+        tool_id: str,
+        config: dict[str, Any] | None = None,
+        *,
+        tool_type: Literal["function", "mcp", "api"] | None = None,
+        name: str | None = None,
+        description: str | None = None,
+        is_enabled: bool | None = None,
+    ) -> dict[str, Any]:
         """
         Update tool configuration.
+
+        Verified against ``UpdateToolRequest``
+        (``PUT /api/v1/agents/{agent_id}/tools/{tool_id}``), every field of
+        which is optional -- but the BODY is required, and the handler answers
+        400 ``No fields to update`` for an empty one. Until now this method
+        sent ``{"config": ...}`` and nothing else, so the other four fields the
+        route accepts were unreachable from the SDK: a partner could not rename
+        a tool, re-describe it, change its type, or disable it.
+
+        An MCP binding that references a shared server registration
+        (``config["mcpServerId"]``) must not also carry inline
+        ``url``/``headers``/``command``; the server refuses that with 422.
 
         Args:
             agent_id: Agent ID
             tool_id: Tool assignment ID
             config: Updated configuration
+            tool_type: New tool type (``function``, ``mcp``, ``api``)
+            name: New tool name, 1-100 characters
+            description: New tool description, 1-500 characters
+            is_enabled: Whether the tool is enabled
 
         Returns:
             Updated tool assignment
+
+        Raises:
+            ValueError: If no field is supplied -- raised before any request
         """
+        json_data: dict[str, Any] = {}
+        if config is not None:
+            json_data["config"] = config
+        if tool_type is not None:
+            json_data["tool_type"] = tool_type
+        if name is not None:
+            json_data["name"] = name
+        if description is not None:
+            json_data["description"] = description
+        if is_enabled is not None:
+            json_data["is_enabled"] = is_enabled
+
+        if not json_data:
+            raise ValueError(
+                "tools.update() requires at least one field to change "
+                "(config, tool_type, name, description or is_enabled) -- the "
+                "server's UpdateToolRequest body is required"
+            )
+
         response = await self._http.request(
             "PUT",
             f"/api/v1/agents/{encode_path_param(agent_id)}/tools/{encode_path_param(tool_id)}",
-            json_data={"config": config},
+            json_data=json_data,
         )
         return response
 
@@ -1285,10 +1430,18 @@ class AgentsModule:
             limit: Maximum results (1-200)
             offset: Pagination offset
             status: Optional lifecycle filter — one of ``draft``/``active``/
-                ``archived``
+                ``archived``/``deprecated``/``suspended``/``revoked``. All six
+                are accepted; an earlier revision of this docstring named only
+                the first three, which under-reported the filter by half.
 
         Returns:
             DelegateAgentList: records + total
+
+        Note:
+            The server also accepts an ``include_archived`` flag on this route
+            and this method does not expose it, so archived delegate agents
+            cannot be listed here. ``list_delegate_agents_for_unit`` does wire
+            it. Until that gap closes, filter with ``status="archived"``.
         """
         params: dict[str, Any] = {"limit": limit, "offset": offset}
         if status:
@@ -1369,7 +1522,8 @@ class AgentsModule:
 
         Raises:
             NotFoundError: If the role doesn't exist / belongs to another org
-            ValidationError: If the role is vacant (422)
+            ValidationError: If the role cannot be RESOLVED (422). Not vacancy —
+                a vacant role is accepted; see the retraction noted above.
         """
         data: dict[str, Any] = {"role_id": role_id}
         if name is not None:
@@ -1542,10 +1696,20 @@ class AgentsModule:
 
     async def delete_delegate_agent(self, agent_id: str) -> str:
         """
-        Delete a delegate agent.
+        Soft-retire a delegate agent (status -> ``archived``).
 
-        Distinct from ``deactivate_delegate_agent``, which archives the agent
-        and leaves it recoverable. This removes it.
+        ⛔ **This does NOT remove the agent, and it is NOT recoverable.** An
+        earlier revision of this docstring said it "removes" the agent, in
+        contrast to ``deactivate_delegate_agent``. Both statements were wrong:
+        the two calls reach the SAME end state, ``archived``, and the platform
+        deliberately does not expose a hard delete — the agent participates in
+        audit-trail and trust-chain records that must survive for forensic
+        queries.
+
+        ``archived`` is TERMINAL and the server enforces it: there is no
+        transition out, so ``activate_delegate_agent`` on an archived agent
+        fails with 422. Recovering the capability means provisioning a NEW
+        delegate agent, not reviving this one.
 
         Args:
             agent_id: Delegate agent ID

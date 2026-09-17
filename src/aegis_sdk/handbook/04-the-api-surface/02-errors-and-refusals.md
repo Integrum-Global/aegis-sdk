@@ -61,6 +61,37 @@ authorization decision — a principal was judged and found wanting. `423` is a
 collapse all three into "permission denied" you lose the distinction your own
 evidence export depends on, because they are answered by three different people.
 
+**To explain one rather than infer it, use `client.governance_explain`.** It
+walks the access chain and returns the step the decision stopped at:
+
+```python
+why = await client.governance_explain.explain_access(
+    role_id="role-analyst",
+    knowledge_item={
+        "id": "doc-9",
+        "classification": "confidential",
+        "unit_address": "D1-R1",
+    },
+    posture="supervised",
+)
+print(why.allowed, why.step_reached, why.reason)
+```
+
+Read `step_reached`: when `allowed` is `False` it names where the chain stopped,
+and `access_path` carries the route taken.
+
+⚠ **It is a dry run, and it is not a record of the refusal you received.** It
+evaluates the item *you describe* — it reads no stored record, records no access,
+and a wrong or missing field changes the verdict. Reconstruct the item the
+refused call was about and re-run the chain. It answers about a role plus a
+knowledge item, not about a connector or a tool.
+
+The same module carries the state readouts: `explain_envelope()` for a role's
+effective envelope through its ancestor chain, and `envelope_hydration_status()`
+/ `envelope_coverage()` — a hydration pass that **skipped** a role leaves it on a
+fail-closed bootstrap default, so a skip reads exactly like a governance refusal
+and is silent everywhere else.
+
 `404` is the ambiguous one. It means *this client asked for something the server
 does not have* — which covers a deleted record, a mistyped id, and a route that
 does not exist on this deployment. The client cannot separate them, and neither
@@ -300,14 +331,23 @@ Measured, on a `403`:
 
 | the error body | `str(exc)` |
 | --- | --- |
+| `{"error": {"code": …, "message": "real detail", …}}` — **what Aegis sends** | `'real detail'` |
 | `{"detail": "real detail"}` | `'real detail'` |
-| `{}` or `{"foo": "bar"}` | `'None'` |
+| `{}` or `{"foo": "bar"}` | the per-status default, e.g. `'Insufficient permissions'` |
 | no body at all | `'Unknown error'` |
 | `<html>…</html>` from a proxy | the raw HTML, to 500 characters |
 
-So `log.error("call failed: %s", exc)` can log, literally, `call failed: None` —
-at exactly the moment you most need the message. Build your own line from the
-status:
+> **Corrected.** The second and third rows used to read differently, and both
+> corrections come from the same defect. This client parsed only the *flat*
+> `{"detail": …}` shape, while the platform wraps **every** error in the
+> `{"error": {…}}` envelope on the first row — so `str(exc)` rendered a Python
+> dict repr instead of the message, `exc.details["code"]` was `None` on every
+> error the platform raises, and every structured field the server attached was
+> discarded. The third row's old answer, a literal `'None'`, was the same bug
+> reaching the empty-body case. Both are fixed; see § *Branching on a refusal*.
+
+Build your own log line from the status rather than relying on the default: it
+tells a reader which of the four kinds they are looking at.
 
 ```python
 from aegis_sdk import AgenticOSError
@@ -323,6 +363,76 @@ except AgenticOSError as exc:
 **The status code is on every raised error**, at `exc.details["status_code"]`,
 including the unclassified ones. That is the field to branch on — not the
 subclass, which cannot distinguish `409` from `410` from `418`.
+`exc.status_code` is the same value without the `KeyError` risk on an error the
+client raised locally, where there was no response to carry one.
+
+## Branching on a refusal
+
+Every error the platform returns carries a machine-readable code, and some carry
+structured fields beside the message. Read those; do **not** parse the message.
+The message is prose written for a human and may be reworded in any release
+without notice — a handler that matches on its wording is a handler that breaks
+silently on a copy-edit.
+
+| attribute | what it holds |
+| --- | --- |
+| `exc.error_code` | the server's code for this refusal — `'FORBIDDEN'`, `'DEPENDENCY_UNAVAILABLE'`, … — or `None` when the error did not come from a server response |
+| `exc.server_details` | the structured fields attached beside the message; `{}` when none were sent |
+| `exc.request_id` | the server's correlation id, when supplied. Quote it when reporting a refusal you cannot explain — it is what lets an operator find the same event on their side |
+| `exc.status_code` | the HTTP status, or `None` for a local failure |
+
+```python
+from aegis_sdk import AgenticOSError
+
+try:
+    await client.agents.execute(agent_id, message="...")
+except AgenticOSError as exc:
+    if exc.error_code == "DEPENDENCY_UNAVAILABLE":
+        # A named component is down. The request is retryable, and this is
+        # NOT a statement about your agent.
+        dependency = exc.server_details.get("dependency")
+        log.warning("governance dependency down: %s (req %s)", dependency, exc.request_id)
+    else:
+        # A decision about this caller. Retrying changes nothing.
+        log.error("refused: %s (%s)", exc.message, exc.error_code)
+```
+
+### An absent field means UNDETERMINED, never the negative case
+
+`exc.server_details` carries what the server sent on *this* response. A missing
+key means it sent nothing under that name — it does **not** mean the underlying
+condition is absent. Several refusal paths still serialise only a prose
+sentence, so their structured half arrives as `{}`. Record that as *undetermined*
+and say so, exactly as you would record a timeout as *not reached* rather than as
+*refused*.
+
+### The gap this book will not paper over — a refusal that is the platform's, not yours
+
+Some denials are the governance apparatus reporting that it **could not be
+queried at all** — the constraint store was unreachable, so no restriction could
+be evaluated and the platform failed closed. That is categorically different
+from a restriction that was evaluated and applied to your agent: the first is an
+outage on their side and is retryable, the second is a decision about you and is
+not. The remedies have nothing in common.
+
+**Today you cannot tell those apart programmatically on agent execution.** Both
+arrive as `403` with `error_code` `'FORBIDDEN'` and an empty `server_details`;
+the only thing that differs is the wording of the message, and matching on
+wording is the thing this section tells you not to do.
+
+The client-side half of the channel is in place — the moment the platform
+attaches a discriminator beside the message, it arrives at
+`exc.server_details` with no change on your side and no new SDK release. What is
+missing is the platform half: the execute route serialises the enforcer's
+verdict as a prose sentence and drops the structured fields the enforcer already
+computed. Closing it is a change to the Aegis API layer, not to this client, and
+it is tracked platform-side.
+
+**Until it closes, the honest handling is:** treat a `403` on execution as a
+refusal (do not retry it), and when you need to know *which kind* it was, quote
+`exc.request_id` to whoever operates your deployment. They can see the verdict's
+structured basis in the audit record; you cannot see it from here, and this book
+will not invent a way to tell you.
 
 > ⚠ **A `422` puts a *list* where you expect a string.** A field-validation
 > failure carries a list of per-field objects, and that list is what lands in the

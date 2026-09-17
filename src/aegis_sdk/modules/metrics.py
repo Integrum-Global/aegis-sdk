@@ -375,11 +375,32 @@ class MetricsModule:
 
         POST /api/v1/metrics/record
 
+        ⛔ REQUIRES A WRITE CREDENTIAL — changed 2026-09-14.
+
+        This endpoint persists a row. It previously accepted a READ credential,
+        which was an authorization defect and has been fixed.
+
+        * **API key** (the usual caller here — a gateway reporting executions):
+          the key MUST carry the ``metrics:write`` scope. A key scoped only
+          ``metrics:read`` now receives **403**. ``metrics:write`` implies read,
+          so one scope is enough for both this and the read methods below.
+        * **User token**: requires the ``metrics:create`` permission.
+
+        The 403 body is self-describing — it carries ``required_permission``
+        and ``required_api_key_scope`` keys naming exactly what to grant, so a
+        broken integration can be diagnosed from the response alone.
+
+        Every READ method on this class is unaffected.
+
         Args:
             metric: Metric data — MUST include deployment_id, agent_id, status
 
         Returns:
             dict: The created metric record
+
+        Raises:
+            Forbidden: 403 when the credential lacks ``metrics:write`` scope
+                (API key) or the ``metrics:create`` permission (user token).
         """
         return await self._http.request(
             "POST",

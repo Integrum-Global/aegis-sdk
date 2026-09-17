@@ -81,7 +81,7 @@ class TestLicensesModule:
         mock_http.request.assert_called_once()
         call_args = mock_http.request.call_args
         assert call_args[0][0] == "POST"
-        assert call_args[0][1] == "/licenses/generate"
+        assert call_args[0][1] == "/api/v1/licenses/generate"
 
     async def test_generate_license_with_defaults(self, mock_http, licenses_module):
         """generate() should use sensible defaults."""
@@ -130,7 +130,7 @@ class TestLicensesModule:
         assert result.next_check_days == 7
         mock_http.request.assert_called_once()
         call_args = mock_http.request.call_args
-        assert call_args[0][1] == "/licenses/validate"
+        assert call_args[0][1] == "/api/v1/licenses/validate"
 
     async def test_validate_license_with_usage(self, mock_http, licenses_module):
         """validate() should send usage telemetry."""
@@ -193,7 +193,7 @@ class TestLicensesModule:
         mock_http.request.assert_called_once()
         call_args = mock_http.request.call_args
         assert call_args[0][0] == "POST"
-        assert call_args[0][1] == "/licenses/lic_123/revoke"
+        assert call_args[0][1] == "/api/v1/licenses/lic_123/revoke"
         assert call_args[1]["json_data"]["reason"] == "Customer churned"
 
     async def test_get_usage(self, mock_http, licenses_module):
@@ -217,7 +217,7 @@ class TestLicensesModule:
         assert len(result.validations) == 2
         mock_http.request.assert_called_once_with(
             "GET",
-            "/licenses/lic_123/usage",
+            "/api/v1/licenses/lic_123/usage",
         )
 
     async def test_get_status(self, mock_http, licenses_module):
@@ -243,7 +243,7 @@ class TestLicensesModule:
         assert result.days_remaining == 180
         mock_http.request.assert_called_once_with(
             "GET",
-            "/licenses/status",
+            "/api/v1/licenses/status",
         )
 
     async def test_get_status_grace_period(self, mock_http, licenses_module):
@@ -292,5 +292,5 @@ class TestLicensesModule:
         assert result["enterprise"].limits["agents"] == -1
         mock_http.request.assert_called_once_with(
             "GET",
-            "/licenses/editions",
+            "/api/v1/licenses/editions",
         )

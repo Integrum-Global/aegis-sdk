@@ -109,6 +109,38 @@ it is the rung-2 reachability case, widening changes nothing because scopes are
 not consulted on that path. You end the day with a more powerful credential and
 the same refusal.
 
+**`client.governance_explain` explains the decision instead of leaving you to
+infer it.** `explain_access()` walks the access chain and returns where it
+stopped:
+
+```python
+why = await client.governance_explain.explain_access(
+    role_id=...,                    # the role the refused call ran as
+    knowledge_item={                # the item the refused call was about
+        "id": ..., "classification": ..., "unit_address": ...,
+    },
+    posture=...,                    # that role's trust posture
+)
+print(why.allowed, why.step_reached, why.reason)
+```
+
+Read `step_reached`, not `allowed`. When the verdict is `False` it names the step
+the chain stopped at, which is the attribution this rung exists to produce.
+
+⚠ **It is a dry run, and it is not a record of your refusal.** It evaluates the
+item *you describe*: nothing is read from a stored record, nothing is accessed,
+nothing is recorded as an access, and a wrong or missing field changes the
+verdict. Reconstruct the item the refused call was about and re-run the chain —
+it cannot tell you what happened during a past call. It answers about a role plus
+a knowledge item, not about a connector or a tool.
+
+The same module carries the state readouts, which are the other half of "is this
+governance?": `explain_envelope()` for a role's effective envelope through its
+ancestor chain, and `envelope_hydration_status()` / `envelope_coverage()` — a
+hydration pass that **skipped** a role leaves it on a fail-closed bootstrap
+default (deny, never unlimited), so a skip reads exactly like a governance
+refusal and is silent everywhere else.
+
 ## Rung 6 — Is the client the problem?
 
 A `404` from a client method reads as *"the platform does not support this"* and

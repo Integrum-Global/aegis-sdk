@@ -270,7 +270,8 @@ contexts: List[Dict[str, Any]] = await client.agents.contexts.list("agent_abc123
 context: Dict[str, Any] = await client.agents.contexts.create(
     "agent_abc123",
     name="Research Context",
-    config={"domain": "quantum_computing", "depth": "deep"},
+    content_type="text",  # one of "text", "file", "url"
+    content="Focus on quantum computing, in depth.",
 )
 
 # Get a specific context
@@ -306,7 +307,9 @@ tools: List[Dict[str, Any]] = await client.agents.tools.list("agent_abc123")
 # Add a tool
 tool: Dict[str, Any] = await client.agents.tools.add(
     "agent_abc123",
-    tool_type="mcp",
+    tool_type="mcp",  # one of "function", "mcp", "api"
+    name="research-search",
+    description="Search and summarise research sources.",
     config={
         "server_url": "https://mcp.example.com",
         "tools": ["search", "summarize"],

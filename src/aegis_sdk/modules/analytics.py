@@ -15,8 +15,8 @@ step is needed here.
 - :meth:`~AnalyticsModule.pool_utilization` — pool utilization metrics
 - :meth:`~AnalyticsModule.costs` — cost summary
 - :meth:`~AnalyticsModule.cost_breakdown` — cost breakdown by dimension
-- :meth:`~AnalyticsModule.export_costs` — export cost data (JSON)
-- :meth:`~AnalyticsModule.export_metrics` — export metrics data (JSON)
+- :meth:`~AnalyticsModule.export_costs` — export cost data (JSON, CSV or XLSX)
+- :meth:`~AnalyticsModule.export_metrics` — export metrics data (JSON, CSV or XLSX)
 - :meth:`~AnalyticsModule.list_agents` — analytics-tracked agents list
 - :meth:`~AnalyticsModule.trends` — completion-rate trends
 
@@ -32,7 +32,6 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from .._http import encode_path_param
-from ..exceptions import UnsupportedOperationError
 
 
 # Response Models
@@ -468,7 +467,7 @@ class AnalyticsModule:
         >>> for item in costs.records:
         ...     print(f"{item.group_name}: ${item.total_cost_usd}")
 
-        # Export metrics (JSON only — see export_metrics docstring)
+        # Export metrics (JSON, CSV or XLSX — see export_metrics docstring)
         >>> data = await client.analytics.export_metrics(format="json")
     """
 
@@ -674,10 +673,14 @@ class AnalyticsModule:
         """
         Get cost breakdown by dimension.
 
-        Fixed wire route: the prior implementation hit
-        ``/analytics/costs/breakdown``, which does not exist — the real
-        (and only) cost endpoint is ``GET /api/v1/analytics/costs``, the SAME route
-        :meth:`costs` uses.
+        Wire route: ``GET /api/v1/analytics/costs``, the SAME route :meth:`costs`
+        uses. An earlier implementation hit ``/analytics/costs/breakdown``; that
+        path now exists on the server but serves a DIFFERENT shape (a token-type
+        cost breakdown with budget), not this grouped breakdown.
+
+        ``group_by`` is exactly the server's ``COST_GROUP_BY_OPTIONS``; any other
+        value is refused with 400. For ``pool`` and ``department`` the server
+        currently places every session in a single ``unknown`` group.
 
         Args:
             group_by: Grouping dimension (agent, pool, department, user)
@@ -707,10 +710,10 @@ class AnalyticsModule:
 
     async def export_costs(
         self,
-        format: Literal["json"] = "json",
+        format: Literal["json", "csv", "xlsx"] = "json",
         start_date: str | None = None,
         end_date: str | None = None,
-    ) -> dict[str, Any]:
+    ) -> dict[str, Any] | bytes:
         """
         Export cost-only analytics data.
 
@@ -720,35 +723,37 @@ class AnalyticsModule:
         cost-only export via ``includeCosts=true`` and the other
         ``include*`` flags set to false.
 
-        ``format`` is restricted to ``"json"`` here: the server returns a
-        raw ``StreamingResponse`` whose body is plain CSV text (not JSON)
-        when ``format="csv"``, but this SDK's HTTP transport
-        (``aegis_sdk._http.HTTPClient._handle_response``) unconditionally
-        calls ``response.json()`` on 200 responses — it has no raw-bytes
-        return path. Requesting ``csv``/``xlsx`` would raise an opaque JSON
-        decode error from inside the transport rather than a typed SDK
-        exception, so this method fails closed instead.
+        A binary ``format`` (``csv``/``xlsx``) is fetched with
+        ``raw_response=True``, which short-circuits the transport's
+        ``.json()`` before it is attempted. That parameter is the SDK's
+        shipped raw-bytes path and is already used by
+        ``compliance.export_report``, ``export_audit`` and
+        ``export_soc2_evidence``; this method now uses it too.
+
+        ⛔ This method previously raised ``UnsupportedOperationError`` for
+        ``csv``/``xlsx`` on the stated ground that ``_handle_response``
+        "unconditionally calls ``response.json()`` ... it has no raw-bytes
+        return path". **That premise is false** and the guard is removed
+        rather than re-documented: ``_http.py`` returns ``response.content``
+        for any 200/201/202 fetched with ``raw_response=True`` (line 515) AND
+        for any 200/201/202 whose body fails to parse (line 519-521), and the
+        ``raw_response`` parameter's own docstring records that it exists
+        precisely because two shipped methods were passing it. The guard was
+        a written claim that outlived its mechanism, and it blocked a
+        capability the transport could already serve. Adding a format to this
+        surface MUST NOT be re-gated on that sentence.
 
         Args:
-            format: Export format — only ``"json"`` is supported by this
-                SDK version (see above)
+            format: ``"json"`` returns the parsed export document; ``"csv"``
+                and ``"xlsx"`` return the raw export bytes (the xlsx body is
+                a real OOXML workbook, not text).
             start_date: Start date (ISO format)
             end_date: End date (ISO format)
 
         Returns:
-            The exported cost data (parsed JSON dict)
-
-        Raises:
-            UnsupportedOperationError: If ``format`` is not ``"json"``
+            The exported cost data — a parsed ``dict`` for ``format="json"``,
+            raw ``bytes`` for ``csv``/``xlsx``.
         """
-        if format != "json":
-            raise UnsupportedOperationError(
-                "export_costs(format='csv'|'xlsx') is not supported by this "
-                "SDK version — the transport layer (aegis_sdk._http.HTTPClient) "
-                "always parses the response as JSON, and the server returns "
-                "raw CSV/XLSX bytes for those formats. Use format='json'."
-            )
-
         params: dict[str, Any] = {
             "format": format,
             "includeCosts": True,
@@ -765,15 +770,16 @@ class AnalyticsModule:
             "GET",
             "/api/v1/analytics/export",
             params=params,
+            raw_response=format != "json",
         )
 
     async def export_metrics(
         self,
-        format: Literal["json"] = "json",
+        format: Literal["json", "csv", "xlsx"] = "json",
         metrics: list[str] | None = None,
         start_date: str | None = None,
         end_date: str | None = None,
-    ) -> dict[str, Any]:
+    ) -> dict[str, Any] | bytes:
         """
         Export metrics data.
 
@@ -782,13 +788,16 @@ class AnalyticsModule:
         only) export endpoint is the unified ``GET /api/v1/analytics/export``. ``metrics`` (a list of
         ``executions``/``costs``/``agents``/``pools``) is translated into
         the server's ``include*`` boolean flags; when omitted, everything is
-        included (matching the server's own defaults). See
-        :meth:`export_costs` for why ``format`` is JSON-only in this SDK
-        version.
+        included (matching the server's own defaults).
+
+        ``format`` accepts the same three values as :meth:`export_costs`, and
+        for the same reason — the transport has a raw-bytes path, so the
+        former ``UnsupportedOperationError`` guard rested on a false premise.
+        See that method for the full account.
 
         Args:
-            format: Export format — only ``"json"`` is supported by this
-                SDK version
+            format: ``"json"`` returns the parsed export document; ``"csv"``
+                and ``"xlsx"`` return the raw export bytes.
             metrics: Categories to include — any of ``executions``
                 (maps to ``includeTasks``), ``costs`` (``includeCosts``),
                 ``agents`` (``includeAgents``), ``pools`` (``includePools``).
@@ -797,25 +806,18 @@ class AnalyticsModule:
             end_date: End date (ISO format)
 
         Returns:
-            The exported metrics data (parsed JSON dict)
-
-        Raises:
-            UnsupportedOperationError: If ``format`` is not ``"json"``
+            The exported metrics data — a parsed ``dict`` for
+            ``format="json"``, raw ``bytes`` for ``csv``/``xlsx``.
 
         Example:
             >>> data = await client.analytics.export_metrics(
             ...     format="json",
             ...     metrics=["executions", "costs"]
             ... )
+            >>> workbook: bytes = await client.analytics.export_metrics(
+            ...     format="xlsx"
+            ... )
         """
-        if format != "json":
-            raise UnsupportedOperationError(
-                "export_metrics(format='csv'|'xlsx') is not supported by this "
-                "SDK version — the transport layer (aegis_sdk._http.HTTPClient) "
-                "always parses the response as JSON, and the server returns "
-                "raw CSV/XLSX bytes for those formats. Use format='json'."
-            )
-
         include_all = metrics is None
         metrics_set = set(metrics or [])
         params: dict[str, Any] = {
@@ -834,6 +836,7 @@ class AnalyticsModule:
             "GET",
             "/api/v1/analytics/export",
             params=params,
+            raw_response=format != "json",
         )
 
     async def list_agents(

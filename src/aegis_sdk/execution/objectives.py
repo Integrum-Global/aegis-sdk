@@ -23,24 +23,37 @@ progress SSE stream is consumed by ``client.work_objectives.stream_progress``
 and a second client method for the same server handler would be a rival, not
 coverage.
 
-⛔ AUTHENTICATION — none of this module's routes accept an API key.
+⚠ AUTHENTICATION — MIXED. This module's routes now admit an API key, with three
+exceptions that stay human-only (named below). The persona allowlists are
+unchanged.
 
-Every route here is gated on an operator PERSONA. An API-key principal is
-synthesised with no role and an empty persona list, which is the platform's
-deliberate fail-closed default, and these routes were never wired with the
-key-aware variant of the persona gate. The gates are applied as a
-CONJUNCTION, so a route carrying both a key-aware scope check and a plain
-persona check still denies the key.
+Both router-level gates were swapped for the key-aware variant, so a key
+holding ANY ``agents`` scope (``agents:read`` or ``agents:write``) passes router
+admission. A key holding none is refused with 403, and that refusal names the
+scopes which would have admitted it — a key is never admitted merely by
+existing.
 
-The consequence is concrete: a client built as ``AgenticOSClient(api_key=...)``
-receives 403 from every method below, on reads as well as writes. Authenticate
-with a session token instead -- ``await client.auth.login(...)`` followed by
-``client.set_auth_token(token.access_token)``.
+Two things that does NOT say:
 
-This is a platform-side gap, not a client limitation, and it is reported as
-such. It is documented here rather than left for a caller to discover at
-runtime, because a method that always 403s for the credential most consumers
-hold is worse than an absent one unless it says so.
+  * The router gate is COARSE by design. It decides only whether a key has any
+    business in this router, mirroring what the persona check does for a human.
+    The read-versus-write and exact-action boundary is still enforced by the
+    per-route permission/scope dependency behind it.
+  * Three routes stay human-only, and one of them is the LIST endpoint:
+    ``GET /objectives``, ``POST /objectives/{id}/admin-status`` and
+    ``POST /objectives/{id}/admin-tasks``. They keep plain persona gates
+    (``executive``/``admin`` and ``admin``/``architect``), neither of which has
+    an API-key scope analogue. The list route is the one to watch: every other
+    read on this prefix admits a key, so a key that works everywhere else on
+    this module is still refused when it ENUMERATES.
+
+So for a client built as ``AgenticOSClient(api_key=...)`` the split is no longer
+credential type but SCOPE. Session tokens keep working exactly as before: the
+key-aware gate's JWT branch *is* the persona check, so no session gains or loses
+anything.
+
+Not established: that a write completes end to end for a real key against a live
+database. Admission is proven at the gate; the full round trip is not.
 """
 
 import builtins
@@ -152,9 +165,19 @@ class ObjectivesModule:
         """
         List objectives across the organization.
 
-        ``GET /api/v1/objectives`` is an executive/admin-only management endpoint;
-        callers without that persona should use ``/objectives/recent``, which
-        this SDK does not wrap yet.
+        ``GET /api/v1/objectives`` is an executive/admin-only management
+        endpoint, and it is the ONE read on this prefix an API key cannot reach.
+        Callers without that persona -- and every API-key principal -- should
+        use ``GET /api/v1/objectives/recent`` instead: it admits a key holding
+        ``agents:read``, and this SDK wraps it as
+        ``client.work_objectives.get_recent_objectives(limit=...)`` in the
+        ``work_objectives`` module.
+
+        It is not a drop-in substitute for the envelope below. ``recent`` takes
+        ``limit`` (1-100) rather than ``page_size``, returns records ordered
+        most-recent-first, and carries no ``total`` at all. Whether that is
+        sufficient to ENUMERATE an organization's objectives is not established
+        here -- it is the Work Home landing feed, and it is documented as one.
 
         Supported params are ``status``, ``page_size`` and ``sort``. There is
         no ``page``, ``agent_id`` or ``workspace_id`` filter — the endpoint

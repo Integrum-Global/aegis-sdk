@@ -114,6 +114,16 @@ Three things about roles that are routinely misread:
   occasionally a surprise when a provisioning run produces more agents than roles
   you meant to staff. Pass `auto_generate_agent=False` when you are building
   structure ahead of staffing it.
+- **Creating a UNIT auto-creates its primary role, and that role arrives
+  UNPARENTED** — `reports_to_role_id` is null, so by the bullet above it anchors
+  its own trust chain instead of inheriting one. Nothing warns you. Parent it
+  explicitly after creating the unit.
+
+**Building structure ahead of staffing it is the normal case, not a degenerate
+one** — a lead seat with nobody in it is valid, and a delegate agent can be stood
+up, trusted and activated on it. Chapter 02.7 has that sequence, along with what
+happens to the agent when somebody is eventually appointed, when they leave, and
+when the role moves.
 
 Read roles back with `api:GET /api/v1/organization-roles` and
 `api:GET /api/v1/organization-roles/{id}`; the assembled hierarchy is at

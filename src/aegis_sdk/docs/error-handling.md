@@ -186,6 +186,46 @@ async def main() -> None:
 asyncio.run(main())
 ```
 
+### Explaining the decision instead of inferring it
+
+A `423` tells you governance blocked the operation; it does not tell you which
+step of the access chain decided that. `client.governance_explain` answers the
+second question:
+
+```python
+import asyncio
+from aegis_sdk import AgenticOSClient
+
+async def main() -> None:
+    async with AgenticOSClient.from_env() as client:
+        why = await client.governance_explain.explain_access(
+            role_id="role-analyst",
+            knowledge_item={
+                "id": "doc-9",
+                "classification": "confidential",
+                "unit_address": "D1-R1",
+            },
+            posture="supervised",
+        )
+        print(why.allowed, why.step_reached, why.reason)
+
+asyncio.run(main())
+```
+
+Read `step_reached`: when `allowed` is `False` it names the step the chain
+stopped at. `reason` and `access_path` carry the rest of the trace.
+
+⚠ **This is a dry run over an item you describe, not a record of a past call.**
+It reads no stored knowledge item and records no access, so the verdict is only
+as good as the `knowledge_item` you pass — a wrong or missing field changes the
+answer. It is not evidence that a real access was permitted or refused.
+
+The same module carries the state readouts: `explain_envelope()` for a role's
+effective envelope through its ancestor chain, `describe_address()` for a D/T/R
+address, and `envelope_hydration_status()` / `envelope_coverage()` /
+`probe_corrupted_roles()` for readiness over the org's envelopes and role
+grammar.
+
 ## Payment Error Handling
 
 `PaymentError` includes an optional `decline_code` from the payment processor:

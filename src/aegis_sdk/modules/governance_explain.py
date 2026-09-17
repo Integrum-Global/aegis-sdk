@@ -24,6 +24,9 @@ Credential:
     support incident does not become unrecoverable.
 """
 
+# reach-requires: governance_explain in src/aegis_sdk/coc/skills/diagnosing-a-refusal.md -- the rung that asks whether a refusal is governance rather than authorization must name the module that explains that decision, or a partner following our own shipped skill reaches it and is pointed at nothing
+# reach-requires: governance_explain in src/aegis_sdk/handbook/04-the-api-surface/02-errors-and-refusals.md -- the chapter a partner reads when a call is refused names governance refusals and must name the module that explains one, or the manual and the shipped capability disagree about what a partner can actually reach
+
 from __future__ import annotations
 
 from typing import Any
@@ -247,33 +250,52 @@ class GovernanceExplainModule:
         self._http = http_client
 
     async def explain_access(
-        self, role_id: str, knowledge_item: dict[str, Any], posture: str
+        self,
+        role_id: str,
+        knowledge_item: dict[str, Any] | None = None,
+        posture: str = "supervised",
+        *,
+        tool: dict[str, Any] | None = None,
     ) -> AccessExplanation:
         """
         Explain how one access decision resolves, step by step.
 
-        This evaluates the item **you describe**, not a stored one. It is a
-        dry run: nothing is accessed, nothing is recorded as an access, and the
-        verdict is only as good as the ``knowledge_item`` you pass. Do not use
-        it as evidence that a real access was permitted.
+        The subject is either a KNOWLEDGE ITEM you describe, or a TOOL. A
+        knowledge item is a dry run: nothing is accessed, nothing is recorded
+        as an access, and the verdict is only as good as the
+        ``knowledge_item`` you pass — do not use it as evidence that a real
+        access was permitted. A TOOL subject is the opposite kind of answer: it
+        reads the refusals that were actually PERSISTED for the tool's work
+        unit, so ``step_reached`` names the gate that refused it and ``reason``
+        is that gate's own reason, not a recomputation.
 
         Args:
-            role_id: The role requesting access
+            role_id: The role requesting access.
             knowledge_item: The item to evaluate. Requires ``id``,
                 ``classification`` and ``unit_address``; ``compartment`` is
-                optional. A wrong or missing value changes the verdict.
+                optional. A wrong or missing value changes the verdict. Mutually
+                exclusive with ``tool``.
             posture: The agent's trust posture — one of ``pseudo``,
                 ``supervised``, ``shared_planning``, ``continuous_insight`` or
                 ``delegated``. Anything else is rejected.
+            tool: A named tool subject, as ``{"id": "<tool>", "work_unit_id":
+                "<wu>"}``. ``work_unit_id`` is required: the persisted refusal
+                rows are work-unit scoped, and an unscoped read would narrate
+                another run's refusal as this subject's. Mutually exclusive with
+                ``knowledge_item``.
 
         Returns:
             The decision, the reason, the step the evaluation reached, and the
             access path taken. ``step_reached`` is the useful field when
-            ``allowed`` is ``False``: it names where the chain stopped.
+            ``allowed`` is ``False``: it names where the chain stopped. For a
+            tool subject with no refusal on record it reads
+            ``"No Refusal Recorded"`` and the reason states plainly that this is
+            the ABSENCE of a record — not a determination that the tool is
+            permitted.
 
         Raises:
-            ValidationError: ``400``/``422`` — an unrecognized posture or a
-                malformed knowledge item.
+            ValidationError: ``400``/``422`` — an unrecognized posture, a
+                malformed knowledge item, both subjects, or neither.
             AuthorizationError: ``403`` — missing ``organizations:read``.
 
         Example:
@@ -287,15 +309,28 @@ class GovernanceExplainModule:
             ...     },
             ...     posture="delegated",
             ... )
+            >>> refused = await client.governance_explain.explain_access(
+            ...     role_id="role-1",
+            ...     tool={"id": "web_search", "work_unit_id": "wu-9"},
+            ... )
         """
+        if (knowledge_item is None) == (tool is None):
+            raise ValueError(
+                "explain_access takes exactly one subject: pass either "
+                "knowledge_item or tool"
+            )
+
+        json_data: dict[str, Any] = {"role_id": role_id, "posture": posture}
+        if tool is not None:
+            json_data["subject_type"] = "tool"
+            json_data["tool"] = tool
+        else:
+            json_data["knowledge_item"] = knowledge_item
+
         response = await self._http.request(
             "POST",
             "/api/v1/governance/explain-access",
-            json_data={
-                "role_id": role_id,
-                "knowledge_item": knowledge_item,
-                "posture": posture,
-            },
+            json_data=json_data,
         )
         return AccessExplanation(**response)
 
@@ -373,9 +408,7 @@ class GovernanceExplainModule:
             >>> for s in status.skipped_roles:
             ...     print(s.target_role_title, s.reason)
         """
-        response = await self._http.request(
-            "GET", "/api/v1/governance/envelope-hydration-status"
-        )
+        response = await self._http.request("GET", "/api/v1/governance/envelope-hydration-status")
         return EnvelopeHydrationStatus(**response)
 
     async def envelope_coverage(self) -> EnvelopeCoverageReport:
@@ -412,9 +445,7 @@ class GovernanceExplainModule:
             ...     print("partial:", report.unmeasured)
             >>> print(report.counts, report.enforcement_ready)
         """
-        response = await self._http.request(
-            "GET", "/api/v1/governance/envelope-coverage"
-        )
+        response = await self._http.request("GET", "/api/v1/governance/envelope-coverage")
         return EnvelopeCoverageReport(**response)
 
     async def probe_corrupted_roles(self) -> CorruptedRolesReport:
@@ -447,7 +478,5 @@ class GovernanceExplainModule:
             >>> report = await client.governance_explain.probe_corrupted_roles()
             >>> print(report.total_corrupted, report.counts_by_violation)
         """
-        response = await self._http.request(
-            "GET", "/api/v1/governance/probe-corrupted-roles"
-        )
+        response = await self._http.request("GET", "/api/v1/governance/probe-corrupted-roles")
         return CorruptedRolesReport(**response)

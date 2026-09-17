@@ -16,11 +16,6 @@ venv/
 .env.*
 !.env.example
 
-# Client-token list read by scripts/disclosure_fence.py. It MUST stay local:
-# committing the list of client identities would be the very disclosure the
-# fence exists to prevent.
-.partner-tokens.local
-
 # Editors / OS
 .DS_Store
 .idea/

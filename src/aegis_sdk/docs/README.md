@@ -107,6 +107,7 @@ The client provides access to the following module groups:
 | `client.objectives` | [ObjectivesModule](modules/objectives.md) | Objective CRUD, progress, requests |
 | `client.requests` | RequestsModule | Request claim, complete, escalate |
 | `client.sessions` | [SessionsModule](modules/sessions.md) | Session lifecycle, messages, streaming |
+| `client.artifacts` | [ArtifactsModule](modules/artifacts.md) | Artifact upload, versions, supersede, download, delete |
 
 ### Trust (EATP)
 

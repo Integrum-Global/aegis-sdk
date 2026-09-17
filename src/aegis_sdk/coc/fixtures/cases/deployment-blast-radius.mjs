@@ -76,6 +76,30 @@ export const cases = [
     { AGENTIC_OS_BASE_URL: "https://acme.aegis.io" }
   ),
 
+  // The MIGRATED operator. This guard expanded only the LEGACY name, so
+  // an architect who did exactly what the env-prefix remediation instructs got
+  // NO output at all on a mutating call written with the variable: measured
+  // exit 0 {"continue":true} where the legacy spelling blocked. Fail-OPEN, in
+  // the harness partners receive — a fail-open introduced BY the remediation.
+  //
+  // The pair is load-bearing: the case above pins the legacy spelling and this
+  // one the current spelling, so dropping EITHER from the resolver reds one of
+  // them. A single case on one name is what allowed the other to go silent.
+  c(
+    "BLOCK: target arrives via AEGIS_BASE_URL (the migrated operator)",
+    2,
+    'curl -X POST "$AEGIS_BASE_URL/api/v1/objectives"',
+    "block",
+    { AEGIS_BASE_URL: "https://acme.aegis.io" }
+  ),
+  c(
+    "BLOCK: AEGIS_BASE_URL wins when BOTH are set",
+    2,
+    'curl -X DELETE "$AEGIS_BASE_URL/api/v1/agents/7"',
+    "block",
+    { AEGIS_BASE_URL: "https://acme.aegis.io", AGENTIC_OS_BASE_URL: "https://stale.aegis.io" }
+  ),
+
   // ── THE THIRD STATE: unresolvable target, deployment configured ────────────
   c(
     "HALT: unresolvable host while a deployment is configured",

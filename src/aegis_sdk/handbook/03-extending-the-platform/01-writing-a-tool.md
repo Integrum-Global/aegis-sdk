@@ -124,12 +124,13 @@ reads it.
 **For a registered tool agent the return shape is fixed**, and it is worth
 studying even if you are building the in-process kind, because it is the clearest
 statement the platform makes about what it considers an invocation to consist of.
-`sdk:aegis_sdk.modules.tool_agents.ToolAgentInvocationResult` carries eight fields:
+`sdk:aegis_sdk.modules.tool_agents.ToolAgentInvocationResult` carries nine fields:
 
 | field               | what it is                                      |
 | ------------------- | ----------------------------------------------- |
 | `content`           | the output                                      |
 | `model`             | which model produced it                         |
+| `dispatch_path`     | `llm`, or `builtin_tool` when no model was used |
 | `usage`             | token accounting                                |
 | `cost`              | what it cost                                    |
 | `trust_chain_id`    | the chain the invocation ran under              |
@@ -137,7 +138,7 @@ statement the platform makes about what it considers an invocation to consist of
 | `verification_zone` | `auto_approved`, `flagged`, `held` or `blocked` |
 | `audit_anchor_id`   | the anchor the record is bound to               |
 
-Note the ratio. **One field is the answer; seven are the provenance of the
+Note the ratio. **One field is the answer; eight are the provenance of the
 answer.** That is the platform's shape in miniature — the result is not the
 product, the evidenced result is. `verification_zone` is CARE's four-zone
 gradient, the same four values chapter 01.2 describes, arriving on a return type

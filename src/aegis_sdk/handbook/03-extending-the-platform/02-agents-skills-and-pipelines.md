@@ -93,15 +93,40 @@ trust_chain}`. **It establishes the trust chain as part of the call**, which is 
 real reason to prefer it: the hand-rolled version above creates an agent and leaves
 you to remember 02.4.
 
-Three server-side constraints will refuse it, and each is a governance rule rather
+Two server-side constraints will refuse it, and each is a governance rule rather
 than a validation quirk:
 
-- **The role must not be vacant.** A vacant role has no occupant to delegate from,
-  so there is nothing for the agent to stand in for. This raises
-  `sdk:aegis_sdk.ValidationError`.
-- **The role must belong to your tenant.** Cross-tenant delegation is not a thing.
+- **The role must RESOLVE, and must belong to your tenant.** A `role_id` that
+  names nothing, or names a role in another organisation, raises
+  `sdk:aegis_sdk.ValidationError`. Note what this checks: that the role exists
+  and is yours — not that anybody sits in it.
 - **External and board roles receive governance-only agents**, not operational
   ones. A director's delegate can observe, approve and audit; it does not act.
+
+### ⛔ A vacant role is ACCEPTED, and a previous revision of this page said otherwise
+
+**A role with no human occupant is the ordinary case, not an error state.** Team
+lead seats are routinely created before anyone is appointed to them, and a
+deployment can legitimately run with every lead role vacant.
+
+Earlier revisions of this page listed "the role must not be vacant" as a third
+refusal. **That rule is retracted** and the server no longer enforces it —
+neither on creation, nor on `POST /api/v1/trust/establish`, nor on activation.
+What survives is the resolvability check above, which is a different question.
+
+The retraction matters because the old rule was a **one-way door**. Vacating a
+role suspended its delegate agent, and the gate then refused to bring it back
+until a human was seated — so a role whose occupant left could not be re-enabled,
+and a seat that was never filled could not be enabled at all. An agent could be
+created and never completed: permanently `draft`, with no trust chain.
+
+If you are running against a deployment that still refuses a vacant role, you are
+on a build that predates the retraction. **Do not design around it** — the
+workarounds all involve seating a placeholder human, which puts a fictitious
+person in your audit trail. Upgrade the deployment instead.
+
+**Do not pre-check occupancy client-side.** An SDK caller that refuses to call
+because `is_vacant` is true is blocking a request the API now accepts.
 
 Activate and deactivate with
 `api:POST /api/v1/delegate-agents/{id}/activate` and
@@ -137,15 +162,18 @@ This surface is one of the real differences between an agent and a tool agent
 
 Contexts carry named configuration an agent works within:
 `api:GET /api/v1/agents/{id}/contexts` and
-`api:POST /api/v1/agents/{id}/contexts`, which takes a `name` and a `config` dict.
+`api:POST /api/v1/agents/{id}/contexts`, which takes a `name`, a `content_type`
+(`text`, `file` or `url`) and the `content` itself; `is_active` defaults to true.
 
 Tools attached to an agent are at `api:GET /api/v1/agents/{id}/tools` and
 `api:POST /api/v1/agents/{id}/tools`, on
-`sdk:aegis_sdk.core.agents.AgentToolsModule`. The attach call takes a `tool_type`
-and a `config`:
+`sdk:aegis_sdk.core.agents.AgentToolsModule`. The attach call takes a `tool_type`,
+a `name` and a `description`, plus an optional `config`:
 
 ```python
-await client.agents.tools.add(agent.id, tool_type="mcp", config={...})
+await client.agents.tools.add(
+    agent.id, tool_type="mcp", name="search", description="Search the docs.", config={...}
+)
 ```
 
 `tool_type` is the shape of the tool — `mcp`, `function`, `api`. Attachments are
@@ -344,7 +372,9 @@ between the two calls — posture is read from a mutable store, not from the
 graph — which is why that class is a warning rather than an error: the graph
 itself did nothing wrong.
 
-`api:POST /api/v1/pipelines/{id}/execute` returns
+`execute` starts the run at `api:POST /api/v1/executions/start`, which answers only
+once the run has finished, then reads the run record back from
+`api:GET /api/v1/pipelines/{id}/executions/{eid}`. It returns
 `sdk:aegis_sdk.PipelineExecution`, carrying `status` (a
 `sdk:aegis_sdk.ExecutionStatus`), `outputs`, `error`, `node_results`,
 `duration_ms`. `node_results` is the field to read when a pipeline half-worked: it
@@ -352,8 +382,10 @@ is per-node, so it tells you _where_ it stopped rather than only that it did.
 
 Unlike agent executions, **pipeline executions are individually addressable**:
 `api:GET /api/v1/pipelines/{id}/executions` lists them and
-`api:POST /api/v1/pipelines/{id}/executions/{eid}/cancel` cancels one. `execute`
-takes a `wait` argument, default `True`.
+`api:POST /api/v1/pipelines/{id}/executions/{eid}/cancel` cancels one. The
+listing's `status` filter is applied by the SDK across every page, because the
+route itself does not filter. `execute`'s `wait` argument is deprecated: the
+server has no asynchronous mode, so it changes nothing, and passing it warns.
 
 `api:POST /api/v1/pipelines/{id}/duplicate` forks a pipeline, which is how to try a
 change to a graph other work depends on.

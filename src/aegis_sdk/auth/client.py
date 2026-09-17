@@ -112,6 +112,14 @@ class AuthModule:
         """
         Refresh access token.
 
+        The refresh token is single-use, and rotation retires the WHOLE pair it
+        replaces: the previous access token is revoked immediately, not at its
+        expiry. Switch every in-flight caller to the returned ``access_token``
+        (``client.set_auth_token``) before sending further requests — a request
+        still carrying the old token is rejected with ``401``. Of two concurrent
+        refreshes presenting the same refresh token exactly one succeeds; the
+        other raises ``AuthenticationError``.
+
         Args:
             refresh_token: Refresh token (optional if stored in cookies)
 
@@ -230,20 +238,20 @@ class AuthModule:
     def _parse_auth_envelope(response: dict) -> AuthToken:
         """Parse the server's nested ``{"user": ..., "tokens": ...}`` envelope.
 
-        Mirrors ``LoginResponse`` / ``RegisterResponse`` -- both ``/auth/login`` and
-        ``/auth/register`` return this exact shape.: the
-        prior SDK called ``AuthToken(**response)`` directly against the
-        nested envelope, so ``access_token`` was never populated (it lives
-        under ``response["tokens"]``, not at the top level).
+               Mirrors ``LoginResponse`` / ``RegisterResponse`` -- both ``/auth/login`` and
+               ``/auth/register`` return this exact shape.: the
+               prior SDK called ``AuthToken(**response)`` directly against the
+               nested envelope, so ``access_token`` was never populated (it lives
+               under ``response["tokens"]``, not at the top level).
 
-        Raises:
-            AgenticOSError: If the response is missing ``"tokens"`` and/or
-                ``"user"`` -- e.g. an error-shaped body, a proxy/gateway
-                error page, or a future server contract change. A bare
-                ``KeyError`` here would be an opaque, un-catchable failure
-                for SDK callers (this is the same wire-shape-drift class the
- auth cluster fixes, not a new one
-                review).
+               Raises:
+                   AgenticOSError: If the response is missing ``"tokens"`` and/or
+                       ``"user"`` -- e.g. an error-shaped body, a proxy/gateway
+                       error page, or a future server contract change. A bare
+                       ``KeyError`` here would be an opaque, un-catchable failure
+                       for SDK callers (this is the same wire-shape-drift class the
+        auth cluster fixes, not a new one
+                       review).
         """
         missing = [key for key in ("tokens", "user") if key not in response]
         if missing:
@@ -356,12 +364,97 @@ class AuthModule:
         response = await self._http.request("GET", f"/api/v1/api-keys/{encode_path_param(key_id)}")
         return APIKey(**response)
 
-    async def delete_api_key(self, key_id: str) -> None:
+    async def update_api_key(
+        self,
+        key_id: str,
+        *,
+        name: str | None = None,
+        scopes: list[str] | None = None,
+        rate_limit: int | None = None,
+    ) -> APIKey:
         """
-        Delete API key.
+        Amend an API key's configuration WITHOUT rotating its secret.
+
+        Reaches ``PATCH /api/v1/api-keys/{key_id}``. The key keeps its id, its
+        secret and its audit history; only the fields you pass change. Use this
+        instead of delete-and-recreate when a key already lives in a pipeline or
+        a secret store -- recreating it kills a credential someone is using.
+
+        Only the arguments you pass are sent. An omitted argument is left
+        unchanged on the server; it is never sent as ``null``.
+
+        Args:
+            key_id: API key ID
+            name: New descriptive name (1-100 characters)
+            scopes: Replacement scope list. This REPLACES the key's scopes, it
+                does not add to them. Widening a key's scopes is refused unless
+                you created the key and may mint those scopes yourself.
+            rate_limit: New per-key rate limit (1-10000)
+
+        Returns:
+            APIKey with the key's configuration after the change. The secret is
+            never returned here.
+
+        Raises:
+            ValueError: If no field to change was given. The server refuses an
+                empty amendment (400) rather than treating it as a no-op, so
+                this is raised before the request is sent.
+            ValidationError: If a value is outside the server's bounds, or a
+                field is not one the server accepts (422)
+            NotFoundError: If the key doesn't exist
+            AuthorizationError: If not allowed to amend this key or grant
+                these scopes
+
+        Example:
+            >>> key = await client.auth.update_api_key("key_abc123", rate_limit=500)
+            >>> print(key.rate_limit)
+        """
+        update_data: dict[str, object] = {}
+        if name is not None:
+            update_data["name"] = name
+        if scopes is not None:
+            update_data["scopes"] = scopes
+        if rate_limit is not None:
+            update_data["rate_limit"] = rate_limit
+        if not update_data:
+            raise ValueError(
+                "update_api_key needs at least one of name, scopes or rate_limit; "
+                "the server refuses an empty amendment"
+            )
+        response = await self._http.request(
+            "PATCH",
+            f"/api/v1/api-keys/{encode_path_param(key_id)}",
+            json_data=update_data,
+        )
+        return APIKey(**response)
+
+    async def delete_api_key(self, key_id: str, hard: bool = False) -> None:
+        """
+        Revoke an API key, or permanently delete it with ``hard=True``.
+
+        The default is a SOFT delete (revoke): the key stops authenticating,
+        and the row plus its audit history remain. ``hard=True`` sends
+        ``?hard=true`` and permanently removes the row.
+
+        ``hard`` exists because the server has always offered it and this
+        method could not reach it. ``DELETE /api/v1/api-keys/{id}`` declares
+        ``hard: bool = Query(False)``, so the capability shipped on the
+        platform while this client had no parameter to express it -- a
+        partner holding this SDK could not permanently delete a key at all,
+        and the only visible symptom was that a rehearsal tenant could never
+        be reset. Sibling resources ship the same ``?hard=true`` and several
+        of their SDK methods already expose it; this one was the gap.
+
+        ⛔ ``hard=True`` is IRREVERSIBLE and takes the audit history with it.
+        Prefer the default for a leaked or rotated credential: a revoked key
+        is already unusable, and the row is what lets you later answer which
+        key was live when. Reach for ``hard=True`` to reset a rehearsal or
+        demo tenant, not to retire a key in production.
 
         Args:
             key_id: API key ID to delete
+            hard: If True, permanently delete the row instead of revoking it.
+                Defaults to False (revoke), matching the server's default.
 
         Raises:
             NotFoundError: If key doesn't exist
@@ -370,12 +463,25 @@ class AuthModule:
 
         Example:
             >>> await client.auth.delete_api_key("key_abc123")
+            >>> # reset a rehearsal tenant -- row and audit history removed
+            >>> await client.auth.delete_api_key("key_abc123", hard=True)
         """
-        await self._http.request("DELETE", f"/api/v1/api-keys/{encode_path_param(key_id)}")
+        await self._http.request(
+            "DELETE",
+            f"/api/v1/api-keys/{encode_path_param(key_id)}",
+            params={"hard": hard},
+        )
 
     async def revoke_api_key(self, key_id: str) -> None:
         """
-        Revoke API key (alias for delete).
+        Revoke an API key.
+
+        Always a SOFT delete. This is deliberately NOT a pass-through for
+        ``delete_api_key``'s ``hard`` parameter: "revoke" names the soft
+        operation specifically, and a ``revoke_api_key(..., hard=True)`` that
+        permanently destroyed the row would be a permanent delete wearing the
+        vocabulary of a reversible one. Call :meth:`delete_api_key` directly
+        when you mean to remove the row.
 
         Args:
             key_id: API key ID to revoke

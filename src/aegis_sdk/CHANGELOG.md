@@ -5,7 +5,250 @@ version here is the SDK's own; it is not the server's.
 
 ## Unreleased
 
-_Nothing yet._
+### Fixed — the 2.0.0 note on `governance_explain` advertised a capability the module does not have
+
+The 2.0.0 highlights below described it as *"ask why a specific action was
+refused, instead of inferring it from a 403."* It cannot do that, and the module
+says so in its own docstring: it never sees the action that was refused. It
+evaluates an item **you describe** — a dry run in which nothing is read from a
+stored record and nothing is recorded as an access — so the verdict is only as
+good as the item you pass, and its subject is a role plus a knowledge item rather
+than a connector or a tool. The 2.0.0 entry is corrected in place rather than
+merely superseded here: a description of a shipped capability is a claim about
+the product, and a reader who skims one highlights list must not find two
+answers in it.
+
+### Added — `client.dataflow`: the data-lineage surface, restored as a real API surface
+
+`aegis_sdk.dataflow` returns, in a form that answers the review that quarantined
+the old package: ten live routes the SDK could not previously
+address — the invocation-lineage router (`/api/v1/lineage/*`: `list`, `graph`,
+`export`, `get`, `redact_user`) and the data-governance lineage graph
+(`/api/v1/data-governance/lineage/*`: `create_node`, `get_node`, `upstream`,
+`downstream`, `create_edge`) — derived from the server's own route
+registrations, with no simulation and no standalone reimplementation. The old
+10,899-line package, a fail-open simulation stub with zero kailash imports, was
+deleted rather than restored (recoverable from git history). `lineage.get()`
+percent-encodes its id and refuses the reserved literals `graph` and `export`
+outright, so a literal route can never be silently addressed as an id. The 2.0.0
+entry below said "No replacement — open an issue with your use case": this is
+the replacement.
+
+### Added — `client.organizations`: the one-time token fields the server already emits
+
+`Organization` gains `access_token`, `refresh_token` (both `repr=False`),
+`token_type` and `expires_in`. The server returns them on create and the SDK
+silently dropped them, so a partner had a token it could never read back.
+
+### Added — `client.directives`: typed `classification`
+
+`Directive` gains `classification: str = "public"`, matching the server's
+response model (a prior audit finding). Without it a RESTRICTED and a PUBLIC directive
+parsed byte-identically and an operator could not verify what they had set.
+
+### Fixed — `contexts.update()` sent a bodiless PUT and `tools.update()` could reach only one of five fields
+
+`contexts.update()` with no fields sent `json=None` against a REQUIRED
+`UpdateContextRequest` body and was refused with 422 before the handler for
+every input; it now raises `ValueError` naming the usable fields (an EMPTY
+object is the server's own 400, a different and correct refusal). `tools.update()`
+accepted only `config`, leaving four of `UpdateToolRequest`'s five fields
+unreachable; it now accepts `tool_type`, `name`, `description` and `is_enabled`
+as optional keyword arguments, `config` still first and positional.
+
+### Fixed — every file upload was sent as JSON and refused by the server
+
+`HTTPClient` installed `Content-Type: application/json` as a client-wide default
+header, and httpx keeps an existing Content-Type instead of the
+`multipart/form-data; boundary=…` it computes for `files=`. Every upload therefore
+went out labelled as JSON with no boundary, and the server answered 422
+`body.file Field required` on every call. Affected: `client.artifacts.create`,
+`client.artifacts.supersede`, `client.settings.preview_import`,
+`client.settings.import_settings` and `client.agents.register_from_manifest_upload`.
+The JSON default is now applied per request, only when httpx does not type the
+body itself; JSON, raw-content and bodyless requests are unchanged, and a
+Content-Type you pass explicitly still wins.
+
+### Added — `client.artifacts`: the artifacts surface was unreachable from the SDK
+
+The platform's `/api/v1/artifacts` routes had no SDK method at all, so a partner
+could list a session's or an objective's artifacts but could not upload one
+against a request, read its version history, supersede it, download it or delete
+it. `ArtifactsModule` covers all seven routes:
+
+| method | route |
+| --- | --- |
+| `create(request_id, file_content, filename, *, name, artifact_type, session_id, metadata, content_type)` | `POST /api/v1/artifacts` |
+| `list(request_id=None, workspace_id=None, limit=None)` | `GET /api/v1/artifacts` |
+| `get(artifact_id)` | `GET /api/v1/artifacts/{artifact_id}` |
+| `get_versions(artifact_id)` | `GET /api/v1/artifacts/{artifact_id}/versions` |
+| `supersede(artifact_id, file_content, change_description, *, filename, content_type)` | `POST /api/v1/artifacts/{artifact_id}/supersede` |
+| `download(artifact_id)` → `bytes` | `GET /api/v1/artifacts/{artifact_id}/download` |
+| `delete(artifact_id)` | `DELETE /api/v1/artifacts/{artifact_id}` |
+
+`create` has **no `workspace_id` argument, on purpose.** The workspace is derived
+on the server from the request the artifact is attached to; a caller-named
+workspace would let the caller choose whose classification mark an upload raises.
+
+Server-side changes that arrived with it, visible through this module:
+
+- **Uploading an artifact works.** `POST /api/v1/artifacts` previously failed
+  with a 500 on every call. It now answers **201**; a request that has no
+  workspace answers 409, and one that is not in your organization answers 404.
+- **Upload failures are distinguishable.** An unreachable backing store (file
+  storage or database) carries
+  `exc.error_code == "ARTIFACT_STORAGE_UNAVAILABLE"`, any other handled failure
+  `ARTIFACT_CREATE_FAILED`, and a platform defect the generic `INTERNAL_ERROR`.
+  All three were previously the same 500 with the same message.
+### Added — permanent delete, and two resources that had no delete at all
+
+The server has always offered `?hard=true` on seven routers. The SDK reached
+four of them. These three close the gap:
+
+- **`auth.delete_api_key(key_id, hard=False)`** now takes `hard`. The server's
+  `DELETE /api/v1/api-keys/{id}` declares `hard: bool = Query(False)` and this
+  method had no parameter to express it, so a partner holding this SDK could not
+  permanently delete an API key by any means.
+- **`org_standup.delete_unit(unit_id, hard=False)`** — NEW. There was previously
+  no way to delete an organization unit from this SDK at all.
+- **`org_standup.delete_role(role_id, hard=False)`** — NEW. Likewise for an
+  organization role. Note this is the ORG-CHART role at
+  `/api/v1/organization-roles`, not `role_admin.delete()`'s RBAC role at
+  `/api/v1/roles`; the two routers are distinct and an id from one does not
+  resolve on the other.
+
+The last two are why a rehearsal tenant could be built and never reset: the
+structure could be created and not removed.
+
+`hard=True` is IRREVERSIBLE and takes the audit history with it; the default is
+unchanged (soft delete / archive) on all three. `revoke_api_key()` deliberately
+does NOT forward `hard` — "revoke" names the soft operation, and a
+`revoke_api_key(..., hard=True)` would be a permanent delete wearing the
+vocabulary of a reversible one.
+
+`delete_unit` additionally fails closed with `409` when a delegate agent in the
+unit holds unsettled trust; on that response the unit is left completely
+untouched, so the call is safe to retry.
+
+### Fixed — five calls that could never succeed against a canon server
+
+Each of these reached a route or a body shape the server does not serve, so
+the call failed on every invocation. Each is now checked against the server's
+real router and request models.
+
+- **`pipelines.execute()` returned 404 on every call.** It POSTed
+  `/api/v1/pipelines/{id}/execute`, which no router declares. It now starts the
+  run at `POST /api/v1/executions/start` and reads the finished record back from
+  `GET /api/v1/pipelines/{id}/executions/{execution_id}`; the return type is
+  unchanged (`PipelineExecution`).
+- **`pipelines.list_executions(status=...)` returned 400 on every call.** The
+  route refuses a `status` parameter. The SDK now filters client-side across
+  every page, so `total` and `has_next` describe the filtered set. An unknown
+  status raises `ValueError` before any request.
+- **`agents.contexts.create()` and `agents.tools.add()` returned 422 on every
+  call.** The server requires `content_type` + `content` for a context and
+  `name` + `description` for a tool; the SDK sent neither.
+- **`agents.versions.create()` without a changelog returned 422.** It sent no
+  body; the route requires a JSON object even when every field is optional.
+- **`tool_agents.invoke()` could not reach built-in tool dispatch.** It now
+  accepts `tool_name`, `tool_arguments` and `action_type`, and
+  `ToolAgentInvocationResult.dispatch_path` (`"llm"` or `"builtin_tool"`) is
+  retained instead of being dropped.
+
+### Deprecated — migration
+
+- `agents.contexts.create(agent_id, name, config)`: `config` was never a field
+  the server reads. Passing it emits `DeprecationWarning`; pass
+  `content_type=` and `content=` instead. It will be removed in the next minor
+  release.
+- `pipelines.execute(..., wait=...)`: the server has no asynchronous start, so
+  `wait` changed nothing. Passing it emits `DeprecationWarning`; omit it. It will
+  be removed in the next minor release.
+
+### Fixed — every server error was parsed against a wire shape the platform never sends
+
+The client read errors in FastAPI's flat `{"detail": ...}` shape. Aegis
+registers a global exception handler, so **every** error it returns is re-wrapped
+into a canonical envelope before it leaves the server:
+
+```json
+{"error": {"code": "FORBIDDEN", "message": "...", "details": {...}, "request_id": "..."}}
+```
+
+Read flat, that envelope produced three wrong answers at once, none of them
+loud:
+
+- **`str(exc)` rendered a Python dict repr**, not the message. `exc.message`
+  was the whole inner dict rather than a string, so a log line or a user-facing
+  error printed `{'code': 'FORBIDDEN', 'message': ...}`.
+- **`exc.details["code"]` was `None` on every error the platform raises**, even
+  though the server sends a code on all of them.
+- **Every structured field the server attached was discarded** —
+  `exc.details["details"]` was `None` even when the server populated it. This is
+  the load-bearing one: it is the channel a caller branches on, and it was dead,
+  which left string-matching an English sentence as the only way to tell two
+  refusals apart.
+
+Both shapes are now supported. The envelope is recognised by an `error` key
+holding a **dict**; anything else takes the flat path unchanged, so a gateway,
+proxy or non-Aegis server answering in FastAPI's default shape parses exactly as
+before. An `error` key holding a plain *string* is not an envelope and is read as
+the message.
+
+Two behaviours changed as a consequence, both deliberate:
+
+- An error body carrying no message at all (`{}`, or a body with unrecognised
+  keys) now raises with the per-status default — `'Insufficient permissions'` for
+  a `403` — instead of the literal string `'None'`.
+- `exc.details["message"]` is passed through **verbatim** and is not coerced to
+  `str`. A `422` carries a *list* of per-field validation objects there, which
+  callers iterate; stringifying it would have destroyed the most useful error
+  body the API produces while looking like a tidy-up.
+
+### Added — `error_code`, `server_details`, `request_id` and `status_code` on every SDK error
+
+`AgenticOSError` (and therefore every SDK exception) now exposes the server's
+structured refusal data as attributes, so a caller can branch on a denial
+instead of parsing its prose:
+
+| attribute | what it holds |
+| --- | --- |
+| `error_code` | the server's code (`'FORBIDDEN'`, `'DEPENDENCY_UNAVAILABLE'`, …), or `None` for an error raised locally |
+| `server_details` | the structured fields sent beside the message; `{}` when none |
+| `request_id` | the server's correlation id, when supplied |
+| `status_code` | the HTTP status, or `None` for a local failure |
+
+```python
+except AgenticOSError as exc:
+    if exc.error_code == "DEPENDENCY_UNAVAILABLE":
+        dependency = exc.server_details.get("dependency")   # retryable; not about your agent
+```
+
+These are projections of `exc.details`, which is unchanged — `exc.details["status_code"]`
+and every other existing spelling keeps working. They are plain attributes rather
+than properties so that `ServiceUnavailableError`, which takes an explicit
+`error_code`, can keep overwriting the projection after calling `super()`.
+
+**A missing key in `server_details` is UNDETERMINED, not the negative case.**
+Several platform refusal paths still serialise only a prose sentence, so their
+structured half arrives empty. An absent key means the server did not attach one
+— never that the answer is "no".
+
+The first discriminator to ride this channel is on agent execution, landed in the
+same change as the parsing fix above. A governance refusal on the temporal
+dimension now carries `server_details['unverifiable_scope']`:
+
+| value | what it means | what to do |
+| --- | --- | --- |
+| `'apparatus'` | the constraint store could not be queried at all; **no restriction of yours was evaluated** | escalate as a platform outage; retry |
+| `'subject'` | your agent's own stored restriction could not be read | fix the agent's configuration |
+| `'unspecified'` | the server denied but attached no kind | UNDETERMINED — treat as either |
+
+Both kinds are still a **refusal**, and that is deliberate: an unverifiable
+restriction is not a safe restriction, so neither value is an allow. What changed
+is that a partner can tell an outage from a restriction without string-matching
+an English sentence. See
+`handbook/04-the-api-surface/02-errors-and-refusals.md`.
 
 ## [2.0.0] — 2026-09-14
 
@@ -124,8 +367,10 @@ Highlights, for the ones whose names do not explain themselves:
 - **`bridges`** — ad-hoc, scoped and standing bridges, with typed
   `Participant` records.
 - **`emergency_bypass`** and **`kill_switch`** — break-glass controls.
-- **`governance_explain`** — ask why a specific action was refused, instead of
-  inferring it from a 403.
+- **`governance_explain`** — dry-run an access decision through the chain and
+  read back the step it stopped at. It evaluates an item *you describe* (a role,
+  a knowledge item, a posture) and reads no stored record, so it explains a
+  hypothetical rather than a past refusal.
 - **`promotions`** — environment promotion and the rules that gate it.
 - **`credentials`** — encrypted credential storage and rotation.
 - **`decisions`** / **`review_decisions`** — the human decision and review

@@ -8,8 +8,10 @@ Tests cover:
 - All model classes importable
 - All enum classes importable
 
-Total: 12 tests
+Total: 16 tests
 """
+
+import re
 
 import pytest
 
@@ -17,24 +19,50 @@ import pytest
 @pytest.mark.unit
 @pytest.mark.timeout(5)
 class TestSDKVersion:
-    """Test SDK version accessibility."""
+    """Test SDK version accessibility.
+
+    These assertions are deliberately VALUE-FREE, and that is the point.
+    `src/aegis_sdk/_version.py` is the single version anchor -- the packaging
+    manifest reads it via `[tool.hatch.version]` rather than restating it -- so a
+    literal here is a SECOND anchor that drifts silently on the next release.
+    That is not hypothetical: this file pinned "1.0.0", the anchor moved to
+    "2.0.0", and the whole SDK gate went red on a correct version bump. The gate
+    also ships to partners, so the drift lands in their fresh clone.
+
+    What is pinned instead is the CONTRACT, which a release bump cannot break and
+    a mistake can: the anchor is a semver triple, and `__version_info__` agrees
+    with `__version__`.
+    """
 
     def test_version_accessible(self):
-        """__version__ should be accessible from main package."""
+        """__version__ should be an accessible, well-formed semver string."""
         from aegis_sdk import __version__
 
         assert __version__ is not None
         assert isinstance(__version__, str)
-        assert __version__ == "1.0.0"
+        # FALSIFIED BY: an anchor that is not a numeric triple -- "2.0",
+        # "2.0.0-dev", "two.oh.oh". `_version.py` int()s each dot-part, so an
+        # anchor this rejects is one that breaks the package at import time.
+        assert re.fullmatch(r"\d+\.\d+\.\d+", __version__), (
+            f"__version__ is not a semver triple: {__version__!r}"
+        )
 
     def test_version_info_accessible(self):
-        """__version_info__ should be a tuple of integers."""
-        from aegis_sdk import __version_info__
+        """__version_info__ should be ints, and should AGREE with __version__."""
+        from aegis_sdk import __version__, __version_info__
 
         assert __version_info__ is not None
         assert isinstance(__version_info__, tuple)
+        # FALSIFIED BY: __version_info__ built from the raw str parts, no int().
         assert all(isinstance(v, int) for v in __version_info__)
-        assert __version_info__ == (1, 0, 0)
+        # FALSIFIED BY: a 2-part or 4-part anchor.
+        assert len(__version_info__) == 3
+        # FALSIFIED BY: __version_info__ hand-written as a literal that disagrees
+        # with __version__ -- i.e. the day someone replaces the derivation in
+        # `_version.py` with a second literal. Recomputed from the OTHER
+        # attribute, never from itself, so this is a real comparison and not the
+        # vacuous `__version__ == __version__`.
+        assert __version_info__ == tuple(int(part) for part in __version__.split("."))
 
 
 @pytest.mark.unit
