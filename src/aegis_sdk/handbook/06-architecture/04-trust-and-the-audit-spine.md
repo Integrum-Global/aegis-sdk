@@ -152,6 +152,10 @@ and inferring them is what goes wrong:
    While a change is Pending the agent is STILL RUNNING at the old posture, and
    result.posture reports the OLD value. Do not re-issue the same transition to
    "make it take" — it records nothing new and comes back flagged.
+
+   The two routes drawn above are POST /api/v1/agents/{id}/trust-posture/approve
+   and POST /api/v1/agents/{id}/trust-posture/reject. The agent id is elided in
+   the picture; the /trust-posture resource segment is not.
 ```
 
 Branch on `approval_pending`. When it is `True`, `result.posture` is the posture
@@ -503,7 +507,7 @@ halves of it is the whole reason an audit spine exists.
             │ not allowed, constraints violated, reason     │
             │ the action does not happen                    │
             │                       │                       │
-            │  ── later — by someone│who was not there      │
+            │  ── later — by someone who was not there      │
             │                       │                       │
             │                       │                       │ query entries, filter by agent or human
             │                       │                       │───┐

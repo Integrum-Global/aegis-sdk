@@ -217,6 +217,13 @@ should read as the platform's consistent habit rather than a quirk.
 
 ## Where a bound is actually consulted
 
+> ⚠ **The mechanism below is the platform's account of itself, not something a
+> client can observe.** None of it is derivable from the SDK surface: you can see
+> that a call was refused, never which object consulted what, and no route
+> returns the composition rules. It is set out because you are designing against
+> it, and it is labelled because a design resting on an unlabelled description
+> rests on a reading.
+
 This is the section to read twice if you are designing anything that depends on a
 control — because the answer is not *"at the API"* and it is not *"at the tool"*.
 It is **both, and they are different moments, with different strengths**, and one
@@ -355,6 +362,10 @@ it is *when* the adjudication is consulted relative to the effect.
 
 ### Where the strongest layer actually is
 
+> ⚠ **Same basis as the section above.** Which layer holds is argued from the
+> platform's description of its own behaviour and from the custody property you
+> can reason about from the client; it is not a trace of an action being stopped.
+
 Pre-execution interception is the *weakest* layer here, which is counter-intuitive
 enough to be worth stating plainly. The layers that hold on **every** runtime are:
 
@@ -382,6 +393,15 @@ its own state, and a never-delegated check that raises being treated as *held*
 rather than as permission.
 
 ## What a verdict does to work in flight
+
+> ⚠ **This is the least observable claim in the chapter, and the one most likely
+> to shape a design wrongly, so read its basis before its content.** Nothing here
+> is derivable from the SDK surface and nothing here was measured: it is the
+> platform's description of its own verdict semantics, and in particular the
+> claim that a side effect already landed is *not undone* is a statement about an
+> event boundary you cannot see from your side. Design as though the boundary is
+> where the platform says it is — and, where the distinction matters to you,
+> confirm it against your own deployment rather than against this page.
 
 Knowing where a bound is consulted is half the question. The other half is what
 happens to work that is already running when the answer comes back unfavourable.

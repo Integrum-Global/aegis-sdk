@@ -110,6 +110,14 @@ URL, a credential, a timeout — and nothing else. That short list is the whole 
 what you decide about the system before you call it, and it is worth contrasting
 with the lower half of the diagram.
 
+**One caution about that lower half: it is an argument from absence.**
+Everything in the *not reachable* band is there because no route in this client
+reaches it — and that cannot distinguish *the capability does not exist* from
+*this client does not expose it*. From where you stand those two are
+indistinguishable, and the difference matters depending on what you do next: if
+you were planning to ask the platform team for access, the second reading is the
+one that has an answer.
+
 Two consequences follow, and they are the design content of this section.
 
 **Your integration inherits the enforcement posture; it does not set it.** The
@@ -230,6 +238,12 @@ around it. This is the same family as the status collapse: **the shape of the
 response is not a statement about the endpoint's behaviour.**
 
 ## The failure modes that cost the most to find late
+
+> ⚠ **The first four turn on where enforcement actually happens, and that is the
+> least observable thing in this part.** They are written from the platform's
+> account of its own decision path rather than from observed refusals, so treat
+> each as a hypothesis to test against your own deployment rather than as a
+> measured fact. The symptom column is the half you can check directly.
 
 Each of these is a design that looks right, works in a demo, and fails once real
 volume or a real refusal arrives. The symptom is what you will actually observe.

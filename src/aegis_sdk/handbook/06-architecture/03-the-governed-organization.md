@@ -75,6 +75,10 @@ code — only by describing it correctly.
 
      Role envelope  ── defined BY a supervising role, FOR a target role
      Role clearance ── what the role may see
+
+   Team is deliberately NOT in the containment tree above. It has no
+   parent-child edge, only the membership edge listed here — nothing lives
+   inside a team, and deleting one takes no object with it.
 ```
 
 The solid edges are containment: delete the parent and the child has nowhere to
@@ -377,9 +381,19 @@ the flag is reading the value that actually decides.
 > ⛔ **The positions surface admits a user session only.** It answers 403 for a
 > client built with an API key, because an API-key principal carries no role and
 > no personas by design. Use OAuth configuration for anything that touches it.
-> Actor identity is server-derived for every decision operation, so no method
-> takes an actor argument — supplying one would not change who the platform
-> records.
+
+**⚠ A caution on actor identity, because the decision surfaces are not uniform.**
+Some derive the actor from your session and take no actor argument. Others do
+not: the approvals surface **requires** a `reviewed_by` value and the client puts
+it in the **request body**, and the emergency and knowledge surfaces likewise
+take an `approver_role_id` or a `reviewer_id`. What the client sends is
+observable. **What the server does with a caller-supplied identity is not** —
+nothing reachable from here distinguishes "the server records the session
+principal" from "the server records the string you sent", and those two have very
+different consequences for an audit trail. This book's rule about anchors applies
+exactly here: a method existing and a field being accepted say nothing about what
+is enforced. **If the provenance of a recorded approval matters to your audit,
+settle it against your own deployment before you rely on it.**
 
 ## The bounds that attach to a role
 

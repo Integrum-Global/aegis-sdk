@@ -563,7 +563,7 @@ flattens:
         │                       │                       │───┐                      │
         │                       │                       │◀──┘                      │
         │                       │                       │                          │
-        │  ── opt: an agent's ac│ion, mid-run           │                          │
+        │  ── opt: an agent's action, mid-run                                      │
         │                       │                       │                          │
         │                       │                       │ may this agent do this?  │
         │                       │                       │─────────────────────────▶│
@@ -571,7 +571,7 @@ flattens:
         │                       │                       │ the verdict              │
         │                       │                       │ auto_approved · flagged · held · blocked
         │                       │                       │                          │
-        │  ── alt: a layer refus│d                      │                          │
+        │  ── alt: a layer refused                                                 │
         │                       │                       │                          │
         │  403 / 423 / 451 — the handler was never entered                         │
         │◀──────────────────────┼───────────────────────│                          │
