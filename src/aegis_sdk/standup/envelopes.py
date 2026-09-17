@@ -90,13 +90,12 @@ class RoleEnvelopesModule:
     ) -> dict[str, Any]:
         """List role envelopes for ONE supervising role.
 
-        Server: ``GET /api/v1/role-envelopes`` (``role_envelope.py:355``),
-        gated on scope ``roles:read``.
+        Server: ``GET /api/v1/role-envelopes``, gated on scope ``roles:read``.
 
         ⛔ ``defining_role_id`` is REQUIRED and is not a convenience filter.
         The service exposes NO org-wide enumeration path by design, and the
-        server returns ``400`` rather than an empty list when it is missing
-        (``role_envelope.py:365-380``). An idempotency check across a whole
+        server returns ``400`` rather than an empty list when it is missing.
+        An idempotency check across a whole
         org must therefore ITERATE role-by-role; there is no single call that
         answers "does this envelope already exist anywhere".
 

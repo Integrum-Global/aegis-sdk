@@ -95,7 +95,7 @@ class OrganizationUnitsModule:
     ) -> dict[str, Any]:
         """List organization units in the caller's organization.
 
-        Server: ``GET /api/v1/organization-units`` (``organization_units.py:459``).
+        Server: ``GET /api/v1/organization-units``.
         This route is API-key-aware: a key holding ``units:read`` /
         ``organizations:read`` is admitted, not only a session persona.
 

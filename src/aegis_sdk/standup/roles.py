@@ -106,7 +106,7 @@ class OrganizationRolesModule:
     ) -> dict[str, Any]:
         """List organization roles in the caller's organization.
 
-        Server: ``GET /api/v1/organization-roles`` (``organization_roles.py:292``).
+        Server: ``GET /api/v1/organization-roles``.
 
         ``GET /api/v1/roles`` is an ALIAS for this route -- both call the same
         ``OrganizationRoleService.list``, so ``client.role_admin.list()``

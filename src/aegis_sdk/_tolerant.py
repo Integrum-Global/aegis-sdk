@@ -6,8 +6,8 @@ whichever Aegis they run, and those servers do not move in lockstep with this
 source. So a response model correct only against one server's exact contract is
 not correct.
 
-Concretely, and measured (#3819): the same ``UserResponse`` field is declared
-``auth_type: str = "user"`` in one deployment's core and
+Concretely, and measured in the field: the same ``UserResponse`` field is
+declared ``auth_type: str = "user"`` in one deployment's core and
 ``auth_type: str | None = None`` in another. The first can never emit null; the
 second routinely does. ``client.auth.login()`` — the first call any integrator
 makes — raised on an HTTP 200 because the SDK's own ``User`` model declared the
@@ -21,7 +21,7 @@ a FAIL-OPEN DEFAULT and it was reverted (see "the regression" below), because a
 substituted default is only safe when it is a faithful reading of "absent" — and
 this base cannot know that. So it asks. A field tolerates null **only** when
 someone declared it with :func:`tolerant_null`, and every other defaulted field
-raises exactly as it did before #3819.
+raises exactly as it did before this base existed.
 
 WHY NOT THE OTHER WAY ROUND: an opt-OUT list of dangerous fields would mean
 enumerating the DANGEROUS set, which is unbounded and unknowable — any permissive
