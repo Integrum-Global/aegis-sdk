@@ -582,6 +582,79 @@ class SkillUpdate(TolerantModel):
 # =============================================================================
 
 
+class NodeTypeSummary(TolerantModel):
+    """One node type, as the deployment's catalogue reports it.
+
+    An entry of ``categories[].nodes[]`` in the answer to
+    ``GET /api/v1/pipelines/node-types``. Note what is NOT here: this client
+    used to describe entries carrying ``origin``, ``citation``, ``binding``,
+    ``params``, ``inputs`` and ``outputs``. The server has never sent those,
+    and it cannot: the underlying node registry exposes no per-node parameter
+    schema to Python. Do not reintroduce them by describing a design the
+    deployment does not implement — a caller who writes against a fabricated
+    field gets an ``AttributeError`` at the point of use, far from the cause.
+    """
+
+    type: str
+    label: str = ""
+    description: str = ""
+
+
+class NodeTypeCategory(TolerantModel):
+    """A palette grouping of node types — one entry of ``categories[]``."""
+
+    id: str
+    label: str = ""
+    nodes: list[NodeTypeSummary] = Field(default_factory=list)
+
+
+class NodeTypeVerdict(TolerantModel):
+    """Whether a node type can run on THIS deployment, and how it fails if not.
+
+    Read ``fabricates`` before treating a ``False`` ``executable`` as merely
+    unavailable: a node that refuses LOUDLY and a node that emits a diagnostic
+    string AS ITS OUTPUT and feeds it downstream are both "does not run", and
+    rendering them identically is how a fabricated result reaches a client.
+    ``reason`` is ``None`` exactly when ``executable`` is true.
+    """
+
+    executable: bool
+    reason: str | None = None
+    fabricates: bool = False
+
+
+class NodeTypeCatalog(TolerantModel):
+    """A deployment's pipeline node-type catalogue.
+
+    Returned by :meth:`aegis_sdk.core.pipelines.PipelinesModule.list_node_types`.
+    Two counts live here and they answer different questions, which is why
+    neither is a constant in this package:
+
+    * ``total_types`` counts what THIS deployment permits on its canvas — the
+      built-in types plus whatever its packs added, intersected with its
+      allowlist. It is the palette's size, and it is the number a "how many
+      nodes do I have?" question is actually asking about.
+    * ``node_types`` covers the WHOLE pipeline vocabulary, including types the
+      palette does not offer, each with its own executability verdict. A type
+      can be absent from the palette and still be listed here as recognised.
+
+    ``executable`` and ``unavailable_reason`` are catalogue-wide: when the
+    deployment's execution mode cannot run its own palette, they say so once
+    rather than per node.
+    """
+
+    categories: list[NodeTypeCategory] = Field(default_factory=list)
+    total_types: int = 0
+    executable: bool = False
+    unavailable_reason: str | None = None
+    node_types: dict[str, NodeTypeVerdict] = Field(default_factory=dict)
+
+    @property
+    def flat(self) -> list[NodeTypeSummary]:
+        """Every palette node type, in the order the server sent them."""
+        return [node for category in self.categories for node in category.nodes]
+
+
 class PipelineNode(TolerantModel):
     """Pipeline node definition."""
 
@@ -736,8 +809,12 @@ class AuthToken(TolerantModel):
     callers do not need a second round-trip to ``get_current_user()``.
     """
 
-    access_token: str = Field(repr=False)  # bearer credential -- hidden from repr/str (H1)
-    refresh_token: str | None = Field(default=None, repr=False)  # bearer credential -- hidden (H1)
+    access_token: str = Field(
+        repr=False
+    )  # bearer credential -- hidden from repr/str (H1)
+    refresh_token: str | None = Field(
+        default=None, repr=False
+    )  # bearer credential -- hidden (H1)
     token_type: str = "bearer"
     expires_in: int = 3600
     expires_at: datetime | None = None

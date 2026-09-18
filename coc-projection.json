@@ -10,7 +10,7 @@
     "`source_sha256_16` is the digest of the SOURCE at projection time, so a source",
     "edit that was never re-projected is visible here rather than only in a diff."
   ],
-  "projected_on": "2026-09-17",
+  "projected_on": "2026-09-18",
   "counts": {
     "agents": 2,
     "skills": 6,
@@ -428,17 +428,17 @@
     {
       "dest": "AGENTS.md",
       "source": "coc-context.md",
-      "source_sha256_16": "4d06da48d1e52b12"
+      "source_sha256_16": "d5a73cf6e96d48ab"
     },
     {
       "dest": "CLAUDE.md",
       "source": "coc-context.md",
-      "source_sha256_16": "4d06da48d1e52b12"
+      "source_sha256_16": "d5a73cf6e96d48ab"
     },
     {
       "dest": "GEMINI.md",
       "source": "coc-context.md",
-      "source_sha256_16": "4d06da48d1e52b12"
+      "source_sha256_16": "d5a73cf6e96d48ab"
     }
   ]
 }
