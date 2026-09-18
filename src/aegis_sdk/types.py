@@ -304,7 +304,9 @@ class Agent(BaseEntityModel, TimestampMixin):
     model_id: str | None = None
     system_prompt: str | None = None
     organization_id: str
-    workspace_id: str
+    # Optional: servers that removed the Workspace entity emit null here (the
+    # key is kept for older clients). Null means "no workspace"; it grants nothing.
+    workspace_id: str | None = None
     capabilities: list[str] = Field(default_factory=list)
     capabilities_json: str | None = None
     a2a_enabled: bool = False
@@ -615,7 +617,9 @@ class Pipeline(BaseEntityModel, TimestampMixin):
     nodes: list[PipelineNode] = Field(default_factory=list)
     connections: list[PipelineConnection] = Field(default_factory=list)
     organization_id: str
-    workspace_id: str
+    # Optional: servers that removed the Workspace entity emit null here (the
+    # key is kept for older clients). Null means "no workspace"; it grants nothing.
+    workspace_id: str | None = None
 
 
 class PipelineCreate(TolerantModel):
@@ -828,7 +832,9 @@ class Objective(TolerantModel):
     status: ObjectiveStatus
     priority: int = 0
     organization_id: str
-    workspace_id: str
+    # Optional: servers that removed the Workspace entity emit null here (the
+    # key is kept for older clients). Null means "no workspace"; it grants nothing.
+    workspace_id: str | None = None
     created_by: str
     assigned_to: str | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)

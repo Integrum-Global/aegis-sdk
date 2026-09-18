@@ -24,7 +24,7 @@ The `Objective` model represents a top-level work unit:
 | `status` | `ObjectiveStatus` | Current lifecycle status |
 | `priority` | `int` | Priority level (higher = more urgent) |
 | `organization_id` | `str` | Owning organization |
-| `workspace_id` | `str` | Owning workspace |
+| `workspace_id` | `Optional[str]` | Owning workspace; `None` on servers that no longer have workspaces |
 | `created_by` | `str` | User who created the objective |
 | `assigned_to` | `Optional[str]` | Assigned user/agent |
 | `metadata` | `Dict[str, Any]` | Custom metadata |

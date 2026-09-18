@@ -75,7 +75,9 @@ class ExternalAgent(TolerantModel):
 
     id: str
     organization_id: str
-    workspace_id: str
+    # Optional: servers that removed the Workspace entity emit null here (the
+    # key is kept for older clients). Null means "no workspace"; it grants nothing.
+    workspace_id: str | None = None
     name: str
     description: str | None = None
     platform: str

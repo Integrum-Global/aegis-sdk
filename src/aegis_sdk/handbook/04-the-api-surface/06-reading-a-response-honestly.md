@@ -47,8 +47,8 @@ one that will keep working.
 | model | required | notable optional |
 | --- | ---: | --- |
 | `sdk:aegis_sdk.User` | 6 — `id`, `email`, `name`, `organization_id`, `organization_name`, `role` | `personas`, `status`, `mfa_enabled`, `last_login_at` |
-| `sdk:aegis_sdk.Agent` | 9 — including `agent_type`, `unit_type`, `status`, `workspace_id` | `model_id`, `system_prompt`, `capabilities`, `description` |
-| `sdk:aegis_sdk.Objective` | 10 — including `status`, `created_by`, `agent_id` | `priority`, `assigned_to`, `metadata`, `completed_at` |
+| `sdk:aegis_sdk.Agent` | 8 — including `agent_type`, `unit_type`, `status` | `model_id`, `system_prompt`, `capabilities`, `description`, `workspace_id` |
+| `sdk:aegis_sdk.Objective` | 9 — including `status`, `created_by`, `agent_id` | `priority`, `assigned_to`, `metadata`, `completed_at`, `workspace_id` |
 | `sdk:aegis_sdk.TrustChain` | **2** — `agent_id`, `genesis` | `delegations`, `status`, `human_origin` |
 | `sdk:aegis_sdk.APIKey` | 4 — `id`, `name`, `key_prefix`, `created_at` | `scopes`, `expires_at`, `last_used_at` |
 | `sdk:aegis_sdk.AuthToken` | **1** — `access_token` | `refresh_token`, `expires_in`, `expires_at`, `user` |
