@@ -5,6 +5,42 @@ version here is the SDK's own; it is not the server's.
 
 ## Unreleased
 
+### Fixed — the node-type catalogue could never be read
+
+`client.pipelines.list_node_types()` raised on every call. It asserted that
+`GET /api/v1/pipelines/node-types` answers a flat list; the route answers a
+category-structured object. So a caller asking which nodes their deployment
+offers got a `ServiceError` — and the message named only the payload's _type_,
+which was true and left the reader unable to tell which side had moved.
+
+Nothing caught it because nothing called it. There was no caller anywhere in the
+package and no test of the method. A method that always raises looks exactly
+like a method nobody uses, until a customer is the first to find out.
+
+It now returns a `NodeTypeCatalog` built from what the server actually sends,
+**keeping the executability fields rather than flattening them away** — "will my
+pipeline run?" is the question the catalogue exists to answer, and a plain list
+of nodes discards it:
+
+- `total_types` — the palette: what this deployment offers on its canvas.
+- `node_types` — the whole pipeline vocabulary, each type carrying its own
+  verdict. A type can appear here and still refuse to run, and `fabricates`
+  distinguishes a loud refusal from a node that emits a diagnostic string **as
+  its output** and feeds it downstream. A surface rendering those two the same
+  way is how a fabricated result reaches a client.
+- `executable` / `unavailable_reason` — stated once for the palette, because a
+  deployment unable to run its own palette is a configuration, not a defect.
+
+Two things to know when upgrading:
+
+- **Return type change.** This returned `list[dict]`; it now returns
+  `NodeTypeCatalog`. No caller inside the package used it, so nothing here
+  breaks — code outside that read the old shape must be updated.
+- **The old docstring described fields the server never sent.** It promised
+  `origin`, `citation`, `binding`, and per-node `params` / `inputs` / `outputs`.
+  The server sends none of them, and cannot yet — the node registry exposes no
+  per-node parameter schema to Python. Do not write against those fields.
+
 ### Fixed — `workspace_id` may be `None` on six response models
 
 Servers that removed the Workspace entity keep the `workspace_id` key on their

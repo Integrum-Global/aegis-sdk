@@ -16,6 +16,7 @@ from .._http import encode_path_param, unwrap_envelope
 from ..exceptions import ServiceError
 from .models import (
     ExecutionStatus,
+    NodeTypeCatalog,
     PaginatedResponse,
     Pipeline,
     PipelineConnection,
@@ -33,6 +34,47 @@ if TYPE_CHECKING:
 # (``Query(50, ge=1, le=100)``). A status-filtered listing reads every page at
 # that size, so this is the fewest requests the route allows.
 _EXECUTION_SCAN_PAGE_SIZE = 100
+
+
+def _parse_node_type_catalog(payload: Any) -> NodeTypeCatalog:
+    """Parse the answer to ``GET /api/v1/pipelines/node-types``.
+
+    Every failure names the keys the server ACTUALLY sent. The contract this
+    parses shipped broken for want of exactly that: this client asserted a flat
+    list while the server answers with a category-structured object, so every
+    call raised — and the error reported only ``{"response_type": "dict"}``,
+    which is true and useless for telling which side had moved.
+    """
+    route = "GET /api/v1/pipelines/node-types"
+
+    if not isinstance(payload, dict):
+        raise ServiceError(
+            f"Unexpected response from {route}: expected an object carrying "
+            f"'categories' and 'total_types', got {type(payload).__name__}.",
+            details={"response_type": type(payload).__name__},
+        )
+
+    missing = [key for key in ("categories", "total_types") if key not in payload]
+    if missing:
+        raise ServiceError(
+            f"Unexpected response from {route}: missing {missing}.",
+            details={"received_keys": sorted(payload), "missing_keys": missing},
+        )
+
+    catalog = NodeTypeCatalog.model_validate(payload)
+
+    # Neither a palette nor a vocabulary. Refused rather than returned empty:
+    # an empty catalogue and a wrong route are indistinguishable from the
+    # caller's side, and "you have no node types" is a confident wrong answer
+    # to "what can I build with?", where a raise is not.
+    if not catalog.categories and not catalog.node_types:
+        raise ServiceError(
+            f"Unexpected response from {route}: neither 'categories' nor "
+            f"'node_types' carried any entries.",
+            details={"received_keys": sorted(payload)},
+        )
+
+    return catalog
 
 
 class PipelinesModule:
@@ -275,7 +317,9 @@ class PipelinesModule:
         Example:
             >>> await client.pipelines.delete("pipeline_abc123")
         """
-        await self._http.request("DELETE", f"/api/v1/pipelines/{encode_path_param(pipeline_id)}")
+        await self._http.request(
+            "DELETE", f"/api/v1/pipelines/{encode_path_param(pipeline_id)}"
+        )
 
     async def duplicate(self, pipeline_id: str, name: str) -> Pipeline:
         """
@@ -522,7 +566,9 @@ class PipelinesModule:
             )
         return await self.get_execution(pipeline_id, execution_id)
 
-    async def get_execution(self, pipeline_id: str, execution_id: str) -> PipelineExecution:
+    async def get_execution(
+        self, pipeline_id: str, execution_id: str
+    ) -> PipelineExecution:
         """
         Get execution status/result by ID.
 
@@ -576,9 +622,13 @@ class PipelinesModule:
                 ``page``/``page_size`` is below 1 -- raised before any request
         """
         if page < 1 or page_size < 1:
-            raise ValueError(f"page and page_size must be >= 1; got {page}, {page_size}")
+            raise ValueError(
+                f"page and page_size must be >= 1; got {page}, {page_size}"
+            )
         if status is not None:
-            return await self._list_executions_with_status(pipeline_id, status, page, page_size)
+            return await self._list_executions_with_status(
+                pipeline_id, status, page, page_size
+            )
 
         params: dict[str, Any] = {"page": page, "page_size": page_size}
         response = await self._http.request(
@@ -660,49 +710,49 @@ class PipelinesModule:
     # Node-type catalogue
     # -------------------------------------------------------------------------
 
-    async def list_node_types(self) -> builtins.list[dict[str, Any]]:
+    async def list_node_types(self) -> NodeTypeCatalog:
         """
-        List every pipeline node type the deployment has registered.
-
-        Covers the built-in types and every node a deployment pack added. Each
-        entry is a dict with ``type``, ``name``, ``description``, ``origin``
-        (``"builtin"`` or ``"pack:<pack_id>"``), ``citation``, ``binding``
-        (``None`` for built-ins), ``params`` (each with ``key``, ``label``,
-        ``type``, ``default``, ``required``, ``min``, ``max``, ``choices``),
-        ``inputs`` and ``outputs`` (each with ``name``, ``type``,
-        ``description``).
+        List the pipeline node types THIS deployment has registered.
 
         Verified route: ``GET /api/v1/pipelines/node-types``, which answers
-        ``{"data": [...]}``; this method returns the unwrapped list. Requires
-        the same authorization as reading pipelines (``agents:read``).
+        ``{"data": {categories, total_types, executable, unavailable_reason,
+        node_types}}``. Requires the same authorization as reading pipelines
+        (``agents:read``).
+
+        **Ask the deployment; do not carry a list.** The catalogue is the
+        built-in types plus every node type the deployment's packs added, so
+        the same client against two deployments returns two different sets, and
+        a node type this package does not name can exist. That is why this
+        package ships no node-type list to compare against, and why no count of
+        nodes belongs in this documentation.
 
         Returns:
-            The registered node types, in the server's order (built-ins
-            first).
+            The catalogue. ``total_types`` counts the PALETTE — what this
+            deployment permits on its canvas. ``node_types`` separately covers
+            the whole pipeline vocabulary, including types the palette does not
+            offer, each with its own verdict. Read those verdicts before wiring
+            a graph: a node type can be recognised, appear here, and still
+            refuse at execution, and :class:`~aegis_sdk.NodeTypeVerdict` carries
+            ``fabricates`` to distinguish a loud refusal from one that emits a
+            diagnostic string AS ITS OUTPUT and feeds it downstream.
 
         Raises:
-            ServiceError: The server answered with something other than a
-                list of node types. Raised rather than returning an empty list,
-                because an empty catalogue is indistinguishable from a
-                deployment with no node types at all.
+            ServiceError: The server answered with something that is not a
+                node-type catalogue. The error names the keys actually
+                received, so a contract change is diagnosable from the message
+                alone rather than from a re-investigation.
 
         Example:
-            >>> for node_type in await client.pipelines.list_node_types():
-            ...     print(node_type["type"], node_type["origin"])
+            >>> catalog = await client.pipelines.list_node_types()
+            >>> for node in catalog.flat:
+            ...     print(node.type)
+            >>> catalog.node_types["connector"].executable
+            False
         """
         response = await self._http.request("GET", "/api/v1/pipelines/node-types")
-        payload = unwrap_envelope(response)
-        if not isinstance(payload, builtins.list) or not all(
-            isinstance(item, dict) for item in payload
-        ):
-            raise ServiceError(
-                "Unexpected response from GET /api/v1/pipelines/node-types: "
-                "expected {'data': [<node type>, ...]}",
-                details={"response_type": type(response).__name__},
-            )
-        return payload
+        return _parse_node_type_catalog(unwrap_envelope(response))
 
-    def list_node_types_sync(self) -> builtins.list[dict[str, Any]]:
+    def list_node_types_sync(self) -> NodeTypeCatalog:
         """
         Blocking form of :meth:`list_node_types`, for scripts without an event loop.
 

@@ -17,12 +17,12 @@ inferring, and say what would settle it.
 
 ## What you have
 
-| | |
-| --- | --- |
-| `src/aegis_sdk/` | the Python client — 169 modules, version 2.0.0 |
-| `src/aegis_sdk/handbook/` | how the platform **behaves** — 41 chapters in 7 parts |
-| `src/aegis_sdk/coc/` | what to **do** about it — 2 agent briefs, 6 skills, 7 guardrails |
-| .claude/agents/ · .claude/skills/ | the same material, projected for Claude Code |
+|                               |                                                                  |
+| ----------------------------- | ---------------------------------------------------------------- |
+| `src/aegis_sdk/`              | the Python client — 169 modules, version 2.0.0                   |
+| `src/aegis_sdk/handbook/`     | how the platform **behaves** — 41 chapters in 7 parts            |
+| `src/aegis_sdk/coc/`          | what to **do** about it — 2 agent briefs, 6 skills, 7 guardrails |
+| .claude/agents/ · .claude/skills/ | the same material, projected for Claude Code                         |
 
 The handbook and the working material are the SAME text you see wired into
 Claude Code. `src/aegis_sdk/coc/` is the source of truth; the CLI overlays are
@@ -48,6 +48,24 @@ own credentials against a control operation first and exits `3` UNDETERMINED
 rather than `0` when it cannot tell — an expired token and a healthy API produce
 identical output from a probe that skips that step.
 
+**What can you build with?** A pipeline's node types live on the _deployment_,
+not in this repository — the set is that deployment's built-ins plus whatever
+its packs added, so two deployments answer differently and no count written down
+here would stay true. Ask the one you are working against:
+
+```python
+catalog = await client.pipelines.list_node_types()
+for node in catalog.flat:
+    print(node.type, "—", node.label)
+```
+
+`total_types` is the palette; `node_types` covers the whole vocabulary with a
+per-type verdict. **Read the verdicts before wiring a graph** — a node type can
+be recognised, appear in the catalogue, and still refuse to run. `fabricates`
+separates a loud refusal from a silent one that emits a diagnostic string _as
+its output_ and feeds it downstream. The handbook's chapter 03.2 has the surface
+in full.
+
 ## Three habits this material exists to install
 
 **1. Name the credential.** An answer that is true for a session and false for
@@ -68,10 +86,10 @@ and only the first is free.
 - **The platform's source.** Not present, not vendored, not quoted. Do not
   reconstruct it from the client, and do not cite paths into it — a path the
   reader cannot open is useless to them and discloses the shape of protected IP.
-- **Booting the platform.** You work against a *deployed* Aegis over HTTP. There
+- **Booting the platform.** You work against a _deployed_ Aegis over HTTP. There
   is no server to start in this repository.
 - **Reading the platform's route table or tests.** The client's declared
-  operations are this package's own *belief* about the API. Where it is wrong,
+  operations are this package's own _belief_ about the API. Where it is wrong,
   it is wrong confidently and in the same direction as anything derived from it.
 
 ## Reachability is not correctness
