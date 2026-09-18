@@ -26,7 +26,7 @@ The `Agent` model represents an AI agent:
 | `model_id`        | `Optional[str]`          | LLM model identifier                                                                                                                                          |
 | `system_prompt`   | `Optional[str]`          | System prompt for the agent                                                                                                                                   |
 | `organization_id` | `str`                    | Owning organization                                                                                                                                           |
-| `workspace_id`    | `str`                    | Owning workspace                                                                                                                                              |
+| `workspace_id`    | `Optional[str]`          | Owning workspace; `None` on servers that no longer have workspaces — do not use it as a list filter                                                           |
 | `capabilities`    | `List[str]`              | Capability tags                                                                                                                                               |
 | `a2a_enabled`     | `bool`                   | Agent-to-agent communication enabled                                                                                                                          |
 | `description`     | `Optional[str]`          | Human-readable description                                                                                                                                    |

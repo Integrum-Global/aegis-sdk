@@ -186,3 +186,69 @@ async def test_agents_create_get_list_against_server_that_nulls_workspace() -> N
     assert created.workspace_id is None
     assert fetched.workspace_id is None
     assert [a.id for a in listed.items] == ["agent-1", "agent-2"]
+
+
+@pytest.mark.parametrize("model", _MODELS, ids=lambda m: m.__name__)
+def test_required_id_still_rejects_null(model: type[BaseModel]) -> None:
+    # Second control, on the identity field: the fix did not relax the model.
+    with pytest.raises(ValidationError):
+        model(**{**_PAYLOADS[model], "workspace_id": None, "id": None})
+
+
+def test_objectives_normalizer_keeps_null_workspace_id() -> None:
+    # client.objectives builds Objective through this normalizer, not directly.
+    # It used to coerce a null to "" because the field was a required str; that
+    # hid "no workspace" behind an empty string the caller could send back.
+    from aegis_sdk.execution.objectives import _normalize_objective
+
+    raw = {
+        "id": "o-1",
+        "title": "t",
+        "description": "d",
+        "agent_id": "agent-1",
+        "status": "draft",
+        "organization_id": "org-1",
+        "workspace_id": None,
+        "created_by_user_id": "u-1",
+        "created_at": _TS,
+        "updated_at": _TS,
+    }
+    assert Objective(**_normalize_objective(raw)).workspace_id is None
+    assert Objective(**_normalize_objective({**raw, "workspace_id": "ws-1"})).workspace_id == "ws-1"
+
+
+# The one response model allowed to keep a required workspace_id: it is the
+# payload of the Workspaces endpoint itself, where the id is the subject, not a
+# nullable back-reference.
+_REQUIRED_WORKSPACE_ALLOWLIST = {"WorkspaceDocumentAttachment"}
+
+
+def test_no_other_model_requires_workspace_id() -> None:
+    # Completeness: a hand-listed parametrization cannot notice a seventh model.
+    import importlib
+    import pkgutil
+
+    import aegis_sdk
+
+    seen: dict[str, type[BaseModel]] = {}
+    for pkg in ("aegis_sdk.core", "aegis_sdk.modules", "aegis_sdk.execution"):
+        root = importlib.import_module(pkg)
+        for info in pkgutil.walk_packages(root.__path__, prefix=f"{pkg}."):
+            mod = importlib.import_module(info.name)
+            for obj in vars(mod).values():
+                if isinstance(obj, type) and issubclass(obj, BaseModel):
+                    seen[f"{obj.__module__}.{obj.__qualname__}"] = obj
+    for obj in vars(importlib.import_module("aegis_sdk.types")).values():
+        if isinstance(obj, type) and issubclass(obj, BaseModel):
+            seen[f"{obj.__module__}.{obj.__qualname__}"] = obj
+
+    assert len(seen) > 50, "positive control: the walk must actually find models"
+    offenders = sorted(
+        name
+        for name, m in seen.items()
+        if name.startswith(aegis_sdk.__name__)
+        and "workspace_id" in m.model_fields
+        and m.model_fields["workspace_id"].is_required()
+        and m.__name__ not in _REQUIRED_WORKSPACE_ALLOWLIST
+    )
+    assert offenders == []

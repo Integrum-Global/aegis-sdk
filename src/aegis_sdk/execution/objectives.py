@@ -7,8 +7,9 @@ Objectives are served under ``/api/v1/objectives``. The API's
 ``ObjectiveResponse`` does not match :class:`~aegis_sdk.types.Objective`
 field-for-field (``priority`` is a string tier on the wire, not an int; the
 lifecycle has more states than :class:`~aegis_sdk.types.ObjectiveStatus`
-declares; ``created_by``/``workspace_id``/``agent_id`` are optional on the
-wire but required here), so responses are normalized before construction —
+declares; ``created_by``/``agent_id`` are optional on the wire but required
+here, while ``workspace_id`` is optional on both and passed through, null
+included), so responses are normalized before construction —
 see ``_normalize_objective`` / ``_priority_to_wire`` / ``_priority_from_wire``
 for the mapping.
 
@@ -123,7 +124,9 @@ def _normalize_objective(raw: dict[str, Any]) -> dict[str, Any]:
         "status": _STATUS_FROM_WIRE.get(raw.get("status", "draft"), ObjectiveStatus.PENDING),
         "priority": _priority_from_wire(raw.get("priority")),
         "organization_id": raw.get("organization_id", ""),
-        "workspace_id": raw.get("workspace_id") or "",
+        # Keep a null as None: servers without workspaces send null, and "" would
+        # be a value the caller could mistake for a real workspace and send back.
+        "workspace_id": raw.get("workspace_id"),
         "created_by": raw.get("created_by_user_id") or raw.get("requester_user_id") or "",
         "assigned_to": None,
         "metadata": {

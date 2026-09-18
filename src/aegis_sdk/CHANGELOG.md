@@ -5,6 +5,31 @@ version here is the SDK's own; it is not the server's.
 
 ## Unreleased
 
+### Fixed — `workspace_id` may be `None` on six response models
+
+Servers that removed the Workspace entity keep the `workspace_id` key on their
+responses but always send it as `null`. The SDK declared it a required `str` on
+`Agent`, `ToolAgent`, `Pipeline`, `Objective`, `ScopedBridge` and
+`ExternalAgent`, so every response carrying one of them failed validation.
+
+The worst symptom was `client.agents.create()`: the server created the agent,
+then the SDK raised `ValidationError` reading the reply. A caller saw a failure,
+retried, and left a duplicate behind each time. `agents.get()` and
+`agents.list()` failed outright on every agent such a deployment held.
+
+The field is now `str | None` on all six, and `client.objectives` no longer turns
+a null into `""`. Two things to know when upgrading:
+
+- **Type change.** Code that assumed a `str` (for example
+  `agent.workspace_id.startswith(...)`) must handle `None`; a strict type checker
+  will now flag it.
+- **Do not use it as a filter.** List methods omit the filter when you pass
+  `None`, so `agents.list(workspace_id=agent.workspace_id)` returns the whole
+  organization rather than one workspace.
+
+`agents.create()` still requires `workspace_id`, because those servers still
+require it on the request.
+
 ### Added — `client.mcp`, an MCP capability surface
 
 Reported by a partner, in their words: the installed SDK exposed no MCP verb at
