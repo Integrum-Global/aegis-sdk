@@ -345,6 +345,55 @@ binding for them.
 Any surface that renders those two identically is how a fabricated result
 reaches a client. Read `fabricates: True` as _unusable_, not as _unavailable_.
 
+### From the catalogue to a running graph
+
+Discovery on its own builds nothing. The order that avoids learning things late:
+
+```python
+catalog = await client.pipelines.list_node_types()
+
+# 1. Filter BEFORE building. A graph assembled from non-executable types
+#    passes validate() and then refuses at RUN time — a slow way to learn
+#    what the catalogue already said.
+runnable = {n for n, verdict in catalog.node_types.items() if verdict.executable}
+
+# 2. Build from `runnable`. create() takes id + name + node_type.
+pipeline = await client.pipelines.create(
+    name="Draft",
+    pattern="sequential",
+    nodes=[
+        {"id": "n1", "name": "Topic", "node_type": "input"},
+        {"id": "n2", "name": "Draft", "node_type": "agent", "agent_id": some_agent_id},
+        {"id": "n3", "name": "Result", "node_type": "output"},
+    ],
+    connections=[
+        {"source_node_id": "n1", "target_node_id": "n2"},
+        {"source_node_id": "n2", "target_node_id": "n3"},
+    ],
+)
+
+# 3. Validate, and read the WARNINGS as well as `valid`.
+report = await client.pipelines.validate(pipeline.id)
+
+# 4. Only then run.
+execution = await client.pipelines.execute(pipeline.id, inputs={"topic": "..."})
+```
+
+A working version of exactly this ships as `build_a_pipeline.py` under
+`examples/` — it prints your deployment's verdicts first, and stops with the
+catalogue's own explanation rather than assembling a graph that cannot run.
+
+**Two failure modes this ordering avoids**, each of which costs an afternoon when
+you build first and ask afterwards:
+
+- A graph built from **non-executable types validates clean** and refuses at
+  execution, because validation and execution ask different questions.
+- An `agent` node with **no `agent_id`** is a valid graph that resolves to no
+  agent at run time.
+
+Both are the same lesson as the verdict list above: the catalogue answers "will
+this run?" and `validate` answers "is this wired?", and only the first is cheap.
+
 ### ⚠ The create path and the graph-save path take different node shapes
 
 This is the one thing in this section most likely to cost you an afternoon.

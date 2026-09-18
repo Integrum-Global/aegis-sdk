@@ -118,7 +118,9 @@ def client() -> Any:
 
     ``base_url`` has no default by design, so it is supplied explicitly here.
     """
-    return AgenticOSClient(base_url="https://example.invalid", api_key="sk_test_notused")
+    return AgenticOSClient(
+        base_url="https://example.invalid", api_key="sk_test_notused"
+    )
 
 
 def _resolve(client: Any, chain: list[str]) -> Any:
@@ -140,6 +142,7 @@ def _resolve(client: Any, chain: list[str]) -> Any:
 EXPECTED_EXAMPLES = frozenset(
     {
         "basic_agent_workflow.py",
+        "build_a_pipeline.py",
         "error_handling.py",
         "stand_up_a_vertical.py",
         "streaming_progress.py",
@@ -175,7 +178,9 @@ def test_every_client_call_binds(path: Path, client: Any) -> None:
             failures.append(f"{path.name}:{call.lineno}  {'.'.join(chain)} -> {exc}")
             continue
         if not callable(target):
-            failures.append(f"{path.name}:{call.lineno}  {'.'.join(chain)} is not callable")
+            failures.append(
+                f"{path.name}:{call.lineno}  {'.'.join(chain)} is not callable"
+            )
             continue
 
         kwargs = {kw.arg: None for kw in call.keywords if kw.arg is not None}
@@ -190,7 +195,9 @@ def test_every_client_call_binds(path: Path, client: Any) -> None:
         try:
             inspect.signature(target).bind_partial(*args, **kwargs)
         except TypeError as exc:
-            failures.append(f"{path.name}:{call.lineno}  {'.'.join(chain)}(...) -> {exc}")
+            failures.append(
+                f"{path.name}:{call.lineno}  {'.'.join(chain)}(...) -> {exc}"
+            )
 
     assert not failures, (
         "shipped example calls an API that does not exist -- this is a TypeError "
@@ -243,7 +250,9 @@ def _kwargs_contract(target: Any) -> tuple[set[str] | None, set[str]]:
         # AgentCreate(name=name, **kwargs)  ->  accepted = AgentCreate.model_fields
         if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
             if any(
-                kw.arg is None and isinstance(kw.value, ast.Name) and kw.value.id == var_kw
+                kw.arg is None
+                and isinstance(kw.value, ast.Name)
+                and kw.value.id == var_kw
                 for kw in node.keywords
             ):
                 model = getattr(module, node.func.id, None)
@@ -295,7 +304,9 @@ def test_kwargs_targets_accept_what_examples_pass(path: Path, client: Any) -> No
             continue  # **unpacked call -- not statically knowable
 
         named = {kw.arg for kw in call.keywords if kw.arg is not None}
-        explicit = {n for n, p in params.items() if p.kind is not inspect.Parameter.VAR_KEYWORD}
+        explicit = {
+            n for n, p in params.items() if p.kind is not inspect.Parameter.VAR_KEYWORD
+        }
         forwarded = named - explicit
 
         accepted, required = _kwargs_contract(target)
@@ -315,9 +326,9 @@ def test_kwargs_targets_accept_what_examples_pass(path: Path, client: Any) -> No
                 f"{sorted(missing)}, which the method pre-flights and RAISES on"
             )
 
-    assert not failures, "shipped example violates a **kwargs contract:\n  " + "\n  ".join(
-        failures
-    )
+    assert (
+        not failures
+    ), "shipped example violates a **kwargs contract:\n  " + "\n  ".join(failures)
 
 
 def test_no_target_is_unverifiable(client: Any) -> None:
@@ -348,8 +359,7 @@ def test_no_target_is_unverifiable(client: Any) -> None:
     )
 
 
-def test_no_client_module_is_aliased_through_a_local(  # noqa: D103
-) -> None:
+def test_no_client_module_is_aliased_through_a_local() -> None:  # noqa: D103
     """The sweep only follows chains rooted at a client name -- pin that blind spot.
 
     ``mod = client.agents`` followed by ``mod.execute(...)`` is invisible above.
@@ -366,7 +376,9 @@ def test_no_client_module_is_aliased_through_a_local(  # noqa: D103
             if chain and chain[0] in CLIENT_ROOTS and len(chain) >= 2:
                 for tgt in node.targets:
                     if isinstance(tgt, ast.Name):
-                        aliased.append(f"{path.name}:{node.lineno}  {tgt.id} = {'.'.join(chain)}")
+                        aliased.append(
+                            f"{path.name}:{node.lineno}  {tgt.id} = {'.'.join(chain)}"
+                        )
     assert not aliased, (
         "an example binds a client module to a local name; calls through it are "
         "NOT checked by this guard:\n  " + "\n  ".join(aliased)

@@ -5,6 +5,31 @@ version here is the SDK's own; it is not the server's.
 
 ## Unreleased
 
+### Added — the first runnable pipeline example
+
+`examples/build_a_pipeline.py` is the SDK's first pipeline example. The five that
+shipped before it cover agents, trust, streaming and error handling; none showed
+a pipeline, so the one surface where node types actually get used had no worked
+code at all.
+
+It walks the whole path in one file: ask the deployment which node types it has,
+filter to the ones whose verdict says they will run, build a graph from those,
+validate it, and execute it. It stops early — with the catalogue's own
+`unavailable_reason` — rather than assembling a graph the deployment cannot run.
+
+Two things it demonstrates that the surrounding docs only assert:
+
+- **Filter to executable types BEFORE building.** A graph built from
+  non-executable types passes `validate()` and refuses at execution, because
+  validation and execution ask different questions. Building first is a slow way
+  to learn what the catalogue already said.
+- **Read `warnings` as well as `valid`.** Several real defect classes are
+  warnings by deliberate severity contract, and a warning never flips `valid` to
+  `False`.
+
+The handbook's pipeline chapter gained the matching walkthrough, so the
+discovery section and the construction section now connect to each other.
+
 ### Fixed — the node-type catalogue could never be read
 
 `client.pipelines.list_node_types()` raised on every call. It asserted that
