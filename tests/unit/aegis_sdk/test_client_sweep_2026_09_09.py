@@ -219,8 +219,8 @@ def test_c3_license_paths_carry_the_api_v1_prefix():
 def test_c3_license_operations_are_the_six_the_server_mounts():
     """Denominator, so a module emptied of calls cannot pass the check above.
 
-    Six, matching the six ``/api/v1/licenses/...`` routes registered on
-    ``aegis.main.app``. Pinned as a SET, not a count: a count survives a swap.
+    Six, matching the six ``/api/v1/licenses/...`` routes the server mounts.
+    Pinned as a SET, not a count: a count survives a swap.
     """
     assert _license_operations() == {
         ("POST", "/api/v1/licenses/generate"),

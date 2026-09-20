@@ -107,7 +107,7 @@ class KnowledgeModule:
     ) -> dict[str, Any]:
         """List knowledge items in the caller's organization.
 
-        Server: ``GET /api/v1/knowledge`` (``knowledge.py:675``).
+        Server: ``GET /api/v1/knowledge``.
 
         ⚠ The server's ``status`` default is ``"published"``, NOT "all". Leaving
         ``status`` as ``None`` therefore omits DRAFT items -- an idempotency

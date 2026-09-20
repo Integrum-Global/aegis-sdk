@@ -28,11 +28,11 @@ from typing import Any
 
 from .._http import encode_path_param
 
-#: The formats the server can render a presentation spec into. Mirrors the
-#: server's own supported-format set --
-#: not imported from it (this package ships independently of ``aegis``;
-#: see the SDK boundary convention), so if the server ever adds a third
-#: format this constant is the one place to update on the client side.
+#: The formats the server can render a presentation spec into. This mirrors
+#: the server's own list rather than importing it -- this package ships
+#: independently of the platform (see the SDK boundary convention) -- so if
+#: the server ever adds a third format, this constant is the one place to
+#: update on the client side.
 SUPPORTED_PRESENTATION_FORMATS: frozenset[str] = frozenset({"html", "pptx"})
 
 

@@ -51,7 +51,7 @@ class TeamsModule:
     ) -> dict[str, Any]:
         """List teams in the caller's organization.
 
-        Server: ``GET /api/v1/teams`` (``teams.py:137``), gated on ``teams:read``.
+        Server: ``GET /api/v1/teams``, gated on ``teams:read``.
 
         Args:
             limit: Maximum results (1-100, server default 50).

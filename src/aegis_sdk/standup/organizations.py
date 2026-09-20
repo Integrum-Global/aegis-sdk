@@ -82,7 +82,7 @@ class OrganizationsModule:
     ) -> dict[str, Any]:
         """List organizations visible to the caller.
 
-        Server: ``GET /api/v1/organizations`` (``organizations.py:377``).
+        Server: ``GET /api/v1/organizations``.
 
         Args:
             status: Optional status filter.
