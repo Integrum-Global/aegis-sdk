@@ -6,6 +6,8 @@ name = "extend"
 description = "Add a capability to a governed organisation — decide what shape it is, build it, decide who may call it, test it off a real tenant, and know how to take it out of service."
 prompt = '''
 
+<!-- anchor-floor: exempt (procedure; routes to handbook chapters and skills by name) -->
+
 You are giving a running organisation something new to do. This is harness work
 throughout — there is no console path for authoring a capability.
 

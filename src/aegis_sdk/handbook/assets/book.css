@@ -1,0 +1,677 @@
+/* The handbook's stylesheet, for screen and for print.
+ *
+ * One file, two media. The screen rules give a reading column with a sticky
+ * navigation beside it; the print rules give an A4 book with running heads,
+ * page numbers and a paginated contents. They share the type scale and the
+ * palette deliberately, so the printed page and the screen are recognisably
+ * the same document.
+ *
+ * No webfont is fetched. The stack below is system fonts only, because the
+ * rendered HTML has to work with no network at all — a font request is the one
+ * external reference that would survive every other inlining step.
+ */
+
+:root {
+  --ink: #1a1d21;
+  --ink-soft: #414a55;
+  --muted: #5f6975;
+  --rule: #d9dee4;
+  --rule-soft: #eceff2;
+  --accent: #1f4e79;
+  --accent-soft: #eaf0f6;
+  --code-bg: #f5f7f9;
+  --page: #ffffff;
+  --warn: #8a5b00;
+
+  --font-text: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+    "Liberation Mono", monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--ink);
+  font-family: var(--font-text);
+  font-size: 17px;
+  line-height: 1.65;
+}
+
+/* ─────────────────────────────── typography ─────────────────────────────── */
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  color: var(--ink);
+  font-weight: 600;
+  line-height: 1.25;
+  margin: 2.2em 0 0.6em;
+  letter-spacing: -0.011em;
+}
+
+h1 {
+  font-size: 1.95em;
+  margin-top: 0;
+  padding-bottom: 0.35em;
+  border-bottom: 2px solid var(--rule);
+}
+
+h2 {
+  font-size: 1.4em;
+}
+
+h3 {
+  font-size: 1.14em;
+}
+
+h4,
+h5,
+h6 {
+  font-size: 1em;
+  color: var(--ink-soft);
+}
+
+p,
+ul,
+ol,
+blockquote,
+table,
+pre {
+  margin: 0 0 1.05em;
+}
+
+a {
+  color: var(--accent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
+strong {
+  font-weight: 600;
+}
+
+/* A cross-reference to a chapter this document does not carry — only possible
+ * under `--parts`, where the renderer deliberately leaves the `.md` target
+ * rather than inventing an anchor. Rendered as plain text so it does not
+ * advertise itself as a link that goes nowhere. */
+a[href$=".md"],
+a[href*=".md#"] {
+  color: inherit;
+  text-decoration: none;
+  cursor: default;
+}
+
+em {
+  color: var(--ink-soft);
+}
+
+blockquote {
+  margin-left: 0;
+  padding: 0.15em 0 0.15em 1.1em;
+  border-left: 3px solid var(--rule);
+  color: var(--ink-soft);
+}
+
+hr {
+  border: 0;
+  border-top: 1px solid var(--rule);
+  margin: 2.4em 0;
+}
+
+ul,
+ol {
+  padding-left: 1.45em;
+}
+
+li + li {
+  margin-top: 0.3em;
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 1.4em auto;
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+}
+
+/* ───────────────────────────────── code ─────────────────────────────────── */
+
+code,
+kbd,
+samp {
+  font-family: var(--font-mono);
+  font-size: 0.875em;
+}
+
+:not(pre) > code {
+  background: var(--code-bg);
+  border: 1px solid var(--rule-soft);
+  border-radius: 3px;
+  padding: 0.08em 0.34em;
+  overflow-wrap: anywhere;
+}
+
+pre {
+  background: var(--code-bg);
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--accent);
+  border-radius: 3px;
+  padding: 0.85em 1em;
+  overflow-x: auto;
+  line-height: 1.5;
+}
+
+pre code {
+  background: none;
+  border: 0;
+  padding: 0;
+  /* Long lines wrap rather than being cut off at the page edge. A clipped
+   * command in a printed handbook is a command the reader cannot run. */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* ───────────────────────────────── tables ───────────────────────────────── */
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92em;
+  /* Fixed layout plus wrapping cells is what stops a wide table from running
+   * off the side of an A4 page. */
+  table-layout: fixed;
+}
+
+th,
+td {
+  border: 1px solid var(--rule);
+  padding: 0.5em 0.65em;
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+thead th {
+  background: var(--accent-soft);
+  font-weight: 600;
+}
+
+tbody tr:nth-child(even) {
+  background: #fafbfc;
+}
+
+/* ───────────────────────────── layout (screen) ──────────────────────────── */
+
+main {
+  max-width: 46rem;
+  margin: 0 auto;
+  padding: 2.5rem 1.4rem 6rem;
+}
+
+.title-page {
+  padding: 3.5rem 0 3rem;
+  border-bottom: 1px solid var(--rule);
+  margin-bottom: 2.5rem;
+}
+
+.title-eyebrow {
+  font-size: 0.78em;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--accent);
+  font-weight: 600;
+  margin-bottom: 0.9em;
+}
+
+.book-title {
+  font-size: 2.5em;
+  border: 0;
+  padding: 0;
+  margin: 0 0 0.45em;
+  letter-spacing: -0.02em;
+}
+
+.book-subtitle {
+  font-size: 1.12em;
+  color: var(--ink-soft);
+  max-width: 34rem;
+}
+
+.book-attribution {
+  font-size: 0.9em;
+  color: var(--muted);
+  max-width: 34rem;
+  margin-top: 1.6em;
+}
+
+.book-date {
+  font-size: 0.82em;
+  color: var(--muted);
+  margin-top: 1.6em;
+}
+
+.front-matter,
+.part-opener,
+.chapter,
+.toc-page {
+  margin-top: 3.2rem;
+}
+
+.part-opener {
+  border-top: 1px solid var(--rule);
+  padding-top: 2.4rem;
+}
+
+.part-title {
+  color: var(--accent);
+}
+
+/* ──────────────────────────────── contents ──────────────────────────────── */
+
+.toc,
+.toc-chapters {
+  list-style: none;
+  padding-left: 0;
+}
+
+.toc-chapters {
+  padding-left: 1.3rem;
+  margin: 0.4em 0 1.2em;
+}
+
+.toc li {
+  margin: 0.28em 0;
+}
+
+.toc a {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  text-decoration: none;
+  color: var(--ink);
+}
+
+.toc a:hover {
+  text-decoration: underline;
+  color: var(--accent);
+}
+
+.toc-part > a {
+  font-weight: 600;
+  color: var(--accent);
+  margin-top: 0.7em;
+}
+
+.toc-chapter > a {
+  color: var(--ink-soft);
+}
+
+/* ─────────────────────────────── navigation ─────────────────────────────── */
+
+#nav-toggle {
+  position: fixed;
+  top: 0.75rem;
+  left: 0.75rem;
+  z-index: 30;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--page);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  padding: 0.4em 0.8em;
+  cursor: pointer;
+}
+
+#nav {
+  display: none;
+  background: var(--page);
+}
+
+body.nav-open #nav {
+  display: block;
+  position: fixed;
+  inset: 3.4rem 0 0 0;
+  z-index: 20;
+  overflow-y: auto;
+  padding: 1rem 1.2rem 3rem;
+  border-top: 1px solid var(--rule);
+}
+
+.nav-filter-label {
+  display: block;
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 0.4em;
+}
+
+#nav-filter {
+  width: 100%;
+  font: inherit;
+  font-size: 0.86rem;
+  padding: 0.45em 0.6em;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  background: var(--page);
+  color: var(--ink);
+}
+
+#nav-filter:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+#nav-list {
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0;
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+#nav-list li {
+  margin: 0;
+}
+
+#nav-list a {
+  display: block;
+  padding: 0.24em 0.5em;
+  border-radius: 3px;
+  text-decoration: none;
+  color: var(--ink-soft);
+}
+
+#nav-list a:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.nav-front > a,
+.nav-part > a {
+  font-weight: 600;
+  color: var(--accent);
+  margin-top: 0.75em;
+}
+
+.nav-chapter > a {
+  padding-left: 1.1em;
+  color: var(--ink);
+}
+
+.nav-h2 > a {
+  padding-left: 2em;
+  font-size: 0.94em;
+  color: var(--muted);
+}
+
+.nav-h3 > a {
+  padding-left: 2.9em;
+  font-size: 0.9em;
+  color: var(--muted);
+}
+
+#nav-empty {
+  font-size: 0.82rem;
+  color: var(--muted);
+  padding: 0.6em 0.5em;
+}
+
+/* Above 1000px the navigation is a permanent sticky column and the toggle is
+ * unnecessary; below it, the toggle is the only way in.
+ *
+ * WeasyPrint reports "invalid media type" and ignores this whole block: it
+ * supports bare media TYPES, not feature queries. That is correct for our
+ * purpose and not a defect to fix — the block is screen-only, and the print
+ * rules below re-assert `display: block` on the body and hide the navigation
+ * outright. Do NOT flatten this into an unconditional rule to silence the
+ * warning; that would put a 19rem empty column on every printed page. */
+@media screen and (min-width: 1000px) {
+  #nav-toggle {
+    display: none;
+  }
+
+  body {
+    display: grid;
+    grid-template-columns: 19rem minmax(0, 1fr);
+  }
+
+  #nav {
+    display: block;
+    position: sticky;
+    top: 0;
+    align-self: start;
+    height: 100vh;
+    overflow-y: auto;
+    padding: 2rem 1rem 3rem 1.6rem;
+    border-right: 1px solid var(--rule);
+  }
+
+  main {
+    padding-top: 2.5rem;
+  }
+}
+
+/* ───────────────────────────────── print ────────────────────────────────── */
+
+@page {
+  size: A4;
+  margin: 22mm 19mm 20mm 19mm;
+
+  /* The font stack is spelled out rather than referenced through a custom
+   * property: page margin boxes do not inherit from :root in every paged
+   * formatter, and a silently-unresolved var() there falls back to a serif
+   * running head that does not match the page. */
+  @top-left {
+    content: string(running-part);
+    font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-size: 8pt;
+    color: #5f6975;
+    vertical-align: bottom;
+    padding-bottom: 3mm;
+  }
+
+  @top-right {
+    content: string(running-chapter);
+    font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-size: 8pt;
+    color: #5f6975;
+    vertical-align: bottom;
+    padding-bottom: 3mm;
+  }
+
+  @bottom-center {
+    content: counter(page);
+    font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-size: 9pt;
+    color: #5f6975;
+    vertical-align: top;
+    padding-top: 3mm;
+  }
+}
+
+/* The title page carries no furniture. */
+@page :first {
+  @top-left {
+    content: none;
+  }
+  @top-right {
+    content: none;
+  }
+  @bottom-center {
+    content: none;
+  }
+}
+
+@media print {
+  body {
+    display: block;
+    font-size: 10.2pt;
+    line-height: 1.5;
+    color: #101317;
+  }
+
+  #nav,
+  #nav-toggle,
+  #nav-empty {
+    display: none !important;
+  }
+
+  main {
+    max-width: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  a {
+    color: #17324d;
+    text-decoration: none;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  p,
+  li {
+    orphans: 3;
+    widows: 3;
+  }
+
+  img,
+  pre,
+  blockquote {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  tr,
+  th,
+  td {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  table {
+    font-size: 8.6pt;
+  }
+
+  pre {
+    font-size: 8.4pt;
+    background: #f5f7f9;
+    /* Belt and braces with the rule in pre code: a clipped code block in a
+     * printed book cannot be scrolled. */
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  img {
+    max-width: 100%;
+    max-height: 150mm;
+    object-fit: contain;
+  }
+
+  /* Title page ------------------------------------------------------------ */
+
+  .title-page {
+    border: 0;
+    padding: 55mm 0 0;
+    margin: 0;
+    break-after: page;
+    page-break-after: always;
+    /* Nothing above the title page should inherit a running head from it. */
+    string-set: running-part "", running-chapter "";
+  }
+
+  .book-title {
+    font-size: 30pt;
+  }
+
+  .book-subtitle {
+    font-size: 12pt;
+  }
+
+  /* Contents -------------------------------------------------------------- */
+
+  .toc-page {
+    margin: 0;
+    break-after: page;
+    page-break-after: always;
+    string-set: running-part "Contents", running-chapter "";
+  }
+
+  .toc a {
+    display: block;
+    color: #101317;
+  }
+
+  /* The page number is generated at print time from the anchor's target, so
+   * the contents cannot drift out of agreement with the body. */
+  .toc a::after {
+    content: target-counter(attr(href), page);
+    float: right;
+    font-variant-numeric: tabular-nums;
+    color: #5f6975;
+  }
+
+  /* Parts and chapters ---------------------------------------------------- */
+
+  .front-matter {
+    margin: 0;
+    break-after: page;
+    page-break-after: always;
+    string-set: running-part "About this book", running-chapter "";
+  }
+
+  .part-opener {
+    margin: 0;
+    padding: 35mm 0 0;
+    border: 0;
+    /* Parts open on a recto page, as a printed book does. */
+    break-before: right;
+    page-break-before: always;
+    string-set: running-chapter "";
+  }
+
+  /* The running head is set from the TITLE element, not from the section: a
+   * `content(text)` on the section would harvest the whole part README into
+   * the page header. */
+  .part-opener > .part-title {
+    font-size: 22pt;
+    border: 0;
+    color: #17324d;
+    string-set: running-part content(text);
+  }
+
+  .chapter {
+    margin: 0;
+    break-before: page;
+    page-break-before: always;
+  }
+
+  .chapter > h1 {
+    font-size: 15pt;
+    string-set: running-chapter content(text);
+  }
+}

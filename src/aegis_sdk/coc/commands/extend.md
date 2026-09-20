@@ -4,6 +4,8 @@ description: "Add a capability to a governed organisation — decide what shape 
 stage: 03-extending-the-platform
 ---
 
+<!-- anchor-floor: exempt (procedure; routes to handbook chapters and skills by name) -->
+
 You are giving a running organisation something new to do. This is harness work
 throughout — there is no console path for authoring a capability.
 

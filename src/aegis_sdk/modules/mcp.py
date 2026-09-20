@@ -38,6 +38,17 @@ privilege than a write, so a credential never round-trips out). Both models
 below carry that string verbatim and expose a parsed view through
 ``config_dict``, so a caller can read the SHAPE of a stored config without
 being handed a secret that would not have been readable anyway.
+
+DATASETS: this module also carries the tenant's datasets, the content an
+external MCP client reads through the ingress tools ``list_datasets`` and
+``read_dataset``. They are here rather than in a module of their own because a
+dataset exists in this platform to be SERVED over MCP, and this is the module a
+partner reaches MCP through. They speak the REST route ``/api/v1/datasets``,
+NOT the MCP endpoint: this SDK is an ``HTTPClient`` wrapper, and the MCP
+protocol (initialize handshake, session id, transport framing) is the job of an
+MCP client library, not of a second implementation grown here. The consequence
+is worth stating plainly — a partner who wants the PAGED read uses the MCP
+ingress; a partner who wants to create or manage a dataset uses these verbs.
 """
 
 from __future__ import annotations
@@ -46,7 +57,7 @@ import builtins
 import json
 from typing import TYPE_CHECKING, Any
 
-from pydantic import ConfigDict
+from pydantic import ConfigDict, Field
 
 from .._http import encode_path_param
 from .._tolerant import TolerantModel
@@ -56,15 +67,15 @@ if TYPE_CHECKING:
     from .._http import HTTPClient
 
 
-#: Config key naming a shared server registration a binding references
-#: (``aegis.services.mcp_tool_binding.MCP_SERVER_REF_KEY``). Its presence, and
-#: nothing else, is what makes a row a REFERENCE rather than an inline binding
-#: or a registration. Mirrored rather than imported: ``aegis_sdk`` is a
-#: standalone package and must not depend on the platform's source.
+#: Config key naming a shared server registration a binding references -- the
+#: same key the server recognises. Its presence, and nothing else, is what
+#: makes a row a REFERENCE rather than an inline binding or a registration.
+#: Mirrored rather than imported: ``aegis_sdk`` is a standalone package and
+#: must not depend on the platform's source.
 MCP_SERVER_REF_KEY = "mcpServerId"
 
-#: The keys a reference inherits from its registration, mirroring
-#: ``aegis.services.mcp_tool_binding.MCP_CONNECTION_KEYS``. Deliberately
+#: The keys a reference inherits from its registration, mirroring the server's
+#: own connection-key set. Deliberately
 #: CONNECTION-ONLY: the per-tool grant (``allowed_tools`` / ``allow_all_tools``)
 #: is not inheritable, so a reference can never widen its own authorization by
 #: pointing at a permissively-granted registration. A binding's grant is its
@@ -216,6 +227,56 @@ class McpBinding(TolerantModel):
         return bool(self.config_dict.get("allow_all_tools"))
 
 
+#: Bounds mirrored from the server's own dataset model so a caller learns a
+#: limit from this client rather than from a 422. Mirrored rather than imported:
+#: ``aegis_sdk`` is a standalone package and must not depend on the platform's
+#: source. A paired test derives both from the server module, so a drift reds
+#: rather than being silently accepted.
+DATASET_NAME_MAX = 200
+DATASET_DESCRIPTION_MAX = 2000
+
+#: The column types a dataset may declare, mirroring the server's own closed
+#: set. A dataset is tabular rather
+#: than an unbounded JSON blob precisely because its columns come from a closed
+#: set — a value outside it is a 422, not a stored row nobody can read.
+DATASET_COLUMN_TYPES = frozenset({"string", "number", "boolean", "date", "datetime"})
+
+
+class Dataset(TolerantModel):
+    """One tenant dataset: a column schema plus the rows it holds.
+
+    A dataset is tenant-OWNED CONTENT, not a pointer at data held elsewhere. It
+    is the thing an external MCP client reads through the ingress tools
+    ``list_datasets`` and ``read_dataset``, and this class is the SDK's own view
+    of the same resource — the SDK half of that capability.
+
+    ⛔ ``rows`` IS THE WHOLE STORED SET, AND ITS BOUND IS A DATASET CAP, NOT A
+    PAGE SIZE. A dataset holds at most 1000 rows server-side, so ``rows`` is
+    bounded by that. The PAGED read is the MCP ingress tool ``read_dataset``,
+    which takes ``limit`` and ``offset``; that is a different surface with a
+    different bound, and reaching it needs an MCP client rather than this module.
+
+    ``organization_id`` is carried because the route emits it. It is the
+    caller's OWN tenant, taken by the server from the authenticated session; a
+    body that names one is refused (the route's model sets ``extra="forbid"``,
+    so it is a 422 rather than a silently-ignored field). This is a read of your
+    own scope, never something this client sets.
+    """
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    id: str
+    organization_id: str | None = None
+    name: str
+    description: str = ""
+    columns: builtins.list[dict[str, Any]] = Field(default_factory=list)
+    rows: builtins.list[dict[str, Any]] = Field(default_factory=list)
+    created_by: str | None = None
+    updated_by: str | None = None
+    created_at: str | None = None
+    updated_at: str | None = None
+
+
 class McpModule:
     """
     MCP server registration and agent binding.
@@ -233,6 +294,11 @@ class McpModule:
         - bind_inline(): Attach a self-contained server to an agent
         - list_bindings(): The MCP servers attached to an agent
         - unbind(): Detach one
+        - create_dataset(): Create a tenant dataset
+        - list_datasets(): The calling tenant's datasets
+        - get_dataset(): One dataset by id
+        - update_dataset(): Change a dataset's name, schema or rows
+        - delete_dataset(): Remove one
 
     Example:
         >>> from aegis_sdk import AgenticOSClient
@@ -306,12 +372,17 @@ class McpModule:
             command: Command of a stdio-transported server.
             extra: Additional non-connection config keys to store alongside.
             is_enabled: Whether the holder agent should itself receive this
-                server's tools. Default ``False``; see above.
+                server's tools. MUST be ``False``: a LIVE row cannot carry its
+                own connection settings, so the holder receives them by BINDING
+                to the registration instead. Default ``False``; see above.
 
         Returns:
             McpRegistration: the stored row, with its config redacted.
 
         Raises:
+            ValueError: If ``is_enabled`` is ``True`` — a live row cannot carry
+                its own connection settings; bind the registration to the holder
+                agent instead. See above.
             ValueError: If neither ``url`` nor ``command`` is given — a
                 registration with no destination resolves to nothing on every
                 read, so it is refused before any request.
@@ -338,6 +409,15 @@ class McpModule:
                 f"register_server() cannot store {MCP_SERVER_REF_KEY!r}. That key "
                 f"is what makes a row a BINDING rather than a registration; use "
                 f"bind() to attach a server to an agent."
+            )
+        if is_enabled:
+            raise ValueError(
+                "register_server() cannot store a LIVE registration: the row "
+                "carries the endpoint and its credential with no mcpServerId, so "
+                "a live one would have no single owner to rotate them. A "
+                "registration is STORAGE -- leave is_enabled at its False default "
+                "-- and give the holder agent the server's tools by BINDING to "
+                "it: bind(holder_agent_id, registration.id, ...)."
             )
 
         payload = await self._http.request(
@@ -417,7 +497,20 @@ class McpModule:
         config: dict[str, Any] | None = None,
     ) -> McpRegistration:
         """
-        Rename, re-enable, or replace a stored registration's connection config.
+        Rename, disable, or replace a stored registration's connection config.
+
+        ⛔ A row cannot be LIVE while it carries its own connection settings: an
+        MCP row with no ``mcpServerId`` duplicates the endpoint and its
+        credential with no single owner to rotate them, so the server refuses
+        that state. THIS METHOD CANNOT SEE THE STORED CONFIG, so it decides only
+        what the submission shows: a ``config`` carrying connection settings is
+        written with ``is_enabled=False`` — storage, declared for you — and a
+        ``config`` that names a registration is left alone, so a reference
+        binding can still be enabled. An ``is_enabled=True`` sent WITHOUT a
+        config is passed through and refused by the server when the stored config
+        turns out to be inline. To give an agent the server's tools, bind the
+        registration to it — ``bind(agent_id, registration_id, ...)`` — which is
+        the form a credential rotation can reach.
 
         ``config`` REPLACES the stored connection settings key-wise, so it must
         be the WHOLE blob and not a fragment. That is why there are no loose
@@ -437,13 +530,18 @@ class McpModule:
             name: New name, 1-100 characters.
             description: New description, 1-500 characters.
             is_enabled: Whether the holder agent should receive this server's
-                tools.
+                tools. Passed through unless the submitted ``config`` makes it
+                impossible — see above.
             config: The complete replacement connection config.
 
         Returns:
             McpRegistration: the updated row, with its config redacted.
 
         Raises:
+            ValueError: If ``config`` both names a registration and carries
+                inline connection settings, or if it carries connection settings
+                and the call also asks for ``is_enabled=True`` — a LIVE inline
+                row has no single owner to rotate. See above.
             ValueError: If no field is supplied. The route's body is required and
                 answers 400 for an empty one, so this is refused before any
                 request.
@@ -456,6 +554,43 @@ class McpModule:
         if is_enabled is not None:
             body["is_enabled"] = is_enabled
         if config is not None:
+            ref = config.get(MCP_SERVER_REF_KEY)
+            has_reference = isinstance(ref, str) and bool(ref.strip())
+            # Consumed from the module's own :data:`MCP_CONNECTION_KEYS`, never a
+            # literal kept here. A literal had already lost ``transport`` and
+            # ``type``, so a config whose ONLY inline key was one of those read
+            # as "reference only" and was sent — the caller then got the server's
+            # 422 instead of the local refusal that names the mistake. Two
+            # definitions of "connection key" is the defect; one definition,
+            # consumed here, is the fix. (The server-side twin of this drift is
+            # recorded on ``refuse_unowned_mcp_connection``.)
+            has_inline = any(config.get(key) for key in MCP_CONNECTION_KEYS)
+            if has_reference and has_inline:
+                raise ValueError(
+                    "update_registration() cannot store a config that both "
+                    f"references a registration ({MCP_SERVER_REF_KEY}) and carries "
+                    "inline connection settings: keep the endpoint and credential "
+                    "on the registration, or drop the reference. The route refuses "
+                    "the mix, so this would be a body it cannot accept."
+                )
+            if has_inline and not has_reference:
+                if is_enabled:
+                    raise ValueError(
+                        "update_registration() cannot write connection settings "
+                        "AND leave the row live: an MCP row carrying its own "
+                        "endpoint and credential with no mcpServerId has no single "
+                        "owner to rotate them. Omit is_enabled — it is declared "
+                        "False for you — or store the server once with "
+                        "register_server() and bind() to it."
+                    )
+                # A config replacement with connection settings DECLARES storage.
+                # The route refuses such settings that do not say so, and a
+                # registration IS storage -- so this verb says it rather than
+                # emitting a body the server would refuse, which would take the
+                # credential-rotation path down with it. A config naming a
+                # registration is left alone, so a reference binding can still be
+                # enabled.
+                body["is_enabled"] = False
             body["config"] = config
 
         if not body:
@@ -582,17 +717,23 @@ class McpModule:
         is_enabled: bool = True,
     ) -> McpBinding:
         """
-        Attach a SELF-CONTAINED MCP server to an agent, with no registration.
+        Store a SELF-CONTAINED MCP server on an agent, with no registration.
 
-        The other legal polarity: connection settings on the binding, and NO
-        reference. Correct for a genuine one-off, and the wrong default —
-        nothing here is shared, so rotating a credential means editing every
-        binding that carries it.
+        ⛔ ``is_enabled=False`` IS REQUIRED, and that requirement is the shape
+        of this method. Connection settings with no ``mcpServerId`` have no
+        single owner: the endpoint and its credential would be copied onto
+        every row that carries them, so nothing could rotate them together.
+        Storing them DISABLED is the one legitimate form — the row is a
+        registration on this agent. An enabled row with its own connection
+        settings is refused by the server (422) and refused here first, before
+        any request is sent.
 
-        Prefer :meth:`bind` when more than one agent will use the same server.
+        Prefer :meth:`register_server` once and :meth:`bind` — that is the rule
+        this encodes: rotating the credential on the registration reaches every
+        referencing agent, and rotation can never reach an inline copy.
 
         Args:
-            agent_id: The agent the server is attached to.
+            agent_id: The agent the server is stored on.
             name: Binding name, 1-100 characters.
             description: Binding description, 1-500 characters.
             url: Endpoint of an HTTP-transported server.
@@ -602,14 +743,16 @@ class McpModule:
             extra: Additional non-connection config keys to store alongside.
             allowed_tools: Remote tool names this binding authorizes.
             allow_all_tools: Explicit opt-in to every tool the server advertises.
-            is_enabled: Whether the binding is live. Default ``True``.
+            is_enabled: Whether the row is live. MUST be ``False`` here: an
+                enabled row cannot carry its own connection settings.
 
         Returns:
-            McpBinding: the created binding, ``is_reference`` False.
+            McpBinding: the created row, ``is_reference`` False.
 
         Raises:
-            ValueError: If neither ``url`` nor ``command`` is given — an inline
-                binding with no destination resolves to nothing at load time.
+            ValueError: If neither ``url`` nor ``command`` is given — a row
+                with no destination resolves to nothing at load time.
+            ValueError: If ``is_enabled`` is not ``False`` — see above.
         """
         config: dict[str, Any] = dict(extra or {})
         if url is not None:
@@ -627,6 +770,22 @@ class McpModule:
                 "bind_inline() requires url= (HTTP transport) or command= "
                 "(stdio transport). Without a destination the binding resolves "
                 "to no session and the agent comes up without the tools."
+            )
+        if MCP_SERVER_REF_KEY in config:
+            raise ValueError(
+                f"bind_inline() cannot store {MCP_SERVER_REF_KEY!r}: that key is "
+                "what makes a row a BINDING by reference, and a row carrying it "
+                "must not also carry inline connection settings. Use bind() to "
+                "attach a stored registration, or drop the key."
+            )
+        if is_enabled is not False:
+            raise ValueError(
+                "bind_inline() cannot store a LIVE binding: connection settings "
+                "with no mcpServerId have no single owner, so the endpoint and "
+                "its credential would be copied onto every row that carries them "
+                "and nothing could rotate them together. Pass is_enabled=False "
+                "to store them as a registration on this agent, or store the "
+                "server once with register_server() and reference it with bind()."
             )
 
         payload = await self._http.request(
@@ -680,6 +839,211 @@ class McpModule:
         )
 
     # ------------------------------------------------------------------
+    # Datasets -- the tenant content this ingress serves
+    # ------------------------------------------------------------------
+    #
+    # Why these live on the MCP module, given that they are not MCP servers: a
+    # dataset exists here to be SERVED TO AN MCP CLIENT, and this is the module
+    # a partner reaches MCP through. They speak the platform's REST route rather
+    # than the MCP endpoint because this SDK is an HTTP client and NOT a second
+    # MCP implementation -- see the module docstring.
+
+    @staticmethod
+    def _validate_dataset_fields(*, name: str | None, description: str | None) -> None:
+        """Refuse what this client can see is wrong, before spending a request.
+
+        Both bounds mirror the server's own dataset model and it enforces them
+        too (a violation is a 422). Checking locally is the disposition
+        :meth:`register_server` already takes toward a destination-less
+        registration: a locally detectable mistake is refused, not sent.
+        """
+        if name is not None:
+            if not name.strip():
+                raise ValueError("name must be a non-empty string")
+            if len(name) > DATASET_NAME_MAX:
+                raise ValueError(f"name must be at most {DATASET_NAME_MAX} characters")
+        if description is not None and len(description) > DATASET_DESCRIPTION_MAX:
+            raise ValueError(
+                f"description must be at most {DATASET_DESCRIPTION_MAX} characters"
+            )
+
+    async def create_dataset(
+        self,
+        *,
+        name: str,
+        description: str = "",
+        columns: builtins.list[dict[str, Any]] | None = None,
+        rows: builtins.list[dict[str, Any]] | None = None,
+    ) -> Dataset:
+        """
+        Create a dataset owned by the calling tenant.
+
+        Emits ``POST /api/v1/datasets``. The owning organization is taken from
+        the authenticated session and is deliberately NOT a parameter: the
+        route's body model forbids one, so a caller naming a tenant would be
+        refused rather than silently served its own data.
+
+        Args:
+            name: Dataset name, 1-`DATASET_NAME_MAX` characters.
+            description: Free text, at most `DATASET_DESCRIPTION_MAX` characters.
+            columns: The column schema, ``[{"name": ..., "type": ...}]`` with the
+                type drawn from :data:`DATASET_COLUMN_TYPES`. Empty is legal: a
+                dataset may exist before its schema is decided.
+            rows: The rows to ingest. Each row's keys must name declared columns.
+
+        Returns:
+            Dataset: the created row.
+
+        Raises:
+            ValueError: If ``name`` is blank or over-length, or ``description``
+                is over-length. Raised before any request is made.
+            ValidationError: If the server rejects the schema or the rows (422).
+        """
+        self._validate_dataset_fields(name=name, description=description)
+        payload = await self._http.request(
+            "POST",
+            "/api/v1/datasets",
+            json_data={
+                "name": name,
+                "description": description,
+                "columns": list(columns or []),
+                "rows": list(rows or []),
+            },
+        )
+        return Dataset(**payload)
+
+    async def list_datasets(self) -> builtins.list[Dataset]:
+        """
+        List the calling tenant's datasets.
+
+        Emits ``GET /api/v1/datasets``.
+
+        ⛔ THE RESULT IS NOT THE COMPLETE SET, AND THIS METHOD CANNOT SAY SO.
+        The collection route accepts no paging window and the service applies its
+        own page default, so a tenant holding more datasets than that sees the
+        first page with no signal that it was truncated. The route does return a
+        ``total``; it is not surfaced here because there is no way to ask this
+        route for the next page, so a caller could learn it was truncated and
+        still not be able to act on it.
+
+        The PAGED dataset surface is the MCP ingress (``/api/v1/mcp``), whose
+        ``list_datasets`` tool takes ``limit`` and ``offset``. Reach it with an
+        MCP client; this module is an ``HTTPClient`` wrapper and does not speak
+        the MCP protocol.
+
+        Returns:
+            The datasets on the first page, in the order the platform returns
+            them. May be empty.
+        """
+        payload = await self._http.request("GET", "/api/v1/datasets")
+        records = payload.get("records") if isinstance(payload, dict) else None
+        return [Dataset(**row) for row in (records or []) if isinstance(row, dict)]
+
+    async def get_dataset(self, dataset_id: str) -> Dataset:
+        """
+        Read one dataset, tenant-verified.
+
+        Emits ``GET /api/v1/datasets/{dataset_id}``.
+
+        A dataset belonging to ANOTHER TENANT and one that does not exist are
+        answered identically, as ``404``. That is the non-inference property
+        rather than an oversight: a distinguishable answer would let a caller
+        enumerate another tenant's dataset ids.
+
+        Args:
+            dataset_id: The id, as returned by :meth:`create_dataset` or
+                :meth:`list_datasets`.
+
+        Returns:
+            Dataset: the dataset, including its whole stored row set.
+
+        Raises:
+            NotFoundError: If no dataset with that id belongs to this tenant.
+        """
+        payload = await self._http.request(
+            "GET", f"/api/v1/datasets/{encode_path_param(dataset_id)}"
+        )
+        return Dataset(**payload)
+
+    async def update_dataset(
+        self,
+        dataset_id: str,
+        *,
+        name: str | None = None,
+        description: str | None = None,
+        columns: builtins.list[dict[str, Any]] | None = None,
+        rows: builtins.list[dict[str, Any]] | None = None,
+    ) -> Dataset:
+        """
+        Update one dataset, tenant-verified.
+
+        Emits ``PUT /api/v1/datasets/{dataset_id}``.
+
+        ``None`` means LEAVE UNCHANGED, and the key is OMITTED rather than sent
+        as ``null``. The server distinguishes absent from null, so sending
+        ``name: None`` explicitly would be a different request than the caller
+        asked for.
+
+        A schema change re-validates the STORED rows against the new columns, so
+        changing ``columns`` alone succeeds only while those rows still conform.
+        When the new schema invalidates them, send ``rows`` in the same call.
+
+        Args:
+            dataset_id: The id of the dataset to update.
+            name: New name, or ``None`` to leave it.
+            description: New description, or ``None`` to leave it.
+            columns: Replacement column schema, or ``None`` to leave it.
+            rows: Replacement rows, or ``None`` to leave them.
+
+        Returns:
+            Dataset: the dataset as persisted, read back after the write.
+
+        Raises:
+            ValueError: If ``name`` is blank or over-length, or ``description``
+                is over-length. Raised before any request is made.
+            NotFoundError: If no dataset with that id belongs to this tenant.
+            ValidationError: If the server rejects the schema or the rows (422).
+        """
+        self._validate_dataset_fields(name=name, description=description)
+
+        update_fields: dict[str, Any] = {}
+        if name is not None:
+            update_fields["name"] = name
+        if description is not None:
+            update_fields["description"] = description
+        if columns is not None:
+            update_fields["columns"] = list(columns)
+        if rows is not None:
+            update_fields["rows"] = list(rows)
+
+        payload = await self._http.request(
+            "PUT",
+            f"/api/v1/datasets/{encode_path_param(dataset_id)}",
+            json_data=update_fields,
+        )
+        return Dataset(**payload)
+
+    async def delete_dataset(self, dataset_id: str) -> None:
+        """
+        Delete one dataset, tenant-verified.
+
+        Emits ``DELETE /api/v1/datasets/{dataset_id}``.
+
+        Returns nothing. There is no partial outcome to report: a dataset that
+        is not this tenant's is a ``NotFoundError``, never a silent no-op, so a
+        caller that reaches the end of this method knows the dataset is gone.
+
+        Args:
+            dataset_id: The id of the dataset to delete.
+
+        Raises:
+            NotFoundError: If no dataset with that id belongs to this tenant.
+        """
+        await self._http.request(
+            "DELETE", f"/api/v1/datasets/{encode_path_param(dataset_id)}"
+        )
+
+    # ------------------------------------------------------------------
     # Internals
     # ------------------------------------------------------------------
 
@@ -719,6 +1083,10 @@ class McpModule:
 
 
 __all__ = [
+    "DATASET_COLUMN_TYPES",
+    "DATASET_DESCRIPTION_MAX",
+    "DATASET_NAME_MAX",
+    "Dataset",
     "MCP_CONNECTION_KEYS",
     "MCP_SERVER_REF_KEY",
     "McpBinding",

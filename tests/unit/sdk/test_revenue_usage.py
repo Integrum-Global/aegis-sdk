@@ -8,13 +8,10 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from aegis_sdk.exceptions import NotFoundError
+from aegis_sdk.exceptions import NotFoundError, UnsupportedOperationError
 from aegis_sdk.revenue.usage import UsageModule
 from aegis_sdk.types import (
-    ResourceType,
     Usage,
-    UsageBreakdown,
-    UsageHistory,
 )
 
 
@@ -83,80 +80,87 @@ class TestUsageModule:
         assert result.agent_execution.unlimited is True
         assert result.storage.unlimited is False
 
-    async def test_get_history_returns_empty_without_analytics(self, mock_http, usage_module):
-        """get_history() should return empty list when analytics not available."""
-        # Simulate analytics endpoint not deployed (404)
+    async def test_get_history_raises_because_there_is_no_route(self, mock_http, usage_module):
+        """get_history() ALWAYS raises — the route has never existed.
+
+        This replaces `test_get_history_returns_empty_without_analytics`, which
+        asserted `result == []`. That assertion was the defect stated as a
+        contract: the method swallowed the 404 and returned an empty list, so a
+        caller could not distinguish "no usage in this period" from "this
+        endpoint does not exist". Both answers were `[]`.
+
+        The old test described the 404 as "analytics endpoint not deployed" — a
+        DEPLOYMENT state. It is not; the API exposes no `/analytics/usage/*`
+        routes at all, so there is no version of the world in which this method
+        returns data.
+        """
         mock_http.request = AsyncMock(side_effect=NotFoundError("Not Found"))
 
-        result = await usage_module.get_history(
-            start_date="2024-01-01",
-            end_date="2024-01-31",
-        )
+        with pytest.raises(UnsupportedOperationError) as excinfo:
+            await usage_module.get_history(
+                start_date="2024-01-01",
+                end_date="2024-01-31",
+            )
 
-        # Should return empty list, not raise exception
-        assert result == []
+        # The message must NAME the gap, not merely fail.
+        assert "/analytics/usage/history" in str(excinfo.value)
+        # And nothing was requested: the raise precedes any HTTP call, so the
+        # mock is never invoked. This is the property that distinguishes
+        # "retired" from "down" — retrying would be meaningless.
+        mock_http.request.assert_not_called()
 
-    async def test_get_history_with_analytics(self, mock_http, usage_module):
-        """get_history() should return historical data when available."""
-        mock_http.request = AsyncMock(
-            return_value={
-                "history": [
-                    {
-                        "date": "2024-01-01",
-                        "resource_type": "agent_execution",
-                        "usage": 100,
-                        "limit": 10000,
-                    },
-                    {
-                        "date": "2024-01-02",
-                        "resource_type": "agent_execution",
-                        "usage": 150,
-                        "limit": 10000,
-                    },
-                ]
-            }
-        )
+    async def test_get_history_raises_even_when_the_transport_would_succeed(
+        self, mock_http, usage_module
+    ):
+        """A transport that would return data does not make the method work.
 
-        result = await usage_module.get_history(
-            start_date="2024-01-01",
-            end_date="2024-01-31",
-            resource_type="agent_execution",
-        )
+        This replaces `test_get_history_with_analytics`, which asserted
+        `len(result) == 2` against a mocked success. That test described an
+        endpoint that does not exist — a green assertion about a route the
+        server has never mounted.
+        """
+        mock_http.request = AsyncMock(return_value={"history": [{"date": "2024-01-01"}]})
 
-        assert len(result) == 2
-        assert all(isinstance(h, UsageHistory) for h in result)
+        with pytest.raises(UnsupportedOperationError):
+            await usage_module.get_history(
+                start_date="2024-01-01",
+                end_date="2024-01-31",
+                resource_type="agent_execution",
+            )
 
-    async def test_get_breakdown_returns_empty_without_analytics(self, mock_http, usage_module):
-        """get_breakdown() should return empty breakdown when analytics not available."""
+        mock_http.request.assert_not_called()
+
+    async def test_get_breakdown_raises_because_there_is_no_route(self, mock_http, usage_module):
+        """get_breakdown() ALWAYS raises — see get_history above.
+
+        Replaces `test_get_breakdown_returns_empty_without_analytics`, which
+        asserted an empty-but-valid `UsageBreakdown`. That is the silent
+        false-negative this change removes.
+        """
         mock_http.request = AsyncMock(side_effect=NotFoundError("Not Found"))
 
-        result = await usage_module.get_breakdown(
-            resource_type="agent_execution",
-            dimension="agent",
-        )
+        with pytest.raises(UnsupportedOperationError) as excinfo:
+            await usage_module.get_breakdown(
+                resource_type="agent_execution",
+                dimension="agent",
+            )
 
-        assert isinstance(result, UsageBreakdown)
-        assert result.resource_type == ResourceType.AGENT_EXECUTION
-        # Breakdown data should be empty/None
-        assert result.by_agent is None or result.by_agent == {}
+        assert "/analytics/usage/breakdown" in str(excinfo.value)
+        mock_http.request.assert_not_called()
 
-    async def test_get_breakdown_with_analytics(self, mock_http, usage_module):
-        """get_breakdown() should return breakdown when available."""
-        mock_http.request = AsyncMock(
-            return_value={
-                "by_agent": {
-                    "agent_1": 500,
-                    "agent_2": 300,
-                    "agent_3": 200,
-                }
-            }
-        )
+    async def test_get_breakdown_raises_even_when_the_transport_would_succeed(
+        self, mock_http, usage_module
+    ):
+        """A transport that would return data does not make the method work.
 
-        result = await usage_module.get_breakdown(
-            resource_type="agent_execution",
-            dimension="agent",
-        )
+        Replaces `test_get_breakdown_with_analytics`.
+        """
+        mock_http.request = AsyncMock(return_value={"by_agent": {"agent_1": 500}})
 
-        assert isinstance(result, UsageBreakdown)
-        assert result.by_agent is not None
-        assert result.by_agent["agent_1"] == 500
+        with pytest.raises(UnsupportedOperationError):
+            await usage_module.get_breakdown(
+                resource_type="agent_execution",
+                dimension="agent",
+            )
+
+        mock_http.request.assert_not_called()

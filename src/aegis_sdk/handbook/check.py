@@ -83,6 +83,7 @@ import ast
 import json
 import re
 import sys
+from collections import Counter
 from pathlib import Path
 
 HANDBOOK = Path(__file__).resolve().parent
@@ -113,8 +114,38 @@ _PROSE_ROOTS: tuple[tuple[Path, Path, Path], ...] = (
     (COC, PACKAGE_ROOT, COC_FLOOR_PATH),
 )
 
-#: ``api:METHOD /path`` or ``sdk:dotted.name``, inside backticks.
-ANCHOR = re.compile(r"`(api|sdk):([^`]+)`")
+#: ``api:METHOD /path``, ``sdk:dotted.name`` or ``pkg:dotted.name``, in backticks.
+ANCHOR = re.compile(r"`(api|sdk|pkg):([^`]+)`")
+
+#: Each SYMBOL kind fences to exactly ONE import root, and they are SIBLINGS
+#: rather than one widened kind. ``sdk:`` names the client this package IS;
+#: ``pkg:`` names the runtime the platform is built ON -- which a partner
+#: genuinely pip-installs, so a ``pkg:`` anchor resolves on the partner's own
+#: machine. That is the property that makes an anchor legitimate here, and it is
+#: why the runtime chapter's claims are anchorable at all.
+#:
+#: A kind resolving ANY importable root would not be a fence. Keep them disjoint:
+#: ``pkg:aegis_sdk.X`` and ``sdk:kailash.X`` are both REFUSED.
+_SYMBOL_ROOTS = {"sdk": "aegis_sdk", "pkg": "kailash"}
+
+#: A structural, per-file declaration that a chapter carries no floor, written
+#: BESIDE the artifact rather than as a list inside this gate. Three values, and
+#: they are NOT synonyms:
+#:
+#:   exempt         the subject genuinely has no anchorable surface
+#:   ungrammatical  the claims are load-bearing and THIS GRAMMAR cannot express
+#:                  them (a front-end route; a symbol under no fenced root)
+#:   draft          in authoring; the floor is not yet meaningful
+#:
+#: ``ungrammatical`` exists so a GRAMMAR GAP is never filed as "anchor-free".
+#: The two are indistinguishable once written down, and the wrong one is the
+#: reason nobody revisits it. Its PRINTED COUNT is the signal a third kind is owed.
+#:
+#: HONEST CEILING, stated because the marker must not be over-read: a ``draft``
+#: nobody removes is the same vacuity in a new spelling. This makes an omission
+#: LOUD AND ATTRIBUTABLE in every run; it does not make it impossible. Only a
+#: clock would, and a clock on a required gate reds a code PR for a calendar.
+MARKER = re.compile(r"<!--\s*anchor-floor:\s*(exempt|ungrammatical|draft)\b[^>]*-->")
 
 #: A markdown link to another chapter: ``[text](../part/chapter.md)``. Only
 #: ``.md`` targets are checked — an ``http(s)`` link cannot be resolved offline,
@@ -190,13 +221,13 @@ def declared_operations(package_root: Path = PACKAGE_ROOT) -> set[tuple[str, str
     return found
 
 
-def _resolves_as_symbol(dotted: str) -> bool:
-    """Walk ``aegis_sdk.a.b.C.method`` by import then getattr.
+def _resolves_as_symbol(dotted: str, root: str = "aegis_sdk") -> bool:
+    """Walk ``<root>.a.b.C.method`` by import then getattr.
 
     An import failure is a FAILURE to resolve, never a pass. A gate that treats
     an unimportable module as "probably fine" reports silence it did not earn.
     """
-    if dotted != "aegis_sdk" and not dotted.startswith("aegis_sdk."):
+    if dotted != root and not dotted.startswith(root + "."):
         return False
     parts = dotted.split(".")
     module = None
@@ -317,6 +348,22 @@ def _gated_prose() -> list[tuple[str, Path]]:
     return sorted(out)
 
 
+def _markers() -> dict[str, str]:
+    """``{floor key: marker value}`` for every gated file carrying one.
+
+    Whitespace-normalised for the same reason the anchor scan is: prose here
+    wraps at ~80 columns and a marker split across a newline would be invisible
+    to a line-oriented match.
+    """
+    out: dict[str, str] = {}
+    for rel, md in _gated_prose():
+        text = md.read_text(encoding="utf-8", errors="replace")
+        hit = MARKER.search(re.sub(r"\s+", " ", text))
+        if hit:
+            out[rel] = hit.group(1)
+    return out
+
+
 def _load_floors(path: Path) -> dict[str, int]:
     if not path.exists():
         return {}
@@ -366,8 +413,12 @@ def scan(root: Path | None = None) -> tuple[dict[str, int], list[str]]:
                     continue
                 if (bits[0], normalise_path(bits[1])) not in ops:
                     problems.append(f"{rel}: `api:{body}` — this client declares no such operation")
-            elif not _resolves_as_symbol(body.strip()):
-                problems.append(f"{rel}: `sdk:{body}` — not a symbol this package exports")
+            else:
+                root = _SYMBOL_ROOTS[kind]
+                if not _resolves_as_symbol(body.strip(), root):
+                    problems.append(
+                        f"{rel}: `{kind}:{body}` — not a symbol `{root}` exports"
+                    )
         counts[rel] = n
     return counts, problems
 
@@ -426,13 +477,48 @@ def check(sync: bool = False) -> int:
                 " grounding. Re-anchor it; do not lower the floor."
             )
 
+    # REGISTRATION -- iterate the FILES, never the floors. The loop above reads
+    # the FLOORS, so it is structurally blind to a chapter carrying no floor key
+    # at all, and a floor of 0 passes identically to no key. Measured before this
+    # check existed: 19 of 105 chapters sat at floor 0, a 248-line chapter could
+    # be gutted to 3 lines, and a brand-new unfloored chapter could be added --
+    # with the gate reporting OK and exit 0 through all of it.
+    marks = _markers()
+    for rel in sorted(counts):
+        if rel in marks:
+            continue
+        floor = floors.get(rel)
+        if floor is None:
+            problems.append(
+                f"{rel}: no floor and no anchor-floor marker — run --sync to "
+                "register it, or declare beside the chapter why it carries none"
+            )
+        elif floor == 0:
+            problems.append(
+                f"{rel}: floor is 0 and no anchor-floor marker — a zero floor "
+                "asserts nothing. Anchor a claim, or declare beside the chapter "
+                "why it carries none"
+            )
+
     problems.extend(links)
 
+    # THE DENOMINATOR. Without it "0 findings" and "nothing was checked" print
+    # identically, and the marker counts are what keep a `draft` nobody removes
+    # visible in every single run rather than silent.
+    by_mark = Counter(marks.values())
+    zeroed = sum(1 for r in counts if floors.get(r) == 0)
+    unfloored = sum(1 for r in counts if r not in floors)
     print(f"chapters          : {len(counts)}")
     print(f"anchors           : {sum(counts.values())}")
     print(f"declared ops      : {len(declared_operations())}")
     print(f"links checked     : {links_checked} (across {link_files} file(s))")
     print(f"broken links      : {len(links)}")
+    print(
+        f"floored           : {len(counts) - zeroed - unfloored} of {len(counts)}"
+        f"  ·  {zeroed} at floor 0  ·  {unfloored} unfloored  ·  "
+        f"{by_mark['draft']} draft  ·  {by_mark['exempt']} exempt  ·  "
+        f"{by_mark['ungrammatical']} ungrammatical"
+    )
     if problems:
         print(f"\nFAIL: {len(problems)} finding(s)")
         for p in problems:

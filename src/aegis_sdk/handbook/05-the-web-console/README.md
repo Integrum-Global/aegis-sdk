@@ -1,5 +1,7 @@
 # Part 05 — The web console
 
+<!-- anchor-floor: exempt (part navigation; chapters carry the anchors) -->
+
 **Audience: anyone with a login — including you.**
 
 This part is written entirely from the running application: no code, no
@@ -7,7 +9,7 @@ configuration, no assumed knowledge of how any of it is built. What it contains
 instead is a plain account of what you are looking at, screen by screen.
 
 **Two reasons an architect or operator should read it anyway.** First, this is
-where *you* answer a held decision — approvals are attributable to a named human,
+where _you_ answer a held decision — approvals are attributable to a named human,
 and the console is where you are authenticated as yourself rather than as a
 provisioning key. Second, this is what everyone else in the organisation will
 ever see of the system you designed; chapter 05.5 in particular, on why things
@@ -19,14 +21,14 @@ Where this part says "click", part 02 says which call it makes.
 
 ## The chapters
 
-| # | Chapter | What it answers |
-|---|---------|-----------------|
-| 1 | [First login](01-first-login.md) | What you see the first time, and what to do with it |
-| 2 | [Submitting an objective](02-submitting-an-objective.md) | How to ask for work, and why it asks you questions back |
-| 3 | [Your inbox](03-your-inbox.md) | The things waiting for you, and which ones are urgent |
-| 4 | [When something is held](04-when-something-is-held.md) | Why work stops, what "held" means, and where to look — including why the approvals queue can be empty even though something was held |
-| 5 | [What you can see, and why](05-what-you-can-see.md) | Why some things are invisible to you, and why that is deliberate |
-| 6 | [The rest of your workspace](06-the-rest-of-your-workspace.md) | The five remaining entries in your navigation, and whether you can change anything in them |
+| #   | Chapter                                                        | What it answers                                                                                                                      |
+| --- | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | [First login](01-first-login.md)                               | What you see the first time, and what to do with it                                                                                  |
+| 2   | [Submitting an objective](02-submitting-an-objective.md)       | How to ask for work, and why it asks you questions back                                                                              |
+| 3   | [Your inbox](03-your-inbox.md)                                 | The things waiting for you, and which ones are urgent                                                                                |
+| 4   | [When something is held](04-when-something-is-held.md)         | Why work stops, what "held" means, and where to look — including why the approvals queue can be empty even though something was held |
+| 5   | [What you can see, and why](05-what-you-can-see.md)            | Why some things are invisible to you, and why that is deliberate                                                                     |
+| 6   | [The rest of your workspace](06-the-rest-of-your-workspace.md) | The five remaining entries in your navigation, and whether you can change anything in them                                           |
 
 ## Three things worth knowing before you start
 
@@ -51,29 +53,29 @@ happened rather than a reconstruction.
 
 ## About the screenshots
 
-**Six of the screens in this part have a picture, and every picture was taken
-from a fictional company.** That company is Northwind Manufacturing — its
-people, agents, objectives and figures invented, its email addresses on a
-reserved domain that cannot reach a real mailbox. Nothing in any image is any
-organisation's real data, and none of it came from a live deployment. That is a
-hard rule rather than a preference: blurring a real name does not remove it, and
-the only safe method is to photograph data that was never real.
+**Every picture in this part was taken from a fictional company.** That company
+is Northwind Manufacturing — its people, agents, objectives and figures
+invented, its email addresses on a reserved domain that cannot reach a real
+mailbox. Nothing in any image is any organisation's real data, and none of it
+came from a live deployment. That is a hard rule rather than a preference:
+blurring a real name does not remove it, and the only safe method is to
+photograph data that was never real.
 
-**Where a picture is still missing, the page says so in place.** Six screens in
-this part carry a marked placeholder instead of an image, naming the exact
-screen, the state it has to be in, and who has to be logged in to see it. Read
-those as instructions rather than apologies — each tells you which screen the
-paragraphs beside it are describing, so the text stands on its own. A mocked-up
-picture of a governance product would be worse than a missing one, because you
-could not tell it apart from the real screen.
+**Each marked placeholder names the exact screen, the state it has to be in,
+and who has to be logged in to see it.** Read those as instructions: each tells
+you which screen the paragraphs beside it are describing, so the text stands on
+its own.
 
-**Some screens are photographed empty, and that is the honest picture.** The
-demo company has an organisation, roles, agents and work; it does not have every
-kind of record. Where a list is empty in an image, the caption says why. Chapter
-4 makes the argument that matters here: an empty queue is not evidence that
-nothing was held.
+**Some screens are photographed empty, and the caption says why.** The demo
+company has an organisation, roles, agents and work; it does not have every kind
+of record. Chapter 4 makes the argument that matters here: an empty queue is not
+evidence that nothing was held.
 
 Where an image does not quite match what you see, the difference will be your
 own organisation's configuration — its unit names, its clearances, what your
 role is allowed to do — not a different version of the software. The shape will
 be the same.
+
+---
+
+_Next: [05.1 — First login](01-first-login.md)_

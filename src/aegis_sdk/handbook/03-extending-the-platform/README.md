@@ -1,5 +1,7 @@
 # Part 03 — Extending the platform
 
+<!-- anchor-floor: exempt (part navigation; chapters carry the anchors) -->
+
 **Audience: you are adding a capability.** Part 02 was about describing and
 running a governed organisation with what is already there. This part is about
 giving it something new to do — a tool an agent can call, an agent configured for
@@ -43,19 +45,19 @@ about it have mechanical answers. 03.1 opens with the full comparison.
 The chapters here are the explanation. The **working** half ships beside them,
 under `aegis_sdk/coc/`, and three of those artifacts are this part's subject:
 
-| artifact | use it when |
-| --- | --- |
-| [`coc/skills/registering-a-tool-or-agent.md`](../../coc/skills/registering-a-tool-or-agent.md) | you are actually registering something — the order of operations, condensed |
-| [`coc/agents/aegis-sdk-specialist.md`](../../coc/agents/aegis-sdk-specialist.md) | you are building against the client and want its brief rather than its prose |
-| [`coc/skills/diagnosing-a-refusal.md`](../../coc/skills/diagnosing-a-refusal.md) | your extension was refused and you need to know which kind of refusal it was |
+| artifact                                                                                       | use it when                                                                  |
+| ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| [`coc/skills/registering-a-tool-or-agent.md`](../../coc/skills/registering-a-tool-or-agent.md) | you are actually registering something — the order of operations, condensed  |
+| [`coc/agents/aegis-sdk-specialist.md`](../../coc/agents/aegis-sdk-specialist.md)               | you are building against the client and want its brief rather than its prose |
+| [`coc/skills/diagnosing-a-refusal.md`](../../coc/skills/diagnosing-a-refusal.md)               | your extension was refused and you need to know which kind of refusal it was |
 
-Have the skill open while you work and this part open when you want to know *why*.
+Have the skill open while you work and this part open when you want to know _why_.
 [Chapter 01.1](../01-orientation/01-what-you-were-given.md) carries the full linked
 corpus, including the guardrails 03.4, 03.5 and 03.6 point at.
 
-**If a chapter here and one of those skills disagree, that is a defect in one of
-them, not a matter of taste** — they are meant to be the same claim at two
-resolutions. Report it rather than choosing.
+**A chapter here and its companion skill are the same claim at two
+resolutions.** If they ever disagree, report it rather than choosing between
+them.
 
 ## Read 01.2 first if you have not
 
@@ -71,22 +73,21 @@ the outbound call, you are designing a component that does not exist.
 [Chapter 01.2](../01-orientation/02-the-mental-model.md) is short and it is the
 load-bearing one.
 
-## Two open defects you will meet
+## Two things about authorization to settle before you register anything
 
-Both are documented in full in [chapter 04.1](../04-the-api-surface/01-calling-the-api.md).
-Named here so you recognise the symptom before you spend a day on it.
+Both are covered in full in [chapter 04.1](../04-the-api-surface/01-calling-the-api.md).
+Named here because registration is a _write_, and the write surface is where
+they matter most.
 
-- **A large number of routes are unreachable by _every_ API key regardless of
-  scopes**, and the denial is a generic 403 that reads exactly like a scope
-  problem. If you are debugging API-key authorization and your scopes look right,
-  they probably are — 04.1 gives you a one-minute test that settles it. This bites
-  hardest in this part, because registration is a _write_ and the write surface is
-  where it concentrates.
-- **Two functions share the name `require_permission` and they enforce different
-  things** — one checks role-based permissions only, the other also checks the
-  attribute-based rules. Only the import path tells them apart. An earlier report
-  that the alternate handler surface was the role-only one has since been fixed;
-  that helper now checks both. **The naming hazard is what remains.**
+- **Personas belong to sessions; scopes belong to keys.** A route gated on
+  personas wants a user session, and a wider scope will not substitute for one.
+  If you are debugging API-key authorization and your scopes look right, they
+  probably are — 04.1 gives you a one-minute test that tells you which model a
+  route follows.
+- **A permission your role holds can still be refused.** Denials reach you as
+  HTTP refusals on the routes you call, and the response names the permission
+  and not what evaluated it — so re-granting the role is not the diagnosis and
+  will not clear it. 04.1 gives you the order to work through instead.
 
 ## Three defaults in this part that are not what you would guess
 
@@ -112,18 +113,10 @@ not given. Verify them against your own installed package:
 python -m aegis_sdk.handbook.check
 ```
 
-Where something could not be settled it says **UNVERIFIED** rather than guessing;
-where a claim is about design _intent_ rather than observed behaviour it says
-_design intent, not observable_; and where behaviour is currently broken it says
-so. A handbook that describes the intended design as if it were the shipped
-design is worse than no handbook.
-
-**Be precise about what a green check means, because this part contains a worked
-example of its limit.** Chapter 03.2 carries a correction: three `api:` anchors for
-agent-execution polling all resolve — the client genuinely declares those
-operations — and all three return 404, because the server does not serve them. A
-resolving anchor proves this client believes an operation exists. It never proves
-the server answers.
+A resolving anchor tells you the operation exists in the surface you were given.
+Where a claim is about what the server **enforces**, this part says so
+explicitly — and chapter 03.2 shows you how to confirm a route end to end rather
+than inferring it from the client alone.
 
 ## What this part is careful about
 
@@ -140,3 +133,7 @@ trail, the fail-closed gate, the attestable lineage — that lets that organisat
 show an auditor how it discharged the accountability it already had. Build
 accordingly: the artifacts you produce are evidence, and evidence that cannot be
 shown to a third party is not doing its job.
+
+---
+
+_Next: [03.1 — Writing a tool an agent can call](01-writing-a-tool.md)_

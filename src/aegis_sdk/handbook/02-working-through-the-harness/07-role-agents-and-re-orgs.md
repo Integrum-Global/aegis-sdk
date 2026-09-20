@@ -49,7 +49,7 @@ UNPARENTED** — `reports_to_role_id` is null, so it is a root of the reporting
 tree rather than a child of anything. Nothing warns you. Parent it explicitly:
 
 ```python
-await client.roles.update(primary_role_id, reports_to_role_id=parent_role_id)
+await client.role_admin.update(primary_role_id, reports_to_role_id=parent_role_id)
 ```
 
 An unparented lead role is not cosmetic. Trust chains follow the reporting
@@ -67,8 +67,17 @@ role = await client.roles.create(
     title="Head of Treasury",
     authority_level=3,
 )
-await client.roles.assign_user(role["id"], user_id=user_id)
+await client.role_admin.assign_user(role["id"], user_id=user_id)
 ```
+
+⚠ **Two role surfaces, and this chapter uses both.** `client.roles` carries
+`create`, `get` and `list` on `/api/v1/organization-roles` and returns untyped
+dicts — which is why `role["id"]` works above and would not if you reached for
+the typed client instead. Everything that *administers* a role that already
+exists — updating it, seating or vacating its occupant, linking or unlinking its
+agent — is on `client.role_admin`, the full `/api/v1/roles` surface, and returns
+typed models. A call written against the wrong one fails with `AttributeError`
+before it reaches the server.
 
 You may legitimately stop after the first call. A seat with nobody in it is a
 valid, workable state — see § "Standing up a lead seat nobody occupies yet".
@@ -146,7 +155,7 @@ role, or move the role between units. `reports_to_role_id` is the safest field i
 this whole surface to change:
 
 ```python
-await client.roles.update(role_id, reports_to_role_id=new_manager_role_id)
+await client.role_admin.update(role_id, reports_to_role_id=new_manager_role_id)
 ```
 
 The write is confined to the field you named. It does legitimately propagate —
@@ -165,8 +174,8 @@ operation can half-succeed.
 If you must separate a person from a seat, do it in this order:
 
 ```python
-await client.roles.unlink_agent(role_id, agent_id)      # 1. break the role -> agent pointer
-await client.roles.unassign_user(role_id, user_id)     # 2. now vacate the seat
+await client.role_admin.unlink_agent(role_id, agent_id)      # 1. break the role -> agent pointer
+await client.role_admin.unassign_user(role_id, user_id)      # 2. now vacate the seat
 ```
 
 **Unlinking first leaves the vacate step nothing to act on.** Every cascade in
@@ -215,7 +224,7 @@ direction you want.
 ## 6. Un-linking an agent — know what it leaves behind
 
 ```python
-await client.roles.unlink_agent(role_id, agent_id)
+await client.role_admin.unlink_agent(role_id, agent_id)
 ```
 
 This clears the role's pointer to the agent. **It does not touch the agent** — the

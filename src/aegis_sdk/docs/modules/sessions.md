@@ -280,27 +280,32 @@ async for message in client.sessions.stream_messages(
 
 ### Stream All Events (SSE)
 
-Stream messages, artifacts, status changes, and subagent events:
+Stream agent activity, subagent spawns and cost updates. Each event is a frame
+with a `type` and a nested `data` payload; the per-agent model is `data["model"]`
+(`""` when unresolved):
 
 ```python
 from typing import Any, Dict
 
 async for event in client.sessions.stream_events(
     "ses_abc123",
-    event_types=["message", "artifact", "status", "subagent"],
+    event_types=["progress_update", "subagent_spawned"],
 ):
     event_type: str = event.get("type", "unknown")
     data: Dict[str, Any] = event.get("data", {})
+    model = data.get("model") or "model unresolved"
 
-    if event_type == "message":
-        print(f"Message [{data.get('role')}]: {data.get('content')}")
-    elif event_type == "artifact":
-        print(f"Artifact: {data.get('name')}")
-    elif event_type == "status":
-        print(f"Status: {data.get('status')}")
-    elif event_type == "subagent":
-        print(f"Subagent {data.get('subagent_id')}: {data.get('status')}")
+    if event_type == "progress_update":
+        print(f"[{model}] {data.get('message')}")
+    elif event_type == "subagent_spawned":
+        print(f"[{model}] subagent: {data.get('nodeName')}")
 ```
+
+The full wire vocabulary (`progress_update`, `subagent_spawned`, `cost_update`,
+`objective_completed`, `objective_failed`, `escalation_created`,
+`agent_auto_claimed`, `agent_auto_executing`, `cancelled`, `error`) is listed on
+`SessionsModule.stream_events`. A name the server does not emit is dropped
+silently by the client-side filter, so prefer that list over a guess.
 
 ## Full Workflow
 

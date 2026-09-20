@@ -1,7 +1,7 @@
 # 04.6 — Reading a response honestly
 
 A call succeeded. You have an object. The question this chapter answers is which
-parts of it you may act on, and what a field that is *not there* is telling you.
+parts of it you may act on, and what a field that is _not there_ is telling you.
 
 That question is load-bearing here in a way it is not on an ordinary API. The
 objects you read describe an organisation's governance — who delegated what to
@@ -19,12 +19,12 @@ optional. Seven models have no required field at all.
 "Required" and "optional" here are properties of **this client's model**, not
 promises by the deployment. That is the distinction the whole chapter turns on:
 
-| you see | it means |
-| --- | --- |
-| a **required** field, populated | the deployment sent it — the client refuses to construct the object otherwise |
-| an **optional** field, populated | the deployment sent it |
-| an **optional** field, `None` | the deployment sent `null`, **or** sent nothing at all — you cannot tell which |
-| a **required** field missing | you never got an object; the call raised instead |
+| you see                          | it means                                                                       |
+| -------------------------------- | ------------------------------------------------------------------------------ |
+| a **required** field, populated  | the deployment sent it — the client refuses to construct the object otherwise  |
+| an **optional** field, populated | the deployment sent it                                                         |
+| an **optional** field, `None`    | the deployment sent `null`, **or** sent nothing at all — you cannot tell which |
+| a **required** field missing     | you never got an object; the call raised instead                               |
 
 **The third row is the one to internalise.** An optional field reading `None`
 collapses three different situations — the deployment does not have this value,
@@ -44,26 +44,26 @@ one that will keep working.
 
 ## What each of the models you will read most actually guarantees
 
-| model | required | notable optional |
-| --- | ---: | --- |
-| `sdk:aegis_sdk.User` | 6 — `id`, `email`, `name`, `organization_id`, `organization_name`, `role` | `personas`, `status`, `mfa_enabled`, `last_login_at` |
-| `sdk:aegis_sdk.Agent` | 8 — including `agent_type`, `unit_type`, `status` | `model_id`, `system_prompt`, `capabilities`, `description`, `workspace_id` |
-| `sdk:aegis_sdk.Objective` | 9 — including `status`, `created_by`, `agent_id` | `priority`, `assigned_to`, `metadata`, `completed_at`, `workspace_id` |
-| `sdk:aegis_sdk.TrustChain` | **2** — `agent_id`, `genesis` | `delegations`, `status`, `human_origin` |
-| `sdk:aegis_sdk.APIKey` | 4 — `id`, `name`, `key_prefix`, `created_at` | `scopes`, `expires_at`, `last_used_at` |
-| `sdk:aegis_sdk.AuthToken` | **1** — `access_token` | `refresh_token`, `expires_in`, `expires_at`, `user` |
+| model                      |                                                                  required | notable optional                                           |
+| -------------------------- | ------------------------------------------------------------------------: | ---------------------------------------------------------- |
+| `sdk:aegis_sdk.User`       | 6 — `id`, `email`, `name`, `organization_id`, `organization_name`, `role` | `personas`, `status`, `mfa_enabled`, `last_login_at`       |
+| `sdk:aegis_sdk.Agent`      |         9 — including `agent_type`, `unit_type`, `status`, `workspace_id` | `model_id`, `system_prompt`, `capabilities`, `description` |
+| `sdk:aegis_sdk.Objective`  |                         10 — including `status`, `created_by`, `agent_id` | `priority`, `assigned_to`, `metadata`, `completed_at`      |
+| `sdk:aegis_sdk.TrustChain` |                                             **2** — `agent_id`, `genesis` | `delegations`, `status`, `human_origin`                    |
+| `sdk:aegis_sdk.APIKey`     |                              4 — `id`, `name`, `key_prefix`, `created_at` | `scopes`, `expires_at`, `last_used_at`                     |
+| `sdk:aegis_sdk.AuthToken`  |                                                    **1** — `access_token` | `refresh_token`, `expires_in`, `expires_at`, `user`        |
 
 Two rows deserve a second look.
 
 **`TrustChain` requires only two fields**, and `delegations` — the thing you are
-almost certainly reading it *for* — is optional and defaults to empty. An empty
+almost certainly reading it _for_ — is optional and defaults to empty. An empty
 delegation list therefore means either "this chain has no delegations" or "this
 response did not carry them", and the model cannot distinguish them. Do not
 report "no delegated authority" from an empty list without confirming the field
 was sent.
 
 **`AuthToken` requires only `access_token`.** `expires_in` **defaults to 3600**
-when the deployment sends nothing — a *client-side* default, not something the
+when the deployment sends nothing — a _client-side_ default, not something the
 deployment told you. A refresh scheduler built on `token.expires_in` may be
 scheduling against a number nobody sent. Prefer `expires_at` when it is
 populated, and treat its absence as "unknown", not "one hour".
@@ -75,9 +75,8 @@ deployment gave.
 ## Fields the deployment sends and you never see
 
 **Unknown fields are silently dropped.** Every model ignores keys it does not
-declare. Measured: constructing a `sdk:aegis_sdk.User` with an extra field the
-model does not know about succeeds, and the attribute simply does not exist on
-the result.
+declare. Constructing a `sdk:aegis_sdk.User` with an extra field the model does
+not know about succeeds, and the attribute simply does not exist on the result.
 
 This is the right default — a client that raised on a new server field would
 break on every deployment upgrade — and it has a real cost worth naming: **if
@@ -161,4 +160,4 @@ print(me.email)        # the value, when you have decided you want it in your lo
 
 ---
 
-_This is the last chapter of part 04._
+_Next: [Part 05 — The web console](../05-the-web-console/README.md)_

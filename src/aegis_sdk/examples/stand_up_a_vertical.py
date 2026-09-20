@@ -17,11 +17,28 @@ Prerequisites:
     export AGENTIC_OS_API_KEY=sk_live_your_key_here
     export AGENTIC_OS_MODEL=<your model id>                          # examples never hardcode one
 
-Session vs API-key callers — read before adapting this file:
-    This example authenticates with an API KEY, and creating an organization
+    The key MUST carry every scope in ``REQUIRED_SCOPES`` below. A key minted
+    with only ``agents:read``/``agents:write`` -- the pair the SDK docs show for
+    a plain agent workflow -- is refused at step 4 (the role-envelope write),
+    AFTER steps 1-3 have already created the organization, its unit and its
+    head role. That leaves a half-provisioned tenant, which is the state this
+    example exists to avoid. Mint it as::
+
+        await client.auth.create_api_key(name="standup", scopes=REQUIRED_SCOPES)
+
+Credential per step — read before adapting this file:
+    Steps 1-5 are reachable with an API KEY, and creating an organization
     therefore needs no extra step: the server does not rotate a key's
-    credentials, and a key's organization is fixed, so every call below runs in
-    the organization created on the first line.
+    credentials, and a key's organization is fixed, so those calls run in the
+    organization created on the first line.
+
+    **Steps 6 and 7 are NOT reachable with an API key, at any scope.** The
+    ontology and approvals routers gate on ``require_persona`` alone, and an
+    API-key principal carries ``personas: []`` by construction -- so no scope
+    can admit it, and minting the key with more scopes does not change the
+    answer. They are named in ``SESSION_ONLY_CALLS`` below and need a
+    JWT/bearer session. A key still reaches everything those steps depend on;
+    only the two calls refuse.
 
     A SESSION (JWT / bearer) caller is different. For one of those, creating an
     organization also switches that session into it and ROTATES the pair: the
@@ -39,6 +56,49 @@ from typing import Any
 
 from aegis_sdk import AgenticOSClient
 
+#: Every scope steps 1-5 need, in one list, so a caller can mint the key without
+#: reverse-engineering the platform's routers::
+#:
+#:     await client.auth.create_api_key(name="standup", scopes=REQUIRED_SCOPES)
+#:
+#: Read/write pairs are listed UNIFORMLY rather than only the write half a given
+#: step happens to use, matching ``API_KEY_SCOPES``' own convention -- a scope
+#: nobody checks is inert, whereas a missing one is a runtime 403. ``teams:*``
+#: and the ``:read`` halves are not derivable from a router's
+#: ``scope_resources`` (the teams router gates per route on
+#: ``Permission("teams:create")``), and are carried here deliberately.
+REQUIRED_SCOPES = [
+    "organizations:read",
+    "organizations:write",
+    "units:read",
+    "units:write",
+    "roles:read",
+    "roles:write",
+    "teams:read",
+    "teams:write",
+    "agents:read",
+    "agents:write",
+    "knowledge:read",
+    "knowledge:write",
+]
+
+#: Calls below that NO API key can reach, at any scope, because their routers
+#: gate on ``require_persona`` alone and an API-key principal resolves to
+#: ``personas: []`` by construction. A JWT/bearer session is required for these
+#: two steps; the rest of the example runs on the key.
+#:
+#: This is this example's PROJECTION of the surface-wide declaration in
+#: ``aegis_sdk.standup.session_only`` -- the ontology and approvals routers are
+#: session-only in FULL (nine calls), and only these three are ones THIS file
+#: happens to make. The two are held equal by a test in the platform's own
+#: suite, so this tuple can neither drift from the declaration nor be read as
+#: the whole of it -- read ``session_only`` for the full nine.
+SESSION_ONLY_CALLS = (
+    "ontology.apply_preset",
+    "approvals.list_pending",
+    "approvals.approve",
+)
+
 
 async def stand_up_vertical(client: AgenticOSClient) -> dict[str, Any]:
     """Provision a minimal, governed vertical end-to-end.
@@ -49,7 +109,7 @@ async def stand_up_vertical(client: AgenticOSClient) -> dict[str, Any]:
     org = await client.organizations.create(
         name="Acme Robotics",
         slug="acme-robotics",
-        plan_tier="pro",
+        plan_tier="professional",
     )
     org_id = org["id"]
 

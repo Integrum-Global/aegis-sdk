@@ -5,14 +5,51 @@ Provides usage tracking operations for monitoring resource consumption
 against quotas.
 
 3 methods:
-- get_current() - Get current usage against quotas
-- get_history() - Get historical usage (requires Analytics module)
-- get_breakdown() - Get usage breakdown by dimension (requires Analytics module)
+- get_current() - Get current usage against quotas (WORKS — has a server route)
+- get_history() - DEPRECATED, RETIRED — no server route. Previously swallowed the
+  404 and returned an empty list, which a caller could not distinguish from a
+  period with genuinely no usage. Now raises ``UnsupportedOperationError``.
+- get_breakdown() - DEPRECATED, RETIRED — no server route. Previously swallowed
+  the 404 and returned an empty ``UsageBreakdown``. Now raises
+  ``UnsupportedOperationError``.
+
+⛔ WHEN YOU CHANGE A METHOD'S BEHAVIOUR, SIX SURFACES DESCRIBE IT — DERIVE THE
+LIST, DO NOT RECALL IT. This file is the worked case for why, and the failure
+was measured on 2026-09-18 while retiring these two methods:
+
+    body · method docstring · module docstring · tests · partner docs · handbook
+
+Four of those six were updated by memory, and two were missed — the METHOD
+docstrings (left carrying live `Example:` blocks on methods that now raise;
+`help()` and every IDE tooltip render those) and the TESTS (six of them, which
+kept asserting the removed behaviour and were reported green for one commit
+because the summary line quoted a DIFFERENT instrument's exit code).
+
+The list is FINITE and ENUMERABLE. Deriving it costs one pass; recalling it
+costs whatever you happen not to think of, and the omission is invisible from
+inside the change. Two of the six — `tests/` and the partner `handbook/` — are
+in other directories from the code, which is exactly why they are the ones
+recalled last.
+
+⚠ This note lives here because this file is the example. **The durable home for
+this rule is a COC artifact under `.claude/rules/`, which is a `/codify` action
+and outside this lane's scope** — recorded here so it is not silently lost.
+
+⛔ THE TWO RETIRED METHODS ARE THE ONLY PLACE IN THIS SDK WHERE AN HTTP FAILURE
+WAS CONVERTED INTO A PLAUSIBLE SUCCESS. Measured 2026-09-18 across all 121 SDK
+modules: of 117 ``ast.Try`` nodes, exactly TWO wrap an ``_http.request`` call —
+both were here — and both returned empty on ``NotFoundError`` with no log and no
+warning. Everywhere else in the SDK a route failure propagates honestly. The
+sweep that established this is recorded in ``sdk_route_parity.py``'s header
+under "THREE WAYS TO MISREAD A SHRINK", finding 1: the ratchet reports
+"the SDK calls a missing route LOUDLY" and "the SDK calls a missing route and
+HIDES the failure" in the SAME bucket, and the loud one is the harmless one.
 """
 
-from ..exceptions import NotFoundError
+import warnings
+
+from ..exceptions import UnsupportedOperationError
 from ..types import (
-    ResourceType,
     ResourceUsage,
     Usage,
     UsageBreakdown,
@@ -100,42 +137,53 @@ class UsageModule:
         resource_type: str | None = None,
     ) -> list[UsageHistory]:
         """
-        Get historical usage data.
+        DEPRECATED, RETIRED — no backing server capability. Always raises.
+
+        There is no ``/analytics/usage/history`` route on the Aegis API; the
+        API exposes no ``/analytics/usage/*`` routes at all.
+
+        ⛔ **Until 2026-09-18 this method did not fail — it LIED.** It caught
+        the 404 and returned an EMPTY LIST, with no log and no warning, so a
+        caller could not distinguish "this period had no usage" from "this
+        endpoint does not exist". Both answers were the same ``[]``. It now
+        raises, which is the only honest answer available.
+
+        For cost-shaped usage over a period use
+        :meth:`AnalyticsModule.costs` or :meth:`AnalyticsModule.cost_breakdown`.
+        ⚠ Those return **cost** shapes, NOT the ``UsageHistory`` records this
+        method declared — reachable, but not equivalent.
 
         Args:
             start_date: Start date (ISO format)
             end_date: End date (ISO format)
             resource_type: Filter by resource type (optional)
 
-        Returns:
-            List[UsageHistory]: Historical usage records
-
-        Example:
-            >>> history = await client.revenue.usage.get_history(
-            ...     start_date="2024-01-01",
-            ...     end_date="2024-01-31",
-            ...     resource_type="agent_execution"
-            ... )
-            >>> for record in history:
-            ...     print(f"{record.date}: {record.usage}/{record.limit}")
+        Raises:
+            UnsupportedOperationError: Always — this method has no backing
+                server route.
         """
-        params = {
-            "start_date": start_date,
-            "end_date": end_date,
-        }
-        if resource_type:
-            params["resource_type"] = resource_type
-
-        try:
-            response = await self._http.request(
-                "GET",
-                "/api/v1/analytics/usage/history",
-                params=params,
-            )
-            return [UsageHistory(**h) for h in response.get("history", [])]
-        except NotFoundError:
-            # Analytics endpoint not yet deployed — return empty history
-            return []
+        warnings.warn(
+            "UsageModule.get_history() is deprecated and non-functional — "
+            "no server route exists for historical usage (the API serves no "
+            "/analytics/usage/* endpoint). This method previously swallowed "
+            "the 404 and returned an EMPTY LIST, which a caller could not "
+            "distinguish from a period that genuinely had no usage. For "
+            "cost-shaped usage over a period, use client.analytics.costs() "
+            "or client.analytics.cost_breakdown() — those return cost "
+            "shapes, not the UsageHistory records this method declared. This "
+            "method will be removed in a future release.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        raise UnsupportedOperationError(
+            f"get_history({start_date!r}, {end_date!r}, "
+            f"resource_type={resource_type!r}) has no backing server route; "
+            "there is no /analytics/usage/history endpoint on the Aegis API. "
+            "For cost-shaped usage over a period, use "
+            "client.analytics.costs() or client.analytics.cost_breakdown() — "
+            "those return cost shapes, not the UsageHistory records this "
+            "method declared."
+        )
 
     async def get_breakdown(
         self,
@@ -143,40 +191,47 @@ class UsageModule:
         dimension: str = "agent",
     ) -> UsageBreakdown:
         """
-        Get usage breakdown by dimension.
+        DEPRECATED, RETIRED — no backing server capability. Always raises.
+
+        There is no ``/analytics/usage/breakdown`` route on the Aegis API; the
+        API exposes no ``/analytics/usage/*`` routes at all.
+
+        ⛔ **Until 2026-09-18 this method did not fail — it LIED.** It caught
+        the 404 and returned an EMPTY ``UsageBreakdown``, with no log and no
+        warning, so a caller could not distinguish "no usage in this period"
+        from "this endpoint does not exist". It now raises.
+
+        For a dimensioned view of spend use
+        :meth:`AnalyticsModule.cost_breakdown`. ⚠ That returns a **cost**
+        shape, NOT the ``UsageBreakdown`` this method declared — reachable,
+        but not equivalent.
 
         Args:
             resource_type: Resource type to analyze
             dimension: Breakdown dimension ("agent", "user", "date")
 
-        Returns:
-            UsageBreakdown: Usage breakdown by dimension
-
-        Example:
-            >>> breakdown = await client.revenue.usage.get_breakdown(
-            ...     resource_type="agent_execution",
-            ...     dimension="agent"
-            ... )
-            >>> for agent_id, count in breakdown.by_agent.items():
-            ...     print(f"Agent {agent_id}: {count} executions")
+        Raises:
+            UnsupportedOperationError: Always — this method has no backing
+                server route.
         """
-        try:
-            response = await self._http.request(
-                "GET",
-                "/api/v1/analytics/usage/breakdown",
-                params={
-                    "resource_type": resource_type,
-                    "dimension": dimension,
-                },
-            )
-            return UsageBreakdown(
-                resource_type=ResourceType(resource_type),
-                by_agent=response.get("by_agent"),
-                by_user=response.get("by_user"),
-                by_date=response.get("by_date"),
-            )
-        except NotFoundError:
-            # Analytics endpoint not yet deployed — return empty breakdown
-            return UsageBreakdown(
-                resource_type=ResourceType(resource_type),
-            )
+        warnings.warn(
+            "UsageModule.get_breakdown() is deprecated and non-functional — "
+            "no server route exists for usage breakdown (the API serves no "
+            "/analytics/usage/* endpoint). This method previously swallowed "
+            "the 404 and returned an EMPTY UsageBreakdown, which a caller "
+            "could not distinguish from a period with genuinely no usage. "
+            "For a dimensioned view of spend, use "
+            "client.analytics.cost_breakdown() — note it returns a cost "
+            "shape, not the UsageBreakdown this method declared. This method "
+            "will be removed in a future release.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        raise UnsupportedOperationError(
+            f"get_breakdown({resource_type!r}, dimension={dimension!r}) has "
+            "no backing server route; there is no "
+            "/analytics/usage/breakdown endpoint on the Aegis API. For a "
+            "dimensioned view of spend, use "
+            "client.analytics.cost_breakdown() — it returns a cost shape, not "
+            "the UsageBreakdown this method declared."
+        )

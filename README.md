@@ -6,12 +6,9 @@ the handbook — in one repository you can clone and open an AI coding CLI insid
 This is the repository a **delivery partner** clones to construct an Aegis
 deployment for a client.
 
-You are already inside the repository — you cloned it to get here, and this
-file is the first thing to read once you have. No clone URL is given because
-this repository is published per deployment and the address belongs to whoever
-handed it to you, not to this file.
-
 ```bash
+git clone https://github.com/Integrum-Global/aegis-sdk.git
+cd aegis-sdk
 python -m venv .venv && . .venv/bin/activate
 pip install -e .
 python -m aegis_sdk.handbook.check          # verify the build has what the prose names
@@ -19,8 +16,8 @@ python -m aegis_sdk.handbook.check          # verify the build has what the pros
 
 ## Start here — the handbook
 
-**The handbook is at `src/aegis_sdk/handbook/` — 41 chapters in
-7 parts.** It is four levels down inside a Python package because
+**The handbook is at `src/aegis_sdk/handbook/` — 71 chapters in
+11 parts.** It is four levels down inside a Python package because
 it ships with the installed client rather than only with this clone, so you will
 not stumble across it.
 
@@ -37,7 +34,7 @@ it refuses), `02-working-through-the-harness` (driving it from a CLI),
 `04-the-api-surface` (the wire contract), `05-the-web-console` (what the client
 touches).
 
-**The lifecycle is driven by 4 commands.** They are derived from the handbook's own
+**The lifecycle is driven by 8 commands.** They are derived from the handbook's own
 part structure, not hand-listed, and they are wired in all three CLIs:
 
 | command | what it does |
@@ -54,9 +51,9 @@ Then open your CLI in the repository root. All three are wired:
 
 | CLI | reads | you get |
 | --- | --- | --- |
-| Claude Code | `CLAUDE.md`, `.claude/agents/`, `.claude/skills/`, `.claude/commands/` | 2 agents, 13 skills, 4 commands |
-| Codex | `AGENTS.md`, `.codex/prompts/`, `.codex/skills/` | 2 personas via `/prompts:specialist-<name>`, 13 skills, 4 commands via `/prompts:<name>` |
-| Gemini CLI | `GEMINI.md`, `.gemini/agents/`, `.gemini/skills/`, `.gemini/commands/` | 2 agents, 13 skills, 4 commands |
+| Claude Code | `CLAUDE.md`, `.claude/agents/`, `.claude/skills/`, `.claude/commands/` | 2 agents, 13 skills, 8 commands |
+| Codex | `AGENTS.md`, `.codex/prompts/`, `.codex/skills/` | 2 personas via `/prompts:specialist-<name>`, 13 skills, 8 commands via `/prompts:<name>` |
+| Gemini CLI | `GEMINI.md`, `.gemini/agents/`, `.gemini/skills/`, `.gemini/commands/` | 2 agents, 13 skills, 8 commands |
 
 All three are **projections of one neutral source**, `src/aegis_sdk/coc/`. Edit
 there and re-run `node scripts/project_coc.mjs`; `--check` reds on drift.
@@ -65,9 +62,9 @@ there and re-run `node scripts/project_coc.mjs`; `--check` reds on drift.
 
 | | |
 | --- | --- |
-| `src/aegis_sdk/` | the client — 169 Python modules, version 2.0.0 |
-| `src/aegis_sdk/handbook/` | how the platform **behaves** — 41 chapters in 7 parts, screenshots included |
-| `src/aegis_sdk/coc/` | what to **do** about it — 2 agent briefs, 6 task skills, 7 guardrails, 4 commands, one probe |
+| `src/aegis_sdk/` | the client — 174 Python modules, version 2.0.0 |
+| `src/aegis_sdk/handbook/` | how the platform **behaves** — 71 chapters in 11 parts, screenshots included |
+| `src/aegis_sdk/coc/` | what to **do** about it — 2 agent briefs, 6 task skills, 7 guardrails, 8 commands, one probe |
 | `src/aegis_sdk/docs/` | reference: quickstart, authentication, configuration, errors, streaming |
 | `src/aegis_sdk/examples/` | five runnable examples |
 
@@ -115,7 +112,7 @@ node scripts/project_coc.mjs --check        # CLI overlays match their neutral s
 python -m aegis_sdk.coc.probe --transports-only   # which client paths are real (offline)
 ```
 
-This repository carries **47 test files**, and `harness.py tests` runs them.
+This repository carries **50 test files**, and `harness.py tests` runs them.
 They are the ones that could be published. Others exist that pin this client
 against the platform's own server routes; those name internal source coordinates
 in their assertions and stay behind. **So a green run means the client behaves —
@@ -146,4 +143,4 @@ Aegis is Integrum's commercial implementation of four open standards — CARE,
 PACT, EATP and CO — published by the Terrene Foundation under CC BY 4.0. Aegis
 implements them; it does not own them.
 
-Assembled 2026-09-17 · see `docs/UNRESOLVED.md` for what is not settled.
+Assembled 2026-09-20 · see `docs/UNRESOLVED.md` for what is not settled.

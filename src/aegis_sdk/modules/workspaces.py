@@ -85,6 +85,20 @@ class Workspace(TolerantModel):
     ``members`` and ``work_units`` are populated on this shape; the lighter
     :class:`WorkspaceSummary` returned by :meth:`WorkspacesModule.list` carries
     only their counts.
+
+    ``contains_classification`` is the workspace's containment high-water mark —
+    ``max()`` over the classification of every document attached to it, raised
+    by :meth:`WorkspacesModule.attach_document` and never lowered by a detach.
+    It is a READ-SIDE ceiling that the server's admission surfaces test members
+    against, not the workspace's own ``classification`` column (a different
+    quantity whose default points the other way).
+
+    ⚠ Read the absent case in the right direction. ``None`` means the response
+    carried no mark — every row predating the column — and the server resolves
+    that to the IDENTITY (``public``), so it is NOT a refusal. A mark that is
+    PRESENT but that this client cannot rank (a level a newer server added) is
+    handed back verbatim precisely so it DENIES, so fail closed on anything you
+    cannot rank rather than treating it as unset.
     """
 
     model_config = ConfigDict(populate_by_name=True)
@@ -106,6 +120,13 @@ class Workspace(TolerantModel):
     color: str | None = None
     expires_at: str | None = Field(None, alias="expiresAt")
     archived_at: str | None = Field(None, alias="archivedAt")
+    # Optional-with-`None`, mirroring the server's own declaration. NOT
+    # `tolerant_null("public")` and never defaulted to a level: `_tolerant.py`
+    # names `classification = "public"` as the canonical default that GRANTS
+    # something, and filling one in for a null would turn "the server told us
+    # nothing" into "the server told us the container holds nothing" — the
+    # under-ranking the server's own readers refuse to do.
+    contains_classification: str | None = Field(None, alias="containsClassification")
 
 
 class WorkspaceSummary(TolerantModel):
@@ -175,7 +196,8 @@ class WorkspaceDocumentAttachment(TolerantModel):
 
     message: str
     knowledge_id: str = Field(alias="knowledgeId")
-    workspace_id: str = Field(alias="workspaceId")
+    # Response-side widening — see aegis_sdk.types.Agent.workspace_id.
+    workspace_id: str | None = Field(default=None, alias="workspaceId")
     document_classification: str = Field(alias="documentClassification")
     contains_classification: str = Field(alias="containsClassification")
 

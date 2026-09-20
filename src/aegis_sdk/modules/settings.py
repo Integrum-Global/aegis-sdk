@@ -9,10 +9,8 @@ defined LOCALLY in this file. Do not import from ``aegis_sdk.types`` or
 edit ``modules/__init__.py`` / ``client.py`` -- a separate orchestrator
 wiring pass registers this module on the client.
 
-Backend router (verified against the real source, cited per-method below):
-  (FastAPI prefix ``/settings``), mounted
-under the app-wide ``settings.api_prefix`` (``/api/v1`` -- verified), so every path
-below is ``/api/v1/settings/...``.
+Backend routes, cited per-method below. The server mounts this surface under
+``/api/v1/settings``, so every path below is ``/api/v1/settings/...``.
 
 13 of the router's 15 routes (P0 org/user get+update, P1 backups +
 export/import, P2 audit-log read/revert):

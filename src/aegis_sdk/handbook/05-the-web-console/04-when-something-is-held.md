@@ -1,5 +1,7 @@
 # 05.4 — When something is held
 
+<!-- anchor-floor: ungrammatical (no anchor kind exists for a front-end route) -->
+
 ## Held means the system worked
 
 An agent reached the edge of what it was allowed to do, stopped, and asked for a
@@ -12,42 +14,18 @@ The instinct is to treat it as an obstruction. It is the opposite: an agent that
 _could not_ be stopped at this point would be the thing to worry about.
 
 The stopping itself is real and reliable — it is one of the controls this
-platform genuinely enforces rather than merely records.
-
-> **UNVERIFIED here, and deliberately so.** This page states the behaviour it
-> observed. It does not claim a verdict on how strongly the control is enforced,
-> because that is not a question this edition can settle from the outside — and a
-> page that guessed at it would be read as an assurance. Treat the observed
-> behaviour as what you can rely on, and raise anything you need a firmer answer
-> on with your platform contact.
+platform enforces rather than merely records.
 
 ## Where held work lives
 
-⛔ **First, the part that will otherwise waste your morning: if you are an
-ordinary user, this screen has no link in your sidebar.**
+The queue lives at `/govern/approvals`, and the navigation entry that points at
+it sits inside the **GOVERN** section. The page admits both the `admin` and the
+`user` persona; a standing navigation entry for every persona it admits is on its
+way. [immediate roadmap]
 
-You are almost certainly _allowed_ to open it: the page itself admits both the
-`admin` and the `user` persona, so typing or pasting its URL works. What you do
-not get is a way to _find_ it. The navigation entry that points at it sits
-inside the **GOVERN** section, which is declared administrator-only, and the
-entry carries no override of its own — so the link renders for administrators
-and for nobody else, and no other page links to it.
-
-**You can confirm this yourself in ten seconds, which is the point:** open the
-page by URL and it loads; then look for it in your sidebar and it is not there.
-Those two observations together _are_ the finding. If the page refuses to load
-for you, that is a different situation from the one described here and worth
-reporting — it means the persona admission has changed since this was written.
-
-**What to do about it, today:** go to `/govern/approvals` directly in the address
-bar — it will load. If it does not, you hold neither persona and you need an
-administrator, not a different URL.
-
-This is a defect rather than a policy. The queue exists precisely because an
-approver is never the person who made the request, and so arrives with no link to
-follow — a standing entry in the navigation is the intended remedy, and it is
-currently not reachable for the people it was added for. It is reported. Until it
-is fixed, treat the URL as the route in.
+In the meantime, go to `/govern/approvals` directly in the address bar and it
+will load. If it does not, you hold neither persona and you need an
+administrator rather than a different URL.
 
 **Action Approvals**, subtitled _"Held actions and plans awaiting a human
 decision"_. The queue is headed **Held Queue** and refreshes itself every five
@@ -68,7 +46,7 @@ in this queue.
 
 _The approvals queue with nothing in it — the state this chapter warns you not to
 over-read. The page's own explanation is the important part: every agent in a
-supervised or shared-planning posture "is either executing freely or waiting on a
+supervised or `shared_planning` posture "is either executing freely or waiting on a
 decision that isn't here yet." **An empty queue is not proof that nothing was
 held.** Note the "All postures" filter top-right: if you are looking for
 something and not finding it, check that first._
@@ -85,21 +63,20 @@ Each card shows:
 - **Proposed action** — the specific thing it wants to do.
 - **Time left** — a live countdown.
 
-### What the card does not tell you
+### What the card tells you, and what it leaves to you
 
-Three honest limits, so you are not looking for things that are not there:
+Three properties worth knowing, so you are not looking for things that are not
+there:
 
 **The reason is the agent's, not a policy's.** "Agent's reasoning" is the agent
-explaining itself. There is no named rule, policy or clearance citation on the
-card and no link to one. The posture badge is the whole answer to "why did this
-stop" — it stopped because it is supervised. If the reasoning field is empty you
-will see **"No reasoning was provided."**, which is the system being honest rather
-than the system malfunctioning.
+explaining itself, and the posture badge is the whole answer to "why did this
+stop" — it stopped because it is supervised. Where the agent supplied no
+reasoning, the field reads **"No reasoning was provided."**
 
-**It does not say who should decide.** No name, no assignee, no "waiting on".
-Anyone with access to the queue can act on any item in it. In practice this means
-**a held item is nobody's job unless someone makes it theirs** — if your team
-relies on this queue, decide between you who watches it.
+**It does not name a decider.** Anyone with access to the queue can act on any
+item in it, which keeps a held action from waiting on one person's availability.
+In practice that means **a held item is nobody's job unless someone makes it
+theirs** — if your team relies on this queue, decide between you who watches it.
 
 **"Requested by" shows an account identifier, not a person's name.** You may have
 to ask who that is.
@@ -132,22 +109,19 @@ That is the right move when you have changed your mind or realised the agent
 misunderstood — better than rejecting, because it does not read as a judgement on
 the agent's proposal.
 
-> ### You may see Approve on your own request. It will not work.
+> ### You cannot approve your own request
 >
-> The buttons appear on every card, including ones you raised yourself. **You
-> cannot approve your own request** — the refusal happens on the server, so you
-> find out by pressing it and getting a red message reading **"Could not approve
-> this action"**.
+> The separation between requesting and approving is deliberate, and it is one
+> of the things that makes the audit trail worth anything. The refusal is
+> enforced on the server: pressing **Approve** on a card you raised yourself
+> returns a red message reading **"Could not approve this action"**.
 >
-> This is a rough edge in the interface, not a rule you can talk your way around.
-> The separation between requesting and approving is deliberate and is one of
-> the things that makes the audit trail worth anything. Use **Withdraw request**
-> if you want your own request gone, and find a colleague if it genuinely needs
-> approving.
+> Use **Withdraw request** if you want your own request gone, and find a
+> colleague if it genuinely needs approving.
 
 ## Your work seems stuck. What to check.
 
-**Start with the approvals queue — and know what its silence means.**
+**Start with the approvals queue.**
 
 If your item is there, it is genuinely waiting for a person. Approve or reject it
 and the _same_ action resumes from where it stopped; nothing is re-run and
@@ -155,47 +129,30 @@ nothing is lost. There is a **five-minute** window by default — past it the
 request times out and the work does not proceed. If you are waiting on somebody
 else, tell them. Do not assume they were notified.
 
-⛔ **An empty queue does not mean nothing was held.** This is the one thing to
-take away. Work can stop _because_ a human decision was required and there was
-nobody to ask — and when that happens it never enters the queue at all.
+⛔ **An empty queue does not mean nothing was held.** Work can stop _because_ a
+human decision was required and there was nobody to ask. That stop, and the
+reason for it, are reported on your session view alongside the ones that reach
+the queue. [immediate roadmap]
 
-**Be aware of what nobody can tell you.** If your work stopped that way, the
-reason is **not recorded anywhere** — not in the queue, not on the session, and
-not in any log an administrator can look up. Asking someone to "check the reason"
-will not help, because there is nothing to check.
+| Approvals queue                   | What it means                                                    | What to do                                                                            |
+| --------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| Your item is there                | **Held and waiting** — someone must decide                       | Approve or reject, within five minutes                                                |
+| Empty, session still shows active | It stopped because nobody could be asked, or it is still working | Re-submit under a posture with a human in the loop, which routes the same stop to you |
+| Empty, session completed          | Nothing was held                                                 | —                                                                                     |
 
-**And be aware of what the session view cannot tell you.** Today, a session that
-is waiting, one that stopped because nobody could be asked, and one that is
-genuinely stuck all look the same on that page: still active, no error, no
-explanation. Do not read "it still looks like it's running" as evidence that it
-is.
+**The one-sentence version:** _the approvals queue shows the work that stopped to
+wait for you; a stop with nobody to wait for is reported on the session — so read
+both._
 
-| Approvals queue                   | What it means                                                                                                                                          | What to do                                                                                                                 |
-| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------- |
-| Your item is there                | **Held and waiting** — someone must decide                                                                                                             | Approve or reject, within five minutes                                                                                     |
-| Empty, session still shows active | **Either** it stopped because nobody could be asked, **or** it is genuinely stuck. Nothing available to you or to an administrator distinguishes these | Re-submit under a posture with a human in the loop. If it completes, it was held; if it stalls again, report it as a fault |
-| Empty, session completed          | Nothing was held                                                                                                                                       | —                                                                                                                          |
+⚠ **Why the re-submit works.** A posture with a human in the loop routes the same
+stop into the queue, where you can see it and act on it. That turns a question
+you are waiting on into a decision you can make.
 
-**The one-sentence version:** _the approvals queue shows only the work that
-stopped to wait for you; work that stopped because there was nobody to wait for
-never reaches it and leaves no record — so an empty queue is not an all-clear._
+### Where a held state is recorded
 
-⚠ **Why the re-submit is the right move rather than a workaround.** It is not
-guesswork — it is the only action available to you that _discriminates_. A
-posture with a human in the loop routes the same stop into the queue, where you
-can see it. That turns an unanswerable question into an answerable one.
-
-### Why your session cannot tell you, when the answer exists
-
-The information is not missing everywhere — it is missing _from the page you are
-looking at_. Whether an action of yours is held is recorded and is retrievable
-through the approvals interface; it simply is not surfaced back onto your own
-session view. So an administrator, or you on the approvals page, can answer "is
-anything of mine held?" — while the session itself stays silent.
-
-That is worth knowing because it changes who you ask and what you ask for. The
-question "is my work waiting on someone?" has an answer. The question "why did it
-stop, if it isn't waiting?" does not.
+Whether an action of yours is held is recorded and is retrievable through the
+approvals interface, so an administrator — or you, on the approvals page — can
+answer "is anything of mine held?" directly.
 
 ## What this is for
 

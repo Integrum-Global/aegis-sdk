@@ -1,6 +1,6 @@
 # 04.3 — Credentials, and what a key is not
 
-[04.1](01-calling-the-api.md) explains what the two credential types *are* and
+[04.1](01-calling-the-api.md) explains what the two credential types _are_ and
 why a persona-gated route refuses a key. This chapter is the operational half:
 what a key can hold, what happens to it over its life, and what a permission
 failure looks like from where you are sitting.
@@ -117,9 +117,8 @@ parsed into that model, the secret matches no declared field, and it is
 **silently discarded**. There is no error and no warning; you are left holding a
 prefix and an id, and the secret is not retrievable afterwards by design.
 
-Measured against the model with a response body carrying both `key` and
-`api_key`: neither attribute exists on the result, while the same body read
-before parsing contains both.
+Given a response body carrying both `key` and `api_key`, neither attribute
+exists on the result, while the same body read before parsing contains both.
 
 **If you are provisioning keys from a script, take the raw body:**
 
@@ -133,7 +132,7 @@ secret = raw.get("key") or raw.get("api_key")    # whichever your deployment emi
 
 **UNVERIFIED:** which field name a real deployment uses for the secret, or
 whether it returns one at all — that is a property of the deployment and cannot
-be settled from this package. What *is* settled is that the typed method cannot
+be settled from this package. What _is_ settled is that the typed method cannot
 give it to you whatever it is called.
 
 Then treat it as a secret. Everything in
@@ -148,7 +147,7 @@ both does not make a key narrower. A malformed scopes value denies rather than
 permits. The scope vocabulary and the permission matrix are **different
 registries that share a spelling**, and the full account of how they relate,
 including the one-directional bridge between them, is in
-[04.1](01-calling-the-api.md) § *The two registries*. Read it before you design
+[04.1](01-calling-the-api.md) § _The two registries_. Read it before you design
 a key hierarchy; the two-registry confusion is the most reliably repeated
 mistake on this API.
 
@@ -170,17 +169,17 @@ for k in await client.auth.list_api_keys():
 
 Four fields describe a key's life, and the gaps between them are the useful part.
 
-| field | what it tells you |
-| --- | --- |
-| `created_at` | when it was issued — always present |
-| `expires_at` | when it stops working, or `None` for **never** |
+| field          | what it tells you                                        |
+| -------------- | -------------------------------------------------------- |
+| `created_at`   | when it was issued — always present                      |
+| `expires_at`   | when it stops working, or `None` for **never**           |
 | `last_used_at` | when it was last presented, or `None` for **never used** |
-| `scopes` | what it carries — an empty list is legal |
+| `scopes`       | what it carries — an empty list is legal                 |
 
 ⚠ **There is no status, active or revoked field on the model at all.** You
 cannot tell a live key from a revoked one by reading it. `expires_at` is the only
-lifetime signal the client exposes, and `None` there means *no expiry*, not
-*expired*. If your deployment revokes a key by deleting the record, absence from
+lifetime signal the client exposes, and `None` there means _no expiry_, not
+_expired_. If your deployment revokes a key by deleting the record, absence from
 `api:GET /api/v1/api-keys` is your signal; if it revokes in place, this client
 gives you nothing to see it by. **UNVERIFIED:** which of those your deployment
 does.
@@ -221,11 +220,11 @@ reminder in the same change; then you do not need to know.
 
 You will see one of three things, and they want three different responses.
 
-| what you get | what it means | what to do |
-| --- | --- | --- |
-| `sdk:aegis_sdk.AuthenticationError` (401) | **two different things** — see immediately below | reissue **once**; if it recurs, stop and read on |
-| `sdk:aegis_sdk.AuthorizationError` (403) | you were identified and refused | **attribute it before changing anything** |
-| `sdk:aegis_sdk.GovernanceViolationError` (423) or `sdk:aegis_sdk.TrustViolationError` (451) | a policy or a trust constraint refused you | this is governance working — see [02.6](../02-working-through-the-harness/06-approvals-holds-and-evidence.md) |
+| what you get                                                                                | what it means                                    | what to do                                                                                                    |
+| ------------------------------------------------------------------------------------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------- |
+| `sdk:aegis_sdk.AuthenticationError` (401)                                                   | **two different things** — see immediately below | reissue **once**; if it recurs, stop and read on                                                              |
+| `sdk:aegis_sdk.AuthorizationError` (403)                                                    | you were identified and refused                  | **attribute it before changing anything**                                                                     |
+| `sdk:aegis_sdk.GovernanceViolationError` (423) or `sdk:aegis_sdk.TrustViolationError` (451) | a policy or a trust constraint refused you       | this is governance working — see [02.6](../02-working-through-the-harness/06-approvals-holds-and-evidence.md) |
 
 ⚠ **The `401` row is the one that wastes a day, and the exception's own
 documentation points the wrong way.** `AuthenticationError` is documented as
@@ -243,7 +242,7 @@ ever pass that control. Stop reissuing.
 
 For the `403`, the attribution step is one retry with the other credential type,
 and the result table is in [04.1](01-calling-the-api.md). The short version: a
-key refused where a session succeeds is a *reachability* problem no scope change
+key refused where a session succeeds is a _reachability_ problem no scope change
 will fix; both refused is a real authorization decision; a session that returns
 `401` means your session is bad and you have measured nothing.
 
@@ -255,4 +254,4 @@ improved by widening; only one is even affected by it.
 
 ---
 
-*Next: [04.4 — Lists, filters and pagination](04-lists-and-pagination.md)*
+_Next: [04.4 — Lists, filters and pagination](04-lists-and-pagination.md)_

@@ -15,12 +15,8 @@ from ..types import (
     AgentUpdate,
     # Common
     ExecutionStatus,
-    # Pipeline models
-    NodeTypeCatalog,
-    NodeTypeCategory,
-    NodeTypeSummary,
-    NodeTypeVerdict,
     PaginatedResponse,
+    # Pipeline models
     Pipeline,
     PipelineConnection,
     PipelineCreate,
@@ -57,11 +53,6 @@ __all__ = [
     "PipelineNode",
     "PipelineConnection",
     "PipelinePattern",
-    # Pipeline node-type catalogue
-    "NodeTypeCatalog",
-    "NodeTypeCategory",
-    "NodeTypeSummary",
-    "NodeTypeVerdict",
     # Common
     "ExecutionStatus",
     "PaginatedResponse",

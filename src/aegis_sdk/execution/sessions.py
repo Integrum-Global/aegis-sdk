@@ -619,20 +619,61 @@ class SessionsModule:
         ``GET /api/v1/sessions/{session_id}/stream``. It has no server-side
         event-type filter, so ``event_types`` is applied client-side.
 
+        Each yielded event is the parsed frame, unchanged::
+
+            {"type": str, "timestamp": str, "data": {...}}
+
+        The event-specific payload is NESTED under ``data``, so read
+        ``event["data"][...]`` — the frame itself carries only ``type``,
+        ``timestamp`` and a top-level id.
+
+        **Per-agent model.** ``data["model"]`` carries the model the emitting
+        agent is actually running, as a ``str``. This is what lets a consumer of
+        a multi-agent session show *which model each agent is using* — agents in
+        one session do not share a model, so it must be read per event rather
+        than resolved once for the session.
+
+        It is ``""`` when the platform could not resolve one, and an empty
+        string means UNRESOLVED — never "the default model". The platform
+        reports no model rather than naming one it did not resolve, so a consumer
+        that fills the blank with a default is inventing an attribution.
+
+        Presence is not uniform across the vocabulary: the key is set on **every
+        event the agent-execution bridge maps** (``progress_update``,
+        ``subagent_spawned``, ``cost_update``, ``objective_completed``,
+        ``objective_failed``, ``escalation_created`` and the rest) and on the two
+        auto-claim events, but NOT on ``cancelled`` or ``error``, which the
+        session API publishes directly. Read it with ``data.get("model", "")``
+        rather than indexing.
+
         Args:
             session_id: Session ID
-            event_types: Filter by event types — server-emitted types are
-                ``started``, ``thinking``, ``message``, ``tool_use``,
-                ``tool_result``, ``subagent_spawn``, ``cost_update``,
-                ``completed``, ``error``
+            event_types: Filter by event types. The wire types are
+                ``progress_update``, ``subagent_spawned``, ``cost_update``,
+                ``objective_completed``, ``objective_failed``,
+                ``escalation_created``, ``agent_auto_claimed``,
+                ``agent_auto_executing``, ``cancelled`` and ``error``.
+
+                The two that carry agent activity are ``progress_update`` — the
+                agent's step-by-step work (start, reasoning, messages, tool use,
+                posture and human-approval events all map onto this one type) —
+                and ``subagent_spawned``, which marks a subagent appearing, with
+                its identity in ``data["nodeName"]``. The two auto-claim events
+                mark an agent picking up work, and carry ``data["agent_name"]``
+                alongside the model.
 
         Yields:
-            Event dictionaries with a ``type`` key and event-specific fields
+            Event dictionaries with a ``type`` key, a nested ``data`` payload,
+            and event-specific fields
 
         Example:
-            >>> async for event in client.sessions.stream_events("ses_abc123"):
-            ...     if event["type"] == "message":
-            ...         print(f"Message: {event['content']}")
+            >>> async for event in client.sessions.stream_events(
+            ...     "ses_abc123",
+            ...     event_types=["progress_update", "subagent_spawned"],
+            ... ):
+            ...     data = event["data"]
+            ...     if event["type"] == "subagent_spawned":
+            ...         print(f"{data['nodeName']} started on {data.get('model') or 'unresolved'}")
         """
         async for event in self._http.stream(
             "GET",

@@ -11,11 +11,8 @@ defined LOCALLY in this file. Do not import from ``aegis_sdk.types`` or
 edit ``modules/__init__.py`` / ``client.py`` -- a separate orchestrator
 wiring pass registers this module on the client.
 
-Backend router (verified against the real source, cited per-method below):
-  (FastAPI prefix ``/applications``),
-mounted under the app-wide ``settings.api_prefix`` (``/api/v1`` --
-verified), so
-every path below is ``/api/v1/applications/...``.
+Backend routes, cited per-method below. The server mounts this surface under
+``/api/v1/applications``, so every path below is ``/api/v1/applications/...``.
 
 20 methods (of the router's 23 routes -- the 3 skipped are FE-compat
 aliases ``/{app_id}/agents/{agent_id}/policy`` that byte-for-byte mirror

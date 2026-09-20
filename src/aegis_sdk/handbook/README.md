@@ -1,5 +1,7 @@
 # The Aegis Architect and Operator Handbook
 
+<!-- anchor-floor: exempt (part navigation; chapters carry the anchors) -->
+
 You have been given a deployed Aegis and the SDK that drives it. This book is how
 you work with both.
 
@@ -44,18 +46,26 @@ picture both of them drive.
 
 ## The parts
 
-| #      | Part                                                                   | Read it when                                                                                  |
-| ------ | ---------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| **01** | [Orientation](01-orientation/)                                         | First. What you were given, how governance actually works here, and your first working session |
-| **02** | [Working through the harness](02-working-through-the-harness/)         | The spine. Standing up an organisation, bounding it, running work through it, and evidencing it |
-| **03** | [Extending the platform](03-extending-the-platform/)                   | You are adding a capability — a tool, an agent, a skill, a pipeline                            |
-| **04** | [The API surface](04-the-api-surface/)                                 | You are calling Aegis over HTTP directly, debugging an authorization failure, or asking what the client does with errors, credentials, pages, load and streams |
-| **05** | [The web console](05-the-web-console/)                                 | You want to know what a screen shows, or you are the human answering a held decision           |
-| **06** | [Architecture](06-architecture/)                                       | The system-level picture. The plane split, the governance objects, where enforcement happens, and where your integration attaches |
-| **07** | [Deployment architecture](07-deployment-architecture/)                 | You are deploying the platform, sizing it, or asking where its boundaries actually fall |
+| #      | Part                                                                             | Read it when                                                                                                                                                   |
+| ------ | -------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **01** | [Orientation](01-orientation/)                                                   | First. What you were given, how governance actually works here, and your first working session                                                                 |
+| **02** | [Working through the harness](02-working-through-the-harness/)                   | The spine. Standing up an organisation, bounding it, running work through it, and evidencing it                                                                |
+| **03** | [Extending the platform](03-extending-the-platform/)                             | You are adding a capability — a tool, an agent, a skill, a pipeline                                                                                            |
+| **04** | [The API surface](04-the-api-surface/)                                           | You are calling Aegis over HTTP directly, debugging an authorization failure, or asking what the client does with errors, credentials, pages, load and streams |
+| **05** | [The web console](05-the-web-console/)                                           | You want to know what a screen shows, or you are the human answering a held decision                                                                           |
+| **06** | [Architecture](06-architecture/)                                                 | The system-level picture. The plane split, the governance objects, where enforcement happens, and where your integration attaches                              |
+| **07** | [Deployment architecture](07-deployment-architecture/)                           | You are deploying the platform, sizing it, or asking where its boundaries actually fall                                                                        |
+| **08** | [The capability catalogue](08-the-capability-catalogue/)                         | You are asking what Aegis can do — the complete capability surface, by area, with the operation that reaches each one                                          |
+| **09** | [The governance architecture](09-the-governance-architecture/)                   | You are satisfying an auditor. The two planes, envelopes, clearance, the decision gradient, trust chains, the audit spine, and containment                     |
+| **10** | [The organisation structure framework](10-the-organization-structure-framework/) | You are designing the organisation your agents will live in — the D/T/R grammar, addressing, roles, trust chains and re-orgs                                   |
+| **11** | [The deployment pack](11-the-deployment-pack/)                                   | You are standing a deployment up and running it — provisioning, the configuration reference, the runtime's node catalogue, releasing, operating, verifying     |
 
 Read **01** in order. After that, **02** is the working reference you will return
-to; **03**, **04**, **05**, **06** and **07** are consulted rather than read through.
+to; **03** through **11** are consulted rather than read through.
+
+**If you were handed this book to answer one question**, three parts answer the
+three most common ones on their own: **08** for _what can it do_, **09** for _how
+is it governed_, and **10** for _how do we model our organisation in it_.
 
 The tree below says which part you reach for, not which part to read next:
 
@@ -72,9 +82,24 @@ the book
 │     └── the system-level picture: how the platform is put together,
 │         where its boundaries are, and where your integration attaches
 │
-└── 07  Deployment architecture          consulted from any part above
-      └── the reference deployment: the cluster, the network boundary,
-          the stateful services, and how identity and secrets reach them
+├── 07  Deployment architecture          consulted from any part above
+│     └── the reference deployment: the cluster, the network boundary,
+│         the stateful services, and how identity and secrets reach them
+│
+├── 08  The capability catalogue         the reference. What the platform does,
+│     └── organised by capability area, each with the operation that reaches it
+│
+├── 09  The governance architecture      the auditor's part
+│     └── two planes, envelopes, clearance, the decision gradient, trust
+│         chains and postures, the audit spine, containment and refusal
+│
+├── 10  The organisation structure       the designer's part
+│     └── D/T/R, addressing, roles and intent, trust chains, role agents,
+│         re-orgs, bridges and workspaces
+│
+└── 11  The deployment pack              the operator's working set
+      └── provisioning, the configuration reference, the runtime's node
+          catalogue, releasing and rolling back, operating, verifying
 ```
 
 ## How claims in this handbook are kept true
@@ -90,58 +115,22 @@ python -m aegis_sdk.handbook.check
 That command re-resolves every anchor against your installed build and fails
 naming any that no longer resolves. It also fails on a broken cross-reference
 between chapters, so a link in this book either goes somewhere or the check says
-so.
+so. Because every anchor names something you hold, the check runs on your own
+machine rather than ours — the book's claims are verifiable by its reader, not
+only by its author.
 
-**Be precise about what a green run means, because the limit is real.** It proves
-every named surface still exists in the build you have. It does **not** prove the
-server behaves as the prose says — an operation can exist and enforce nothing.
-The check cannot see a control that silently stopped enforcing, and it cannot see
-fail-open at all. The route table it checks against is *this client's belief*
-about the API, extracted from the calls this package makes; if the client is
-wrong about a path, the anchor is wrong in the same direction and nothing here
-notices.
+## What this book covers
 
-This is a deliberate trade and it is worth naming. An earlier edition anchored
-claims on coordinates in the platform's own source, which could point at the line
-that enforces a rule — strictly stronger evidence, and unusable here, because
-that source is not part of what you were given. A citation you cannot open is not
-evidence to you; it is an assertion with a decoration. What you have instead is
-weaker evidence you can actually check yourself.
+This book is written for the surface you were given: the deployment, the client
+that drives it, and the console that shows it. Every chapter is actionable from
+there — you are never asked to open a file you do not have.
 
-## Three markers you will see, and what each one means
-
-This book distinguishes what it observed from what it inferred, because the
-difference changes what you should do about it.
-
-- **UNVERIFIED** — a claim that could not be settled from what is reachable here.
-  Treat it as a lead, not a fact. It is written down rather than dropped because
-  a silent omission is indistinguishable from a claim nobody thought to make.
-- **design intent, not observable** — an explanation of *why* something behaves
-  as it does. A behaviour can be observed; a designer's reason cannot. These are
-  the book's own reading, offered because knowing the intent usually tells you
-  what else will be true — but labelled, so you never mistake the reading for the
-  measurement.
-- **open defect** — behaviour that is currently wrong, described with the symptom
-  you will recognise it by. A handbook that describes the intended design as if
-  it were the shipped design is worse than no handbook.
-
-## What is not in this book
-
-The parts covering the platform's own construction — its codebase, its build, its
-internal test suite — are not here. They describe modifying the platform source,
-which is not part of what you were given, and nothing in them would be actionable
-from here. This is a reachability boundary, not a secrecy one: a chapter telling
-you to open a file you do not have is answering a question you cannot act on.
-
-**Part 06 does not contradict that boundary, and the distinction is worth
-drawing**, because *architecture* is a word that usually means the inside. Part
-06 does describe the platform's internals — the split between its Trust Plane and
-its Execution Plane, the governance objects and how they relate, where
-enforcement happens — but every claim it makes about them rests on an operation
-you can call or a symbol you can import, never on a file you cannot open. The
-source, the build and the internal test suite are still not in this book. What is
-in it is the shape of the system you are designing against, with the limits of an
-outside read stated rather than glossed.
+**Part 06 covers the platform's architecture, and that is not a contradiction**,
+because _architecture_ is a word that usually means the inside. Part 06 describes
+the split between the Trust Plane and the Execution Plane, the governance objects
+and how they relate, and where enforcement happens — and every claim it makes
+rests on an operation you can call or a symbol you can import. It gives you the
+shape of the system you are designing against, in terms you can verify yourself.
 
 ## Who is accountable
 

@@ -12,31 +12,30 @@ console has no privileged back channel, and the SDK has no bypass. A call that i
 refused for you in one is refused in the other, for the same reason, and produces
 the same audit entry.
 
-*Design intent, not observable:* the enforcement lives behind the API rather than
-in either client, which is why parity holds without anyone maintaining it. You
-can act on that — a control you verified through the SDK does not need
-re-verifying through the console — but you cannot observe it from here, so it is
-labelled rather than asserted.
+The client you drive is `sdk:aegis_sdk.AgenticOSClient`, and the enforcement
+lives behind the API rather than in either client, which is why
+parity holds without anyone maintaining it. Act on that: a control you verified
+through the SDK does not need re-verifying through the console.
 
 ## Why the harness is the primary surface
 
 Not because it is more powerful. Because of what it leaves behind.
 
-| | harness | console |
-| --- | --- | --- |
-| **reviewable before it runs** | yes — it is code, in a branch, in a diff | no — the action *is* the record |
-| **repeatable** | yes — run it against staging, then production | no — someone repeats it by hand, differently |
-| **diffable when it drifts** | yes — re-run and compare | only by reading screens |
-| **rebuildable after an incident** | yes | from memory |
-| **legible to a non-programmer** | no | yes |
-| **good for a decision that needs a person** | no | yes |
+|                                             | harness                                       | console                                      |
+| ------------------------------------------- | --------------------------------------------- | -------------------------------------------- |
+| **reviewable before it runs**               | yes — it is code, in a branch, in a diff      | no — the action _is_ the record              |
+| **repeatable**                              | yes — run it against staging, then production | no — someone repeats it by hand, differently |
+| **diffable when it drifts**                 | yes — re-run and compare                      | only by reading screens                      |
+| **rebuildable after an incident**           | yes                                           | from memory                                  |
+| **legible to a non-programmer**             | no                                            | yes                                          |
+| **good for a decision that needs a person** | no                                            | yes                                          |
 
-The asymmetry is the point. An organisation's *structure* — who reports to whom,
+The asymmetry is the point. An organisation's _structure_ — who reports to whom,
 what each role's delegate may spend, which units can see which knowledge — is
 configuration that outlives the person who set it and must be defensible to an
 auditor. Configuration like that belongs in code.
 
-An organisation's *operation* — approving a held payment, reading why an
+An organisation's _operation_ — approving a held payment, reading why an
 objective stopped, checking an inbox — is human judgment happening now. That
 belongs on a screen.
 
@@ -46,7 +45,7 @@ deciding something about a specific case, do it in the console.
 
 ## What only the console can do
 
-Be honest about this, because "harness-first" is sometimes read as
+Worth being explicit, because "harness-first" is sometimes read as
 "harness-only", and that produces operators who cannot do their jobs.
 
 - **Answer a held decision as yourself.** Approvals are attributable to a human,
@@ -77,7 +76,7 @@ Be honest about this, because "harness-first" is sometimes read as
 unit = await client.units.create(name="Treasury", unit_type="department")
 ```
 
-> **In the console:** *Organisation → Units → New unit.* Same result, same audit
+> **In the console:** _Organisation → Units → New unit._ Same result, same audit
 > entry, no reviewable artifact.
 
 When a chapter names a console screen, it is telling you where a human will meet
@@ -93,4 +92,4 @@ forbidding console edits, which nobody will honour under pressure.
 
 ---
 
-*Next: [02.2 — Standing up an organisation](02-standing-up-an-organization.md)*
+_Next: [02.2 — Standing up an organisation](02-standing-up-an-organization.md)_

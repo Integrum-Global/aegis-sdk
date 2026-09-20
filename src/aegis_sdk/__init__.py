@@ -87,7 +87,7 @@ from .exceptions import (
     ValidationError,
 )
 
-# /sw2 domain modules
+#/sw2 domain modules
 from .modules import (
     AdminModule,
     AgenticDashboardModule,
@@ -186,11 +186,6 @@ from .types import (
     LicenseUsage,
     LicenseValidation,
     LicenseValidationRequest,
-    # Pipeline node-type catalogue
-    NodeTypeCatalog,
-    NodeTypeCategory,
-    NodeTypeSummary,
-    NodeTypeVerdict,
     # Execution models
     Objective,
     ObjectiveCreate,
@@ -329,11 +324,6 @@ __all__ = [
     "PipelineExecution",
     "PipelineNode",
     "PipelineUpdate",
-    # Pipeline node-type catalogue
-    "NodeTypeCatalog",
-    "NodeTypeCategory",
-    "NodeTypeSummary",
-    "NodeTypeVerdict",
     # Auth models
     "APIKey",
     "APIKeyCreate",
@@ -444,7 +434,7 @@ __all__ = [
     "SurfacesModule",
     "TaskAgentsModule",
     "ToolAgentsModule",
-    # s
+    #s
     "AuthUsersModule",
     "CredentialsModule",
     "DecisionsModule",

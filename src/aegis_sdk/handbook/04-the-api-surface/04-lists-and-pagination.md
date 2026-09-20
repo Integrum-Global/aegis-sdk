@@ -10,18 +10,18 @@ the API answers, and which of the fields you get back you may actually trust.
 
 ## There is no one pagination convention. There are four
 
-Measured across the client: **83 of its 841 asynchronous methods take a paging
+Across the client, **83 of its 841 asynchronous methods take a paging
 parameter**, in four distinct caller-facing shapes.
 
-| the parameters the method takes | methods | example |
-| --- | ---: | --- |
-| `limit` + `offset` | 45 | `sdk:aegis_sdk.core.SkillsModule.list` |
-| `page` + `page_size` | 18 | `sdk:aegis_sdk.core.AgentsModule.list` |
-| `limit` only — no way to advance | 18 | several memory and lookup reads |
-| `page_size` only — no way to advance | 2 | `sdk:aegis_sdk.execution.ObjectivesModule.list` |
+| the parameters the method takes      | methods | example                                         |
+| ------------------------------------ | ------: | ----------------------------------------------- |
+| `limit` + `offset`                   |      45 | `sdk:aegis_sdk.core.SkillsModule.list`          |
+| `page` + `page_size`                 |      18 | `sdk:aegis_sdk.core.AgentsModule.list`          |
+| `limit` only — no way to advance     |      18 | several memory and lookup reads                 |
+| `page_size` only — no way to advance |       2 | `sdk:aegis_sdk.execution.ObjectivesModule.list` |
 
 **The third and fourth rows are the ones to notice.** Twenty methods let you ask
-for *more* and give you no way to ask for the *next*. On those, the only page you
+for _more_ and give you no way to ask for the _next_. On those, the only page you
 can ever read is the first one, and the only lever you have is to raise the
 limit. If the collection is larger than your limit, the remainder is not
 reachable through that method at all.
@@ -90,13 +90,13 @@ itself, differently per module, from whatever the route actually returned.**
 
 Three measured examples, all returning the same type:
 
-| method | `total` means | `has_next` is computed as |
-| --- | --- | --- |
-| `sdk:aegis_sdk.core.AgentsModule.list` | the organisation-wide count | `offset + len(page) < total` |
-| `sdk:aegis_sdk.core.SkillsModule.list` | the organisation-wide count | `offset + len(page) < total` |
+| method                                          | `total` means               | `has_next` is computed as              |
+| ----------------------------------------------- | --------------------------- | -------------------------------------- |
+| `sdk:aegis_sdk.core.AgentsModule.list`          | the organisation-wide count | `offset + len(page) < total`           |
+| `sdk:aegis_sdk.core.SkillsModule.list`          | the organisation-wide count | `offset + len(page) < total`           |
 | `sdk:aegis_sdk.execution.ObjectivesModule.list` | **the length of this page** | `len(page) >= page_size` — a heuristic |
 
-Read the third row twice. On `objectives.list`, `total` is *not* an
+Read the third row twice. On `objectives.list`, `total` is _not_ an
 organisation-wide count and `page` is hard-coded to `1`, because the route does
 not paginate. A loop that reads `result.total` as "how many objectives exist"
 gets "how many objectives came back", which is a different number wearing the
@@ -166,7 +166,7 @@ no `agent_id`, no `workspace_id`, and no page cursor.
 
 ⚠ **A parameter a route does not read is silently ignored.** It is not an error
 and there is no warning: the server matches the parameters it declares and drops
-the rest, so an unsupported filter returns the *unfiltered* first page. That is
+the rest, so an unsupported filter returns the _unfiltered_ first page. That is
 the more dangerous direction — you get more than you asked for while believing
 you were narrowed — and it is how a "list the objectives for this agent" call
 becomes "list the organisation's objectives" without saying so.
@@ -193,7 +193,7 @@ the reminder in a chapter about reading collections: some modules return typed
 models with attribute access, and the vertical-standup modules return raw
 dictionaries with subscript access. Within a single provisioning script you will
 handle both — typically a `dict` from the create and a model from the list, for
-the *same* noun.
+the _same_ noun.
 
 ```python
 created = await client.units.create(name="Treasury", unit_type="department")
@@ -206,8 +206,8 @@ names = [u.name for u in page.records]        # model -> attribute
 Note that `list_units` returns `.records`, not `.items` — it is not a
 `PaginatedResponse`. When in doubt, `print(type(result))` once and stop guessing;
 the failure otherwise surfaces as a `TypeError` or `AttributeError` at the point
-of *use*, several lines from the call that decided it.
+of _use_, several lines from the call that decided it.
 
 ---
 
-*Next: [04.5 — Concurrency, timeouts and streams](05-concurrency-and-streams.md)*
+_Next: [04.5 — Concurrency, timeouts and streams](05-concurrency-and-streams.md)_

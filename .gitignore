@@ -15,10 +15,6 @@ venv/
 .env
 .env.*
 !.env.example
-# `.env` and `.env.*` do not match a secrets file named any other way, such as
-# `.secrets-env-<name>.env` or `deploy.env`. These two lines close that gap.
-*.env
-.secrets*
 
 # Editors / OS
 .DS_Store

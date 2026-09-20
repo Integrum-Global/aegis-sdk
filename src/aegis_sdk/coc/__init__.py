@@ -2,7 +2,7 @@
 
 The handbook (:mod:`aegis_sdk.handbook`) tells you how the platform behaves.
 This package is the *working* half: two agent briefs, six task skills, seven
-guardrails, four commands, and one probe you run against your own deployment.
+guardrails, eight commands, and one probe you run against your own deployment.
 
 The counts are stated because a reader works from them — an undercount here is
 how someone never finds the skill that answers their question. This sentence has

@@ -40,7 +40,7 @@ incident.
 
 **Health gating** decides the transition: the new instances must demonstrate they
 are working before they receive traffic. What counts as working is a per-service
-definition, and *design intent, not observable* applies to its details.
+definition, and _design intent, not observable_ applies to its details.
 
 **Rollback ties directly back to [07.3](03-images-and-the-registry.md).** Because
 the deployed reference is a **digest** rather than a tag, reverting is re-pinning
@@ -51,7 +51,7 @@ reason that chapter insisted on it.
 
 ## Upgrades, and what you control
 
-*Design intent, not observable:* platform upgrades are **initiated by the
+_Design intent, not observable:_ platform upgrades are **initiated by the
 platform**, not by you. That follows from [07.1](01-what-a-deployment-is.md)'s
 boundary — you administer inside the deployment, and the platform is operated for
 you — and it is the reference shape's operating model rather than something you
@@ -80,7 +80,7 @@ those roll out on your schedule, through the same rollout and rollback machinery
 The distinction is worth holding: the platform upgrades itself, you upgrade what
 you put on it.
 
-*Design intent, not observable:* the notice period, the window policy, and who
+_Design intent, not observable:_ the notice period, the window policy, and who
 makes the call. These are contractual and operational rather than architectural,
 and they vary. Ask.
 
@@ -90,16 +90,16 @@ A common and expensive mistake is assuming that because a system emits logs, its
 audit evidence is in them. It is not, and the two differ on every axis that
 matters.
 
-| | Audit evidence | Operational telemetry |
-| --- | --- | --- |
-| **Answers** | Who did what, and was it permitted | Is the system healthy, and is it fast |
-| **Produced by** | The governance layer, deliberately | The runtime, as a by-product |
-| **Retention** | Long, and set by policy | Short, and set by cost |
-| **Access** | Restricted, and itself auditable | Broad — engineers read it daily |
-| **Completeness** | Intended to be complete for its scope | Sampled, dropped, rotated |
-| **If you lose it** | You cannot evidence your governance | You lose situational awareness |
+|                    | Audit evidence                        | Operational telemetry                 |
+| ------------------ | ------------------------------------- | ------------------------------------- |
+| **Answers**        | Who did what, and was it permitted    | Is the system healthy, and is it fast |
+| **Produced by**    | The governance layer, deliberately    | The runtime, as a by-product          |
+| **Retention**      | Long, and set by policy               | Short, and set by cost                |
+| **Access**         | Restricted, and itself auditable      | Broad — engineers read it daily       |
+| **Completeness**   | Intended to be complete for its scope | Sampled, dropped, rotated             |
+| **If you lose it** | You cannot evidence your governance   | You lose situational awareness        |
 
-*Design intent, not observable:* every row above. The split between the two
+_Design intent, not observable:_ every row above. The split between the two
 columns is the architecture's intent, and the retention, access and completeness
 properties are how a deployment is built rather than something you can measure
 from your integration. Read "long" and "restricted" as the shape to confirm with
@@ -136,14 +136,14 @@ was watching the wrong thing.
 
 ## Capacity: what scales, and what does not
 
-| Scales with demand | Does not scale |
-| --- | --- |
-| Application service replicas | The relational database's write throughput |
-| Node pool size (autoscaling) | The vector extension's index build cost |
-| Cache capacity | Retention requirements — evidence grows and is kept |
-| Job execution concurrency | Storage growth, which is monotonic |
+| Scales with demand           | Does not scale                                      |
+| ---------------------------- | --------------------------------------------------- |
+| Application service replicas | The relational database's write throughput          |
+| Node pool size (autoscaling) | The vector extension's index build cost             |
+| Cache capacity               | Retention requirements — evidence grows and is kept |
+| Job execution concurrency    | Storage growth, which is monotonic                  |
 
-*Design intent, not observable:* the directions above — which way each limit
+_Design intent, not observable:_ the directions above — which way each limit
 moves when it is reached — as well as the thresholds themselves. That storage
 only grows, and that write throughput scales up rather than out, are design
 properties of the reference shape rather than measurements you were handed.
@@ -166,7 +166,7 @@ arguing with:**
   service replica consumes some. More replicas is not unconditionally more
   throughput, and past a point it is less.
 
-*Design intent, not observable:* the specific thresholds. The reference shape
+_Design intent, not observable:_ the specific thresholds. The reference shape
 says what scales and what does not; only your operator can say at what point each
 one bites, and that is a better question to ask before a launch than after.
 
@@ -242,4 +242,4 @@ precisely so you can tell the two apart.
 
 ---
 
-*This is the last chapter of part 07.*
+_Next: [Part 08 — The capability catalogue](../08-the-capability-catalogue/README.md)_

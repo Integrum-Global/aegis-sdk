@@ -1,5 +1,7 @@
 # Part 02 — Working through the harness
 
+<!-- anchor-floor: exempt (part navigation; chapters carry the anchors) -->
+
 This is the spine of the book. Everything an architect designs and an operator
 runs is here, in the order you actually do it: describe the organisation, bound
 it, wire trust through it, put work into it, and pull evidence out of it.
@@ -61,3 +63,7 @@ those, and the difference is invisible until the day you need it.
 
 Write your provisioning as an idempotent script from the beginning, even for a
 pilot. Chapter 02.2 shows the shape.
+
+---
+
+_Next: [02.1 — The two surfaces](01-the-two-surfaces.md)_

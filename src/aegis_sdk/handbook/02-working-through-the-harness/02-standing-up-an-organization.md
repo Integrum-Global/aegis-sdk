@@ -23,7 +23,7 @@ unit that already exists, and for a large org chart that is where the time goes.
 org = await client.organizations.create(
     name="Northwind Manufacturing",
     slug="northwind",
-    plan_tier="pro",
+    plan_tier="professional",
 )
 org_id = org["id"]
 ```

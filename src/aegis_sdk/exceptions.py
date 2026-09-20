@@ -99,9 +99,9 @@ class AgenticOSError(Exception):
         # paragraph below (which said that case arrives ABSENT). The producer is
         # live: `constraint_enforcer.py`'s temporal-unverifiable emit site
         # places exactly these three under `metadata["unverifiable_scope"]`, and
-        # `api/agent_execute.py` forwards it into the 403 body. Do NOT
-        # pattern-match a fourth value; if the server learns one, this contract
-        # learns it in the same change.
+        # `api/_governance_denied.py` lifts it into the 403 detail that
+        # `api/agent_execute.py` raises. Do NOT pattern-match a fourth value; if
+        # the server learns one, this contract learns it in the same change.
         #
         # ⛔ AND THE KEY IS GENUINELY ABSENT (`{}`) FOR LOCAL ERRORS AND FOR
         # SERVER REFUSAL PATHS THAT CARRY NO STRUCTURED HALF AT ALL. Absent

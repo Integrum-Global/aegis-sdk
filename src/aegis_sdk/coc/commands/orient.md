@@ -21,8 +21,8 @@ echo "$AGENTIC_OS_BASE_URL"
 There is **no default**. If that prints nothing, stop and get one; do not guess a
 host, and do not carry one over from an earlier session.
 
-State the host in your own words before you continue: *"I am working against
-`<host>`."* This is not ceremony. A guard in this repository refuses a mutating
+State the host in your own words before you continue: _"I am working against
+`<host>`."_ This is not ceremony. A guard in this repository refuses a mutating
 call whose target it cannot see you name, and the reason is that a client's
 production deployment and a scratch one differ by a substring.
 
@@ -58,12 +58,12 @@ python -m aegis_sdk.coc.probe --base-url "$AGENTIC_OS_BASE_URL" \
   --api-key "$KEY" --token "$SESSION_TOKEN"
 ```
 
-| exit | means | what you may conclude |
-| ---- | ----- | --------------------- |
-| `0` | it answered | these routes are reachable **by this credential, on this deployment, now** |
-| `3` | UNDETERMINED | **nothing.** Not "clean" — it could not tell |
+| exit | means        | what you may conclude                                                      |
+| ---- | ------------ | -------------------------------------------------------------------------- |
+| `0`  | it answered  | these routes are reachable **by this credential, on this deployment, now** |
+| `3`  | UNDETERMINED | **nothing.** Not "clean" — it could not tell                               |
 
-The probe verifies its own credentials against a control operation first, which
+`sdk:aegis_sdk.coc.probe` verifies its own credentials against a control operation first, which
 is the step that separates an expired token from a healthy API. Those two produce
 identical output from a probe that skips it.
 
@@ -74,13 +74,13 @@ re-run; do not proceed and do not report reachability. Load the
 ## 4 — Write down what the probe could NOT tell you
 
 This is the step people skip, and it is the one that makes the rest honest. The
-probe answers *admission*. It does not answer:
+probe answers _admission_. It does not answer:
 
 - **whether a route does what you think** — a route that admits you when it
   should not returns `200`, and nothing in this repository can see that;
 - **whether the client's model matches the server's** — the client's declared
-  operations are this package's *belief* about the API, and where it is wrong it
-  is wrong confidently;
+  operations are this package's model of the API, and the deployment is the
+  authority on what it serves;
 - **anything about the platform's implementation.** If a question can only be
   answered by reading the platform's source, it cannot be answered from here.
   Say so, and say what would settle it.
@@ -91,7 +91,7 @@ only the first is free.
 
 ## 5 — Read the mental model before you design
 
-The single most expensive misunderstanding on this platform is about *where*
+The single most expensive misunderstanding on this platform is about _where_
 governance happens, and every design built on the wrong guess has to be rebuilt.
 Read the handbook chapter **The mental model** now, not later. It is short, and
 it decides everything in `/construct`.

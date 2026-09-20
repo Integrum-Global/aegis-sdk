@@ -5,92 +5,6 @@ version here is the SDK's own; it is not the server's.
 
 ## Unreleased
 
-### Added — the first runnable pipeline example
-
-`examples/build_a_pipeline.py` is the SDK's first pipeline example. The five that
-shipped before it cover agents, trust, streaming and error handling; none showed
-a pipeline, so the one surface where node types actually get used had no worked
-code at all.
-
-It walks the whole path in one file: ask the deployment which node types it has,
-filter to the ones whose verdict says they will run, build a graph from those,
-validate it, and execute it. It stops early — with the catalogue's own
-`unavailable_reason` — rather than assembling a graph the deployment cannot run.
-
-Two things it demonstrates that the surrounding docs only assert:
-
-- **Filter to executable types BEFORE building.** A graph built from
-  non-executable types passes `validate()` and refuses at execution, because
-  validation and execution ask different questions. Building first is a slow way
-  to learn what the catalogue already said.
-- **Read `warnings` as well as `valid`.** Several real defect classes are
-  warnings by deliberate severity contract, and a warning never flips `valid` to
-  `False`.
-
-The handbook's pipeline chapter gained the matching walkthrough, so the
-discovery section and the construction section now connect to each other.
-
-### Fixed — the node-type catalogue could never be read
-
-`client.pipelines.list_node_types()` raised on every call. It asserted that
-`GET /api/v1/pipelines/node-types` answers a flat list; the route answers a
-category-structured object. So a caller asking which nodes their deployment
-offers got a `ServiceError` — and the message named only the payload's _type_,
-which was true and left the reader unable to tell which side had moved.
-
-Nothing caught it because nothing called it. There was no caller anywhere in the
-package and no test of the method. A method that always raises looks exactly
-like a method nobody uses, until a customer is the first to find out.
-
-It now returns a `NodeTypeCatalog` built from what the server actually sends,
-**keeping the executability fields rather than flattening them away** — "will my
-pipeline run?" is the question the catalogue exists to answer, and a plain list
-of nodes discards it:
-
-- `total_types` — the palette: what this deployment offers on its canvas.
-- `node_types` — the whole pipeline vocabulary, each type carrying its own
-  verdict. A type can appear here and still refuse to run, and `fabricates`
-  distinguishes a loud refusal from a node that emits a diagnostic string **as
-  its output** and feeds it downstream. A surface rendering those two the same
-  way is how a fabricated result reaches a client.
-- `executable` / `unavailable_reason` — stated once for the palette, because a
-  deployment unable to run its own palette is a configuration, not a defect.
-
-Two things to know when upgrading:
-
-- **Return type change.** This returned `list[dict]`; it now returns
-  `NodeTypeCatalog`. No caller inside the package used it, so nothing here
-  breaks — code outside that read the old shape must be updated.
-- **The old docstring described fields the server never sent.** It promised
-  `origin`, `citation`, `binding`, and per-node `params` / `inputs` / `outputs`.
-  The server sends none of them, and cannot yet — the node registry exposes no
-  per-node parameter schema to Python. Do not write against those fields.
-
-### Fixed — `workspace_id` may be `None` on six response models
-
-Servers that removed the Workspace entity keep the `workspace_id` key on their
-responses but always send it as `null`. The SDK declared it a required `str` on
-`Agent`, `ToolAgent`, `Pipeline`, `Objective`, `ScopedBridge` and
-`ExternalAgent`, so every response carrying one of them failed validation.
-
-The worst symptom was `client.agents.create()`: the server created the agent,
-then the SDK raised `ValidationError` reading the reply. A caller saw a failure,
-retried, and left a duplicate behind each time. `agents.get()` and
-`agents.list()` failed outright on every agent such a deployment held.
-
-The field is now `str | None` on all six, and `client.objectives` no longer turns
-a null into `""`. Two things to know when upgrading:
-
-- **Type change.** Code that assumed a `str` (for example
-  `agent.workspace_id.startswith(...)`) must handle `None`; a strict type checker
-  will now flag it.
-- **Do not use it as a filter.** List methods omit the filter when you pass
-  `None`, so `agents.list(workspace_id=agent.workspace_id)` returns the whole
-  organization rather than one workspace.
-
-`agents.create()` still requires `workspace_id`, because those servers still
-require it on the request.
-
 ### Added — `client.mcp`, an MCP capability surface
 
 Reported by a partner, in their words: the installed SDK exposed no MCP verb at
@@ -105,8 +19,10 @@ separate acts with two separate bodies.** Registering a server stores its
 endpoint and credential and attaches it to nobody; an agent receives its tools
 only when a binding references that registration. `bind` therefore takes no
 `url`, `headers` or `command` — a row carrying a reference and inline connection
-settings is refused, so those parameters do not exist on it. `bind_inline` is
-the self-contained form.
+settings is refused, so those parameters do not exist on it. `bind_inline`
+stores that self-contained form and requires `is_enabled=False`: a LIVE MCP row
+cannot carry its own connection settings, because an endpoint and credential
+with no reference have no single owner to rotate them.
 
 The partner's second observation was also accurate and is unchanged by design:
 an endpoint is resolved at registration time, and loopback, link-local,
@@ -152,7 +68,12 @@ the replacement.
 `token_type` and `expires_in`. The server returns them on create and the SDK
 silently dropped them, so a partner had a token it could never read back.
 
-### Added — `client.directives`: typed `classification`
+### Added — `client.work_objectives`: typed `classification` on `Directive`
+
+The directives surface is reached through `client.work_objectives`, which carries
+the `/api/v1/directives/**` methods (`list_directives`, `create_directive`,
+`get_directive`, and the rest) — there is no `client.directives` attribute, and a
+reader who typed one got an `AttributeError` rather than the records.
 
 `Directive` gains `classification: str = "public"`, matching the server's
 response model (a prior audit finding). Without it a RESTRICTED and a PUBLIC directive

@@ -300,36 +300,67 @@ if not usage.agent_execution.unlimited:
         print(f"Warning: only {remaining} agent executions remaining!")
 ```
 
-### Get Usage History
+### Get Usage History — ⛔ NOT AVAILABLE
+
+**This method has no server route and raises `UnsupportedOperationError`.**
 
 ```python
-from aegis_sdk import UsageHistory
-from typing import List
-
-history: List[UsageHistory] = await client.revenue.usage.get_history(
+# ⛔ This raises UnsupportedOperationError — there is no /analytics/usage/history
+#    endpoint on the Aegis API.
+history = await client.revenue.usage.get_history(
     start_date="2024-01-01",
     end_date="2024-01-31",
-    resource_type="agent_execution",   # Optional filter
+    resource_type="agent_execution",
 )
-
-for record in history:
-    print(f"  {record.date}: {record.usage}/{record.limit}")
 ```
 
-### Get Usage Breakdown
+⛔ **Until 2026-09-18 this method swallowed the 404 and returned an EMPTY LIST**,
+so the example above *appeared* to work and returned nothing. A caller had no
+way to tell "the period had no usage" from "this endpoint does not exist".
+**Both answers were the same empty list.** It now raises, which is the only
+honest answer available.
+
+For cost-shaped usage over a period, use `client.analytics.costs()` or
+`client.analytics.cost_breakdown()`. Note those return **cost** shapes, not the
+`UsageHistory` records this method declared.
+
+⚠ These are named rather than linked because **there is no `analytics.md` in
+this docs tree** — the analytics module is not documented under `docs/modules/`.
+An earlier revision of this section linked to it anyway, which pointed readers
+at a second thing that does not exist. The `handbook/check.py` broken-link
+checker scans `_PROSE_ROOTS` (handbook + coc) and does **not** cover `docs/`,
+so it could not have caught that; if an analytics chapter is added later, link
+it here.
+
+### Get Usage Breakdown — ⛔ NOT AVAILABLE
+
+**This method has no server route and raises `UnsupportedOperationError`.**
 
 ```python
-from aegis_sdk import UsageBreakdown
-
-breakdown: UsageBreakdown = await client.revenue.usage.get_breakdown(
+# ⛔ This raises UnsupportedOperationError — there is no /analytics/usage/breakdown
+#    endpoint on the Aegis API.
+breakdown = await client.revenue.usage.get_breakdown(
     resource_type="agent_execution",
-    dimension="agent",   # "agent", "user", "date"
+    dimension="agent",
 )
-
-if breakdown.by_agent:
-    for agent_id, count in breakdown.by_agent.items():
-        print(f"  Agent {agent_id}: {count} executions")
 ```
+
+⛔ **Until 2026-09-18 this method swallowed the 404 and returned an EMPTY
+`UsageBreakdown`**, for the same reason and with the same consequence as
+`get_history` above.
+
+For a dimensioned view of spend, use `client.analytics.cost_breakdown()` — a
+cost shape, not the `UsageBreakdown` this method declared. (Named, not linked:
+there is no `analytics.md` in this tree — see the note above.)
+
+---
+
+**Why these two are documented rather than deleted:** they are kept as named
+shims so a caller gets a message naming the gap instead of an `AttributeError`.
+`trust/audit.py` established that convention; these two now follow it. See
+`revenue/usage.py`'s module docstring for the measurement showing they were the
+only two places in the SDK where an HTTP failure was converted into a
+plausible success.
 
 ---
 

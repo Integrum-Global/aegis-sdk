@@ -1,8 +1,8 @@
 # 04.1 — Calling the API
 
-This chapter documents **current behaviour**, including two open defects. Where
-something is broken it says so and cites the issue. Do not read the intended
-design out of the parts describing the shipped one.
+This chapter is about _who you are_ when you call Aegis, and why a call is
+refused. Read it before you change a credential: most refusals here are answered
+by knowing which of two credentials you hold and which layer turned you away.
 
 ## Two credentials, one door
 
@@ -28,8 +28,9 @@ The two principals differ in ways that decide everything downstream:
 | `api_key_scopes`  | the key's scopes       | —                          |
 
 Read that table before you read anything else in this chapter. **Two of those
-cells are empty on purpose and they are the source of most API-key surprises:**
-an API key has no role and no personas, ever, whatever it is scoped to.
+cells are empty by design, and they decide which routes each credential
+reaches:** an API key has no role and no personas, ever, whatever it is scoped
+to. A key carries scopes; a session carries a role and personas.
 
 **The absence of `auth_type` on the JWT shape is the discriminator every gate
 uses.** That is worth internalising, because it means gates test for
@@ -37,113 +38,79 @@ uses.** That is worth internalising, because it means gates test for
 principal constructed by some third path that forgets the key will be treated as a
 JWT caller.
 
-**There is more than one principal resolver, and they do not behave alike.** The
-main dependency is one; the RBAC middleware derives its own principal with a
-mirrored API-key branch; and a third resolver serves an alternate handler
-surface, splitting the two credentials into separate paths behind a single front
-door. That front door **refuses API keys unless a handler explicitly asks for
-them** — fail-closed, and correct.
+**A route's behaviour towards an API key is not a property of the API as a
+whole.** Two routes that look alike from outside can admit a key on different
+terms, and some admit one only where the route asks for it explicitly — a
+refusal by default, which is the right default. So if a key works on one route
+and is refused on a sibling, that is not necessarily a scope problem. Treat the
+two routes as two questions and test each with the credential in your hand.
 
-What this means for you as a caller: **a route's behaviour towards an API key is
-not a property of the API as a whole.** Two routes that look alike from outside
-can sit behind different resolvers with different defaults. If a key works on one
-route and is refused on a sibling, that is not necessarily a scope problem — the
-routes may not share an admission path at all.
-
-⚠ **This chapter previously carried source coordinates, and they were wrong
-often enough to be worth recording as a warning about method rather than as
-history.** One section was re-derived and found to point ~32 lines short of each
-target — close enough to look plausible and land a reader mid-comment. A
-sentence certifying the rest of the chapter had been checked was written before
-the rest was checked; a later sweep found parts off by −188 to −230 lines.
-
-That is the failure this edition removes at the root rather than repairing.
-Claims here now name **surfaces you can call** and symbols you can import, and
-you can re-verify every one of them against your own installed package:
+Claims in this chapter name **surfaces you can call** and symbols you can
+import, and you can re-verify every one of them against your own installed
+package:
 
 ```
 python -m aegis_sdk.handbook.check
 ```
 
-A coordinate you cannot open is not evidence to you. An operation you can call is.
+An operation you can call is evidence you can act on.
 
-## ⛔ Known open defect: an API key cannot reach a persona-gated route
+## Which credential reaches which route
 
-**This is open, it sits in the highest severity band, and every developer using
-an API key hits it.** It is documented here rather than omitted because a chapter
-that describes the intended design as if it were the shipped one is worse than no
-chapter.
+**Personas belong to sessions; scopes belong to keys.** That single sentence is
+the credential model, and it decides admission across the whole API.
 
-**The mechanism**, which is knowable entirely from the principal table above:
+A **persona** is a property of a human identity — `admin`, `architect` and the
+rest are things a _person_ is within an organisation. An API-key principal is
+constructed with no personas and no role, unconditionally and by design: a
+machine credential is not a person, and inventing a persona for one would be a
+fail-open default in the place that can least afford it. A **scope** is the
+machine equivalent — a narrow, explicit grant of `:read` or `:write` over a
+named resource, attached to the key when it is issued.
 
-1. An API-key principal is constructed with **no personas**, unconditionally.
-   That is deliberate fail-closed design, not an oversight.
-2. A persona gate resolves the caller's personas and compares them against the
-   personas the route allows.
-3. An empty persona list is not a *missing* persona list, so nothing falls back
-   to deriving personas from a role — and an API key has no role either, which
-   would defeat such a fallback anyway.
-4. The comparison asks "is any of the caller's personas allowed?". Over an empty
-   list that is always false, so the deny branch always fires.
+So the routing is direct:
 
-So a persona-gated route is unreachable by **every API key, regardless of
-scopes**. No scope configuration can fix it, because **scopes are never consulted
-on that path**.
+| route is gated on | reached by                                                 |
+| ----------------- | ---------------------------------------------------------- |
+| personas          | a user session                                             |
+| API-key scopes    | an API key carrying a satisfying scope                     |
+| both              | either, admitted at the router and scope-checked per route |
 
-**Why it costs a whole day, and how to recognise it in one minute.** The denial is
-a `403` whose detail reads:
+**Use a session for persona-gated calls and a key for scope-gated ones.** A
+wider scope does not turn a key into a session: on a persona-gated path, scopes
+are not the question being asked, so widening one buys you nothing and leaves
+you holding a more powerful credential than the job needs.
 
-```
-Access denied: requires one of personas admin, architect
-```
+**Routers that accept both** use a persona-**or**-API-key admission gate — the
+router decides whether the caller is admitted at all, and each route beneath it
+applies its own write-scope check. That is the shape to expect on mixed
+surfaces, and it is being extended across the remaining persona-gated routers
+[immediate roadmap].
 
-That reads exactly like a permissions problem, so you go and inspect the key's
-scopes — where you find nothing wrong, because nothing is wrong there.
+**Telling the two apart in one minute.** When a call is refused and you are not
+sure which model a route follows, retry the identical request with a user
+session (`api:POST /api/v1/auth/login`, then the same call). If the session
+succeeds where the key did not, the route is persona-gated and a session is the
+credential it wants. Confirm what your own credential carries with
+`api:GET /api/v1/auth/me` — an API-key principal shows an empty persona list,
+which is the expected shape, not a misconfiguration.
 
-**The one-minute diagnosis:** retry the identical request with a user session
-instead of the key (`api:POST /api/v1/auth/login`, then the same call). If the
-session succeeds and the key fails with that message, this is the defect and no
-amount of scope editing will move it. Confirm what your key actually carries with
-`api:GET /api/v1/auth/me` — an API-key principal shows an empty persona list, and
-that is the whole story.
-
-**How much surface.** Enough that you should assume a persona-gated route is
-affected rather than hope otherwise. The gate is applied both per-route and at
-*router* level, and a router-level gate fans out to every route beneath it — so
-the number of affected routes is substantially larger than the number of places
-the gate is written. **UNVERIFIED:** the exact route-level total. Counting
-occurrences, files and routers yields three different numbers, each correct for
-its own unit, and the route-level enumeration has not been done.
-
-### The fix shape, and what you can do today
-
-A persona-**or**-API-key variant of the gate already exists and carries the
-API-key branch the plain persona gate lacks. The durable fix is for affected
-routers to adopt it: admission at the router, a write-scope gate per route.
-
-Until that lands, use a user session rather than a key for persona-gated calls.
-**Do not widen the key's scopes to try to reach one** — the scopes are not read
-on that path, so a wider key buys you nothing and leaves you holding a more
-powerful credential than the job needs.
-
-**One consequence of the fix shape is worth knowing as a caller, because it
-explains an otherwise baffling result.** Admission is layered: a router-level
-gate runs *before* any per-route gate. So a route can carry a perfectly correct
-per-route permission check that is never reached, because the router turned you
-away first.
+**Admission is layered, and that explains an otherwise baffling result.** A
+router-level gate runs _before_ any per-route gate. So a route can carry a
+perfectly correct per-route permission check that is never reached, because the
+router made the admission decision first.
 
 What you observe: two routes on the same resource, one reachable with your
 credential and one not, with no difference in the permissions either route
-documents. The difference is which layer refused you — and the error body does
-not say. If a route is refused where a sibling is not, the useful question is not
+documents. The difference is which layer decided — and the error body does not
+say. If a route is refused where a sibling is not, the useful question is not
 "which permission am I missing?" but "was I refused at the door, or at the
 desk?".
 
 > ### ⚠ A scope check is a no-op for session callers
 >
-> This is not recorded in any defect report and you need it. **The scope gate
-> returns early for anything that is not an API key.** It is an API-key
-> mechanism; against a user session it checks nothing at all.
+> **The scope gate returns early for anything that is not an API key.** It is an
+> API-key mechanism; against a user session it checks nothing at all.
 >
 > The consequence, on routes whose only per-route gate is a scope check: the
 > **sole** authority check for a human session is the router-level persona
@@ -157,10 +124,9 @@ desk?".
 
 ## The two registries
 
-These are different vocabularies and confusing them is easy — it has been done
-more than once on this team, including by people writing the documentation.
+These are two different vocabularies that share a spelling. Keep them apart.
 
-**The permission matrix** — RBAC. Keyed by *role* (`tenant_admin`, `org_owner`,
+**The permission matrix** — RBAC. Keyed by _role_ (`tenant_admin`, `org_owner`,
 `org_admin`, `developer`, `viewer`, `member`, `app_operator`, `app_admin`,
 `user`, `operator`, `manager`, `architect`, `admin`), with granular actions plus
 a `*` wildcard. This is what a user session is judged against.
@@ -179,11 +145,9 @@ concrete case that catches people:
 
 So "`roles:write` is not in the permission matrix" is a true statement that tells
 you nothing about whether the scope is valid. It is valid. The two registries
-answer different questions and share a spelling, which is why confusing them is
-so easy — it has been done more than once here, including by people writing the
-documentation.
+answer different questions, and a name in one is not a name in the other.
 
-**The bridge between them is one-directional.** A permission *resource* expands
+**The bridge between them is one-directional.** A permission _resource_ expands
 to a set of candidate scopes, and any one of them satisfies it:
 
 ```
@@ -222,36 +186,14 @@ on:
   one does not. If that happens to you it is a real distinction, not a flake, and
   not something to retry your way out of.
 
-Where a route checks roles only, that is a deliberate configuration rather than
-an omission — so the asymmetry is a property of the platform's design and not a
-gap you have found.
+Where a gate is role-only it is so by deliberate configuration — a documented
+choice, and a property of the platform's design rather than a gap.
 
-Where a gate is role-only it is so by deliberate configuration rather than by
-omission — a documented choice, not a gap someone forgot to close.
-
-⛔ **A correction worth keeping, for its method rather than its content.** An
-earlier revision of this chapter filed one of these guards on the wrong side of
-the role-only/role-and-attribute line, and the evidence offered was a quoted
-count: *"a search for the attribute-check term returns zero matches in that
-file"*. Re-run against the same file, the same search returns **35**, and the
-guard's own documentation says it enforces both.
-
-The failure is not a stale coordinate. **A count was quoted as evidence and the
-count was wrong**, so a false claim arrived wearing the strongest-looking proof
-on the page. Re-run a quoted number before you trust it — including any in this
-book, which is the whole reason the verification command exists and is yours to
-run.
-
-**What survives, and what you can act on from outside:** you cannot tell from
-the response which of the two guards refused you, and the error body does not
-say. So a permission granted to your role and *still* refused is not necessarily
-a bug in your role — an attribute rule may be denying you, and deny wins over a
-role allow.
-
-*Design intent, not observable:* the guard is chosen per route at the platform
-side. You cannot query which one applies, and this book will not invent a way to
-tell you, because a method that appeared to work and did not would be worse than
-the honest limit.
+**The guard is chosen per route at the platform side, and the choice is not
+exposed on the response.** The error body names the permission, not the
+mechanism that evaluated it. So a permission granted to your role and _still_
+refused is not necessarily a bug in your role — an attribute rule may be denying
+you, and deny wins over a role allow.
 
 **So diagnose it from the outside, in this order.** Confirm the permission is
 granted to your role. If it is and the call is still refused, treat an attribute
@@ -264,32 +206,27 @@ role permanently wider than it needed to be.
 
 The field is `organization_id` on the principal — the key's organisation for an
 API key, the token's `org_id` claim for a session — and it is mirrored onto the
-request. The alternate handler surface guards it fail-closed. You can read the
-organisation your credential resolves to at `api:GET /api/v1/auth/me`.
+request. You can read the organisation your credential resolves to at
+`api:GET /api/v1/auth/me`.
 
-**It is not enforced by a single middleware, and that is the fact to carry.**
-Three layers check it independently, each explicit at its own call site:
+**Tenancy is checked in more than one place, and that is the fact to carry.**
+One of those refusals is worth knowing exactly: a caller with no organisation
+context is turned away with a **400** and the detail
+`"Authenticated caller has no organization context"`. Note the status — a _400_,
+not a 401 or 403. A caller who reads only the status code will classify this as a
+malformed request and go looking at their body. It is an identity problem.
 
-1. **The HTTP boundary** — refuses a caller with no organisation context, with a
-   **400** and the detail `"Authenticated caller has no organization context"`.
-   Note the status: a *400*, not a 401 or 403. A caller who reads only the status
-   code will classify this as a malformed request and go looking at their body.
-   It is an identity problem.
-2. **The service layer** — a tenant guard applied per call, plus a row-level
-   check that a returned row belongs to the caller's organisation.
-3. **RBAC/ABAC** — the permission check takes the caller's organisation
-   explicitly. A *permission lookup* deliberately opts out of tenant scoping,
-   because asking "what may I do?" is a self-lookup; the **attribute** evaluation
-   does scope by tenant.
+The consequence: **a tenancy failure can surface as a 400, a 403, or an empty
+result set.** Those look like three different bugs and are one. When you meet any
+of the three, read the organisation your credential resolves to before you change
+anything else.
 
-The consequence of three independent layers rather than one: **a tenancy failure
-can surface as a 400, a 403, or an empty result set, depending on which layer
-caught it.** Those look like three different bugs and are one.
-
-**Scopes are not tenant-qualified.** `has_scope` and `scope_covers_permission`
-take only `(scopes, permission)` — no org argument. Tenancy is an orthogonal check
-applied by the route or the service, never by the scope gate. A valid scope says
-nothing about which tenant's data you may touch.
+**A scope and a tenant are different questions.** Your organisation comes from
+the credential itself, never from what that credential is scoped to. A scope
+tells you which operations a key may attempt; it never tells you whose data the
+key reaches. So widening a scope is not a way to reach another organisation's
+data, and a scope that looks correct is no evidence that a tenancy refusal was
+about scopes at all.
 
 ## Checklist for calling this API
 
@@ -308,11 +245,11 @@ nothing about which tenant's data you may touch.
    the authenticated session and pinned when the record is created — a body field
    naming an approver is not how approval works here, and this is deliberate.
 
-*Adding a route to the platform rather than calling it is covered in the
-platform's own internal documentation, which is not part of this edition.*
+_Adding a route to the platform, rather than calling it, is covered by the
+platform's own internal documentation._
 
-**Where the rest of this part goes.** This chapter is about *who you are* and
-*why you were refused*. The five that follow are about everything that happens
+**Where the rest of this part goes.** This chapter is about _who you are_ and
+_why you were refused_. The five that follow are about everything that happens
 once a call actually goes out: what each failure means and whether to retry it
 ([04.2](02-errors-and-refusals.md)), what a key can and cannot hold over its
 life ([04.3](03-credentials-and-keys.md)), how to read a collection without
@@ -324,4 +261,4 @@ response you may actually act on
 
 ---
 
-*Next: [04.2 — Errors and refusals](02-errors-and-refusals.md)*
+_Next: [04.2 — Errors and refusals](02-errors-and-refusals.md)_

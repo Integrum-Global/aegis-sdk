@@ -4,49 +4,46 @@ The Agentic OS SDK supports Server-Sent Events (SSE) for real-time streaming of 
 
 ## Agent Execution Streaming
 
-Stream real-time events during agent execution using `client.agents.stream()`:
+Stream real-time events during agent execution using `client.agents.stream()`.
+The event kind is on the key `type`, and the event fields sit on the FRAME
+itself — this stream is flat, unlike the session stream below, which nests its
+payload under `data`:
 
 ```python
 import asyncio
-from typing import Any, Dict
 from aegis_sdk import AgenticOSClient
 
 async def main() -> None:
     async with AgenticOSClient.from_env() as client:
         async for event in client.agents.stream(
             agent_id="agent_abc123",
-            objective="Write a comprehensive analysis of quantum computing",
+            message="Write a comprehensive analysis of quantum computing",
             context={"focus": "error correction"},
         ):
-            event_type: str = event.get("event_type", "unknown")
+            event_type: str = event.get("type", "unknown")
 
-            if event_type == "started":
-                print("Execution started...")
-            elif event_type == "thinking":
-                print("Agent is processing...")
-            elif event_type == "output":
-                content: str = event.get("data", {}).get("content", "")
-                print(content, end="", flush=True)
-            elif event_type == "completed":
+            if event_type == "start":
+                # The resolved model this agent is running. Agents do not share
+                # a model, so read it per execution rather than assuming one.
+                print(f"Started on {event.get('model') or 'model unresolved'}")
+            elif event_type == "content":
+                print(event.get("content", ""), end="", flush=True)
+            elif event_type == "done":
                 print("\nExecution completed!")
-                result: Dict[str, Any] = event.get("data", {})
-                print(f"Result: {result}")
             elif event_type == "error":
-                error_msg: str = event.get("data", {}).get("message", "Unknown error")
-                print(f"\nError: {error_msg}")
+                print(f"\nError: {event.get('error', 'Unknown error')}")
 
 asyncio.run(main())
 ```
 
 ### Event Types
 
-| Event Type | Description | Data Fields |
-|------------|-------------|-------------|
-| `started` | Execution began | `agent_id`, `execution_id` |
-| `thinking` | Agent is processing | `step`, `description` |
-| `output` | Intermediate output | `content`, `type` |
-| `completed` | Execution finished | `result`, `duration_ms` |
-| `error` | Execution failed | `message`, `code` |
+| Event Type | Description | Fields |
+|------------|-------------|--------|
+| `start` | Execution began | `thread_id`, `model`, `timestamp` |
+| `content` | A streamed content chunk | `content`, `thread_id` |
+| `done` | Execution finished | `thread_id`, `timestamp` |
+| `error` | Execution failed | `error`, `thread_id` |
 
 ## Session Message Streaming
 
@@ -85,7 +82,7 @@ async for message in client.sessions.stream_messages(
 
 ## Session Event Streaming
 
-Stream all session events (messages, artifacts, status changes, subagent activity):
+Stream all session events — agent activity, subagent spawns, cost updates:
 
 ```python
 import asyncio
@@ -96,32 +93,37 @@ async def main() -> None:
     async with AgenticOSClient.from_env() as client:
         async for event in client.sessions.stream_events(
             session_id="ses_abc123",
-            event_types=["message", "artifact", "status", "subagent"],
+            event_types=["progress_update", "subagent_spawned"],
         ):
             event_type: str = event.get("type", "unknown")
             data: Dict[str, Any] = event.get("data", {})
 
-            if event_type == "message":
-                print(f"Message [{data.get('role')}]: {data.get('content')}")
-            elif event_type == "artifact":
-                print(f"Artifact: {data.get('name')} ({data.get('artifact_type')})")
-            elif event_type == "status":
-                print(f"Status changed to: {data.get('status')}")
-            elif event_type == "subagent":
-                print(f"Subagent {data.get('subagent_id')}: {data.get('status')}")
+            # `model` is the model THIS agent is running. Agents within one
+            # session do not share a model, so read it per event. It is "" when
+            # the platform could not resolve one — empty means unknown.
+            model = data.get("model") or "model unresolved"
+
+            if event_type == "progress_update":
+                print(f"[{model}] {data.get('message')}")
+            elif event_type == "subagent_spawned":
+                print(f"[{model}] subagent: {data.get('nodeName')}")
 
 asyncio.run(main())
 ```
 
 ### Filtering Event Types
 
-Pass a list of event types to `event_types` to receive only specific events:
+Pass a list of event types to `event_types` to receive only specific events. The
+filter is applied **client-side** against the server's own type vocabulary, and a
+name the server does not emit is dropped **silently** — no error, just an empty
+stream. The full vocabulary is listed on
+`aegis_sdk.execution.SessionsModule.stream_events`.
 
 ```python
-# Only messages and status changes
+# Only agent activity and cost updates
 async for event in client.sessions.stream_events(
     session_id="ses_abc123",
-    event_types=["message", "status"],
+    event_types=["progress_update", "cost_update"],
 ):
     print(event)
 ```

@@ -28,8 +28,8 @@ from typing import Any
 
 from .._http import encode_path_param
 
-#: The formats the server can render a presentation spec into. Mirrors
-#: ``aegis.services.presentation_render.SUPPORTED_PRESENTATION_FORMATS`` --
+#: The formats the server can render a presentation spec into. Mirrors the
+#: server's own supported-format set --
 #: not imported from it (this package ships independently of ``aegis``;
 #: see the SDK boundary convention), so if the server ever adds a third
 #: format this constant is the one place to update on the client side.
@@ -97,15 +97,23 @@ class PresentationModule:
             :meth:`get`).
 
         Raises:
-            ValidationError: Four DISTINCT, caller-actionable conditions,
-                distinguishable by ``exc.error_code`` -- do not branch on
-                :attr:`~aegis_sdk.exceptions.AgenticOSError.message`, which
-                is prose and may be reworded without notice:
+            ValidationError: Caller-actionable conditions that arrive under
+                one exception type. ``exc.error_code`` separates the 422 from
+                the 400s; it does NOT separate the 400s from EACH OTHER, so
+                do not branch on it as though it did:
 
-                * The spec is malformed (400, ``exc.error_code`` unset --
-                    server-side validation, not this route's own typed
-                    refusal).
-                * ``format`` names no renderer (400).
+                * The spec is malformed, OR ``format`` names no renderer.
+                    BOTH are 400 and BOTH carry ``exc.error_code ==
+                    "BAD_REQUEST"``: this route raises them with a
+                    plain-string ``detail``, and the platform handler stamps
+                    the code from the STATUS rather than from the cause --
+                    its ``detail["code"]`` branch is taken only for a DICT
+                    detail, so a string detail falls through to the
+                    status-keyed table. ``error_code`` therefore does not
+                    tell these two apart, and it is never unset.
+                    ``exc.message`` is the only discriminator, and it is
+                    prose: treat a 400 as "the request was refused, read the
+                    message", never as a stable key.
                 * The spec is well-formed but uses a layout/field ``format``
                     cannot express (422, ``exc.error_code ==
                     "PRESENTATION_SLIDE_FIELD_UNSUPPORTED"``) -- e.g. a

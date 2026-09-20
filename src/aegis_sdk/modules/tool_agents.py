@@ -45,6 +45,36 @@ if TYPE_CHECKING:
     from .._http import HTTPClient
 
 
+#: The surface vocabulary for the Tool Agent Registry, declared HERE because
+#: this module is the partner-facing entry point to that surface: a caller meets
+#: the surface's name through this package, so the package is where the name is
+#: declared, and every other surface is a RENDERING of it — the console sidebar
+#: label, the console route segment, the breadcrumb override, and the core
+#: router's own ``prefix`` / ``tags``.
+#:
+#: ``contract`` names the check that enforces the agreement across the language
+#: boundary: the ``toolAgentVocabularyParity`` suite in ``apps/web`` reads this
+#: mapping as text and asserts each surface against it, so a rename on either
+#: side fails there instead of silently leaving a partner and a console user
+#: with two names for one surface. Nothing else reads this mapping, and the
+#: route literals below are deliberately NOT rewritten to interpolate it — see
+#: the note on ``route_prefix``.
+#:
+#: ⛔ ``route_prefix`` is a DECLARATION of what the methods below address, not
+#: the thing they address. Rewriting those f-strings to interpolate this mapping
+#: would erase the literal route from the internal route-parity audit,
+#: which derives SDK routes via ``ast.Constant`` / ``ast.JoinedStr``: an
+#: interpolated name collapses to ``{}`` and the path stops being checkable
+#: against the served surface. The parity suite therefore asserts the
+#: declaration and the literals agree, rather than making one generate the other.
+TOOL_AGENT_SURFACE_VOCABULARY: dict[str, str] = {
+    "contract": "toolAgentVocabularyParity",
+    "display_name": "Tool Agents",
+    "route_segment": "tool-agents",
+    "route_prefix": "/api/v1/tool-agents",
+}
+
+
 # Mirrors ALLOWED_TOOL_AGENT_STATUS_TARGETS.
 # `draft` is initial-only and is never a valid transition target.
 ALLOWED_TOOL_AGENT_STATUS_TARGETS: frozenset[str] = frozenset(
@@ -57,8 +87,7 @@ class ToolAgent(TolerantModel):
 
     id: str
     organization_id: str
-    # Optional: servers that removed the Workspace entity emit null here (the
-    # key is kept for older clients). Null means "no workspace"; it grants nothing.
+    # Response-side widening — see aegis_sdk.types.Agent.workspace_id.
     workspace_id: str | None = None
     name: str
     description: str

@@ -9,9 +9,8 @@ to an **unrelated third-party package** ("on-premise PII detection and masking
 for AI applications", published by a different company). Installing it gets you
 the wrong software under a right-sounding name.
 
-Install from your checkout of the **SDK repository** — the one you cloned to
-get here. Either form gives you `aegis_sdk` and **nothing else** — neither
-carries the platform:
+Install from your checkout of the **SDK repository** (`Integrum-Global/aegis-sdk`). Either form
+gives you `aegis_sdk` and **nothing else** — neither carries the platform:
 
 ```bash
 # editable, for working in the repo
@@ -124,8 +123,17 @@ aegis admin create-owner --org-id <ORG_ID> --email you@example.com --name "Your 
 ```
 
 Once your account (or the account you're scripting as) holds `admin`/
-`executive`, create a key with scopes that actually exist -- the full list is
-`GET /api-keys/scopes` (21 scopes). There is no `objectives:*` scope.
+`executive`, create a key with scopes that actually exist -- the authoritative
+list is `GET /api-keys/scopes`, which also reports, per scope, whether *your*
+authority reaches it. There is no `objectives:*` scope.
+
+**Scope the key to the work, and note that a workflow which provisions
+governance needs more than `agents:*`.** A key holding only
+`agents:read`/`agents:write` can create an agent but is refused at the
+role-envelope write that is supposed to govern it -- see
+[`../examples/stand_up_a_vertical.py`](../examples/stand_up_a_vertical.py),
+whose `REQUIRED_SCOPES` lists the full set that sequence needs and names the
+two calls no API key can reach at any scope.
 
 ```python
 import asyncio

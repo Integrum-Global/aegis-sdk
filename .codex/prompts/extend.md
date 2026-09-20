@@ -7,6 +7,8 @@ description: "Add a capability to a governed organisation — decide what shape 
      Regenerate: node scripts/project_coc.mjs   ·   Verify: node scripts/project_coc.mjs --check -->
 
 
+<!-- anchor-floor: exempt (procedure; routes to handbook chapters and skills by name) -->
+
 You are giving a running organisation something new to do. This is harness work
 throughout — there is no console path for authoring a capability.
 

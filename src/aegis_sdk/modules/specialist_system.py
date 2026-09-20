@@ -107,6 +107,13 @@ class SpecialistSystemModule:
 
         Returns:
             SpecialistList: items + total + page + pageSize
+
+        ⚠ ``items`` can hold fewer rows than the tenant does. A definition whose
+        classification the caller's clearance does not admit is dropped
+        server-side before the page is built, and the row is not reported as
+        dropped — the server answers "not there" and "not admitted" identically,
+        on purpose, so a short list is NOT by itself evidence that anything was
+        deleted. Same gate as :meth:`get_specialist`.
         """
         params: dict[str, Any] = {"page": page, "pageSize": page_size}
         if search:
@@ -128,7 +135,13 @@ class SpecialistSystemModule:
             Specialist: Specialist detail
 
         Raises:
-            NotFoundError: If the specialist doesn't exist
+            NotFoundError: If the specialist is not available to this caller —
+                either it does not exist, or it exists and its classification is
+                not admitted to the caller's clearance. The server answers both
+                with the same not-found response deliberately, so the refusal
+                carries no discriminator and this exception is NOT proof the row
+                was deleted. Do not retry: a clearance decision does not change
+                on retry.
         """
         response = await self._http.request(
             "GET", f"/api/v1/specialist-system/specialists/{encode_path_param(specialist_id)}"
@@ -178,7 +191,13 @@ class SpecialistSystemModule:
             Specialist: Updated specialist
 
         Raises:
-            NotFoundError: If the specialist doesn't exist
+            NotFoundError: If the specialist is not available to this caller —
+                either it does not exist, or it exists and its classification is
+                not admitted to the caller's clearance. The server answers both
+                with the same not-found response deliberately, so the refusal
+                carries no discriminator and this exception is NOT proof the row
+                was deleted. Do not retry: a clearance decision does not change
+                on retry.
         """
         response = await self._http.request(
             "PUT",
@@ -195,7 +214,13 @@ class SpecialistSystemModule:
             specialist_id: Specialist ID
 
         Raises:
-            NotFoundError: If the specialist doesn't exist
+            NotFoundError: If the specialist is not available to this caller —
+                either it does not exist, or it exists and its classification is
+                not admitted to the caller's clearance. The server answers both
+                with the same not-found response deliberately, so the refusal
+                carries no discriminator and this exception is NOT proof the row
+                was deleted. Do not retry: a clearance decision does not change
+                on retry.
         """
         await self._http.request(
             "DELETE", f"/api/v1/specialist-system/specialists/{encode_path_param(specialist_id)}"
@@ -213,7 +238,12 @@ class SpecialistSystemModule:
             Specialist: Newly cloned specialist
 
         Raises:
-            NotFoundError: If the source specialist doesn't exist
+            NotFoundError: If the source specialist is not available to this
+                caller — either it does not exist, or it exists and its
+                classification is not admitted to the caller's clearance. The
+                server answers both identically and deliberately, so this is NOT
+                proof the source was deleted. Do not retry: a clearance decision
+                does not change on retry.
         """
         response = await self._http.request(
             "POST",

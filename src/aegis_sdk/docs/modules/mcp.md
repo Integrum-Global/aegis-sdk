@@ -34,9 +34,13 @@ There is no by-id read route. `get_registration` is a **filtered list**, and it 
 
 `bind` attaches a stored server **by reference**. It emits `config = {"mcpServerId": registration_id, ...grant}` and nothing else.
 
-**There is deliberately no way to pass `url`, `headers` or `command` to `bind`.** Those parameters do not exist on it. A row carrying a reference _and_ inline connection settings is refused with `422`, so offering them would be offering a body that cannot succeed. Use `bind_inline` for a self-contained server.
+**There is deliberately no way to pass `url`, `headers` or `command` to `bind`.** Those parameters do not exist on it. A row carrying a reference _and_ inline connection settings is refused with `422`, so offering them would be offering a body that cannot succeed.
 
-Prefer the reference form. Rotate the credential on the registration once and every referencing agent follows. An inline binding is a copy: rotating a registration will never reach it, because it never read one.
+**And an MCP row cannot carry its own connection settings while it is LIVE.** `url`/`headers`/`command` with no `mcpServerId` are refused with `422` unless the row is declared storage — `is_enabled=False`. Connection settings with no reference have no single owner: the endpoint and its credential would be copied onto every row that carries them, and no rotation could reach them together. That is why `bind_inline()` requires `is_enabled=False`, and why enabling a stored row later is refused too.
+
+Prefer the reference form. Rotate the credential on the registration once and every referencing agent follows. An inline row is a copy: rotating a registration will never reach it, because it never read one.
+
+Replacing a stored registration's `config` through `update_registration()` declares the row storage (`is_enabled=False`) for you when the config carries connection settings — the route refuses settings that do not declare it, and rotation has to keep working. A config that names a registration is left alone, so a reference binding can still be enabled.
 
 Both forms are bindings and both appear in `list_bindings()`. `McpBinding.is_reference` says which one you have.
 

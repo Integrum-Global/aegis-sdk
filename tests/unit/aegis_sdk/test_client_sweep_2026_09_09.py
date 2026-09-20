@@ -43,8 +43,8 @@ SDK_ROOT = Path(inspect.getfile(HTTPClient)).parent
 # C1 -- the typed model must not drop fields the server sends
 # --------------------------------------------------------------------------- #
 
-#: A response in the shape of the server's ``APIKeyResponse``
-#: (``aegis/api/api_keys.py``), for a key that has been REVOKED.
+#: A response in the shape of the server's ``APIKeyResponse``, for a key that
+#: has been REVOKED.
 REVOKED_KEY_RESPONSE = {
     "id": "key_1",
     "organization_id": "org_1",

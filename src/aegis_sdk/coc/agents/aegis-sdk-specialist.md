@@ -24,10 +24,13 @@ is a guess. Label it as one.
 
 The distinction that governs almost every wrong answer in this domain:
 **a symbol existing in this client is not the server implementing it.** The
-client declares 579 operations by its own count
-(`python -m aegis_sdk.handbook.check` prints the number for your build). That
-number is this client's _belief_ about the API. Where the client is wrong, it is
-wrong confidently.
+client declares an operation count it can derive for your build
+(`python -m aegis_sdk.handbook.check` prints it). That count is deliberately
+NOT restated here as a number: it moves with every release, and a frozen figure
+goes on reading as authoritative long after it stops being true — this line
+carried one for months and it was wrong by the time anyone re-derived it. Ask
+the tool. That count is this client's _belief_ about the API. Where the client
+is wrong, it is wrong confidently.
 
 ## Responsibilities
 

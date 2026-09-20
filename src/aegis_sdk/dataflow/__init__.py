@@ -16,7 +16,7 @@ Two surfaces, deliberately separate despite sharing the word *lineage*:
     upstream and downstream. Backed by ``/api/v1/data-governance/lineage``.
 
 ⛔ A NOTE FOR ANYONE EXTENDING THIS SUBPACKAGE, because getting it wrong is
-silent. ``scripts/audit/sdk_parity_gap.py`` measures partner reach by AST-walking
+silent. An internal coverage audit measures partner reach by AST-walking
 the literal path handed to ``request()``/``stream()``. Two consequences bind
 every module added here:
 

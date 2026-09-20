@@ -61,7 +61,7 @@ their own base. ``model_config = ConfigDict(from_attributes=True)`` receives an
 OBJECT with no keys to drop, so a null defaulted attribute still raises there —
 behaviour byte-identical to plain ``BaseModel``, a LIMIT of this fix and not a
 regression it introduced. ``model_construct`` bypasses validation entirely, by
-design. Both are pinned in ``tests/unit/sdk/``.
+design. Both are pinned by the SDK's own unit suite.
 
 ⚠ The base covers REQUEST models too, not only response models. ``types.py``
 re-points ``SubscribeRequest`` / ``UpgradeRequest`` / ``CancelRequest`` /

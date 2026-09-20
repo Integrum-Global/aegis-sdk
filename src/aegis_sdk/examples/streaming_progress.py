@@ -27,8 +27,14 @@ from aegis_sdk import (
 async def stream_agent_execution(client: AgenticOSClient) -> None:
     """Stream real-time events from an agent execution.
 
-    Uses `client.agents.stream()` which returns SSE events as
-    dictionaries with `event_type` and `data` fields.
+    Uses `client.agents.stream()`. Each event carries its kind under the key
+    `type` -- NOT `event_type` -- and the event fields are FLAT on the frame,
+    with no `data` wrapper. (The session stream below is the other way round:
+    `type` plus a nested `data`. The two streams do not share a shape.)
+
+    `start` carries `model`: the resolved model this execution is running. It is
+    the per-agent model the stream exposes, and it arrives before any content,
+    so a live view can label the run from the first event.
     """
     print("=== Agent Execution Streaming ===\n")
 
@@ -40,25 +46,21 @@ async def stream_agent_execution(client: AgenticOSClient) -> None:
         message="Write a comprehensive summary of recent AI safety research",
         context={"format": "markdown", "max_length": 1000},
     ):
-        event_type: str = event.get("event_type", "unknown")
-        data: dict[str, Any] = event.get("data", {})
+        event_type: str = event.get("type", "unknown")
 
-        if event_type == "started":
-            print(f"[STARTED] Execution ID: {data.get('execution_id')}")
-        elif event_type == "thinking":
-            step: str = data.get("description", "Processing...")
-            print(f"[THINKING] {step}")
-        elif event_type == "output":
-            content: str = data.get("content", "")
-            print(content, end="", flush=True)
-        elif event_type == "completed":
-            duration: int = data.get("duration_ms", 0)
-            print(f"\n\n[COMPLETED] Duration: {duration}ms")
+        if event_type == "start":
+            # "" means the platform could not resolve a model -- treat that as
+            # unknown, never as "the default model".
+            model: str = event.get("model") or "model unresolved"
+            print(f"[START] {model} (thread {event.get('thread_id')})")
+        elif event_type == "content":
+            print(event.get("content", ""), end="", flush=True)
+        elif event_type == "done":
+            print("\n\n[DONE]")
         elif event_type == "error":
-            message: str = data.get("message", "Unknown error")
-            print(f"\n[ERROR] {message}")
+            print(f"\n[ERROR] {event.get('error', 'Unknown error')}")
         else:
-            print(f"[{event_type.upper()}] {data}")
+            print(f"[{event_type.upper()}] {event}")
 
 
 async def stream_session_messages(client: AgenticOSClient) -> None:
@@ -99,10 +101,17 @@ async def stream_session_messages(client: AgenticOSClient) -> None:
 
 
 async def stream_session_events(client: AgenticOSClient) -> None:
-    """Stream all session events (messages, artifacts, status changes, subagents).
+    """Stream session activity, including which model each agent is running.
 
-    Uses `client.sessions.stream_events()` which yields raw event
-    dictionaries with `type` and `data` fields.
+    Uses `client.sessions.stream_events()`. Each event is the parsed SSE frame
+    with a `type` and a NESTED `data` payload -- the event-specific fields,
+    including `model`, live under `data`, not on the frame.
+
+    The filter below names the wire types that carry agent activity. This is
+    worth being precise about: `event_types` filters client-side against the
+    server's own vocabulary, and a name the server does not emit is dropped
+    SILENTLY. A plausible-looking spelling buys an empty stream rather than an
+    error, which is why the list is taken from the method's own docstring.
     """
     print("\n=== Session Event Streaming ===\n")
 
@@ -110,35 +119,34 @@ async def stream_session_events(client: AgenticOSClient) -> None:
 
     async for event in client.sessions.stream_events(
         session_id=session_id,
-        event_types=["message", "artifact", "status", "subagent"],
+        event_types=["progress_update", "subagent_spawned", "cost_update"],
     ):
         event_type: str = event.get("type", "unknown")
         data: dict[str, Any] = event.get("data", {})
 
-        if event_type == "message":
-            role: str = data.get("role", "unknown")
-            content: str = data.get("content", "")
-            print(f"[MSG:{role}] {content[:100]}")
+        # `model` is the model THIS agent is running. Agents within one session
+        # do not share a model, so it has to be read per event rather than
+        # resolved once for the session. It is "" when the platform could not
+        # resolve one: empty means UNKNOWN, never "the default model".
+        model: str = data.get("model") or "model unresolved"
 
-        elif event_type == "artifact":
-            name: str = data.get("name", "unnamed")
-            artifact_type: str = data.get("artifact_type", "unknown")
-            print(f"[ARTIFACT] {name} ({artifact_type})")
+        if event_type == "progress_update":
+            message: str = data.get("message", "")
+            progress: int | None = data.get("progress")
+            suffix = f" ({progress}%)" if progress else ""
+            print(f"[{model}] {message}{suffix}")
 
-        elif event_type == "status":
-            status: str = data.get("status", "unknown")
-            print(f"[STATUS] Session status changed to: {status}")
-            if status in ("completed", "terminated"):
-                print("Session ended, stopping stream.")
-                break
+        elif event_type == "subagent_spawned":
+            node_name: str = data.get("nodeName", "unnamed")
+            print(f"[{model}] subagent started: {node_name}")
 
-        elif event_type == "subagent":
-            subagent_id: str = data.get("subagent_id", "unknown")
-            subagent_status: str = data.get("status", "unknown")
-            print(f"[SUBAGENT] {subagent_id}: {subagent_status}")
+        elif event_type == "cost_update":
+            tokens: int = data.get("totalTokens", 0)
+            dollars: float = data.get("costDollars", 0.0)
+            print(f"[{model}] {tokens} tokens, ${dollars}")
 
         else:
-            print(f"[{event_type.upper()}] {data}")
+            print(f"[{model}] [{event_type}] {data}")
 
 
 async def resilient_stream(client: AgenticOSClient) -> None:

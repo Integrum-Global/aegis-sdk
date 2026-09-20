@@ -3,7 +3,7 @@ Governance Module for Agentic OS SDK.
 
 Provides governance, RBAC, policies, and data classification management.
 
-26 methods:
+33 methods:
 - list_permissions() - List all permissions
 - list_roles() - List roles
 - get_role() - Get role details
@@ -30,9 +30,22 @@ Provides governance, RBAC, policies, and data classification management.
 - check_consent() - Check if valid consent exists
 - get_lineage() - Get data lineage graph
 - get_lineage_impact() - Get downstream impact analysis
+- compile_policy_clauses() - Project a clause set into a compilation run (raises on widening)
+- get_compilation_run() - Observe a run, with its measured effect and its outcome
+- list_compilation_runs() - Enumerate runs (limit/offset only; no order promised)
+- apply_compilation_run() - Apply a run via CAS, re-checking the effect at apply
+- list_policy_clauses() - List the clauses of a set
+- create_policy_clause() - Author a clause at a position
+- retract_policy_clause() - Retract a clause (a STATE on a position, never a delete)
+
+The seven compilation methods above are the SDK half of the policy-clause
+compilation capability. Their refusals carry a THREE-VALUED reason vocabulary —
+see § Policy-clause compilation below — and the module deliberately adds no
+exception class of its own: a refusal arrives as the shared
+``GovernanceViolationError`` that ``_http.py`` already maps HTTP 423 to.
 """
 
-from typing import Any, Literal
+from typing import Any, Final, Literal
 
 from pydantic import ConfigDict, Field
 
@@ -251,6 +264,163 @@ class LineageGraph(TolerantModel):
     nodes: list[LineageNode]
     edges: list[LineageEdge]
     root_id: str | None = Field(None, alias="rootId")
+
+
+# --------------------------------------------------------------------------- #
+# Policy-clause compilation — outcome and reason vocabulary
+# --------------------------------------------------------------------------- #
+#
+# THE OUTCOME IS THREE-VALUED, AND TWO OF THE THREE REFUSE. A boolean gate
+# cannot express this: "widened" and "could not be measured" are byte-identical
+# in a bool and opposite in consequence. Widening tells an operator to edit the
+# clause set; an undecidable measurement tells them to RETRY, because nothing
+# was measured and the set is very likely correct. Collapsing the two re-creates
+# at the transport layer the exact indistinguishability the gate exists to
+# remove, in its most expensive form: a gate that cannot read its input must
+# not report "no widening".
+#
+# The precedent is exact and shipped: the tightening check returns an
+# ``undetermined: bool`` alongside ``violations``, whose own comment reads "the
+# check did not COMPLETE ... as distinct from completing and finding a
+# violation. Both deny, and they must not be reported to the caller as the same
+# thing". These constants are that distinction given stable names on the wire.
+
+COMPILATION_OUTCOME_ADMIT: Final = "ADMIT"
+"""The projection was measured and admits no new verdict — the run proceeds."""
+
+COMPILATION_OUTCOME_WIDENS: Final = "WIDENS"
+"""Measured, and it DOES admit a new verdict — the compilation is refused."""
+
+COMPILATION_OUTCOME_UNDECIDABLE: Final = "UNDECIDABLE"
+"""The projection could NOT be measured — the compilation is refused."""
+
+#: The server's ``error.code`` on each refusal. They are pinned here so a caller
+#: branches on a name rather than on a string literal, and so a drift between
+#: this SDK and the 423 handler is greppable. The VALUES are the server's: this
+#: module asserts nothing about which code means what beyond the plan's table.
+COMPILATION_WIDENS_REQUESTER_AUTHORITY: Final = "COMPILATION_WIDENS_REQUESTER_AUTHORITY"
+"""A WIDENS refusal: the projection admits an authority a protected principal did not hold."""
+
+COMPILATION_EFFECT_UNDECIDABLE: Final = "COMPILATION_EFFECT_UNDECIDABLE"
+"""An UNDECIDABLE refusal: something did not resolve, so nothing was measured."""
+
+COMPILATION_RUN_STALE: Final = "COMPILATION_RUN_STALE"
+"""An apply whose compare-and-swap on the clause-set version matched no row."""
+
+
+def compilation_refusal_reason(exc: BaseException) -> str | None:
+    """Read the SERVER's reason code off a compilation refusal.
+
+    A refusal arrives as the shared :class:`~aegis_sdk.exceptions.GovernanceViolationError`
+    that ``_http.py`` maps HTTP 423 to, and the server's ``error.code`` lands on
+    ``exc.details["code"]`` (see ``_extract_error_detail`` for the envelope
+    unpacking). This reader exists because that dictionary is NOT guaranteed to
+    carry a ``code`` key: a 423 whose body will not parse yields a dict with
+    ``message`` and ``status_code`` only, so a direct ``exc.details["code"]``
+    raises ``KeyError`` on exactly the responses an operator most needs to read.
+
+    FAIL-CLOSED IN THE ONLY DIRECTION THAT MATTERS: this returns ``None`` when
+    the server named no reason, and it NEVER substitutes one of the three codes.
+    A defaulted reason would report a refusal the server did not give — the
+    failure mode this vocabulary exists to prevent. An UNRECOGNISED code is
+    returned VERBATIM rather than coerced into the three, because partners clone
+    this SDK and point it at servers that do not move in lockstep with it; ``None``
+    means "the server did not name a reason", which is never the same as "the
+    compilation was admitted".
+
+    Args:
+        exc: The exception raised by one of the compilation methods.
+
+    Returns:
+        The server's reason code unchanged, or ``None`` when there was none.
+    """
+    details = getattr(exc, "details", None)
+    if not isinstance(details, dict):
+        return None
+    code = details.get("code")
+    return code if isinstance(code, str) and code else None
+
+
+class PolicyClauseScope(TolerantModel):
+    """The ``(resource_type, action)`` pair a clause governs.
+
+    Each field admits ``"*"``, so containment of two of these is a symbolic
+    question — never a sampled one.
+    """
+
+    resource_type: str
+    action: str
+
+
+class PolicyClause(TolerantModel):
+    """One governance clause: a member of an ORDERED set.
+
+    ``position`` is the ordinal within the set, and it is the **pairing key**.
+    The projected state is aligned to the source clause set BY POSITION, so a
+    retracted clause keeps its position and its role binding — retraction is a
+    state on a position, never a deletion that compacts the sequence. A row read
+    without its ``position`` cannot be paired, which is why the field is not
+    optional here.
+    """
+
+    id: str
+    organization_id: str
+    clause_set_id: str
+    position: int
+    role_id: str
+    effect: Literal["allow", "deny"]
+    """The axis the widening classification is per. A third value is REFUSED
+    rather than tolerated: an unrecognised effect on an authority-bearing row is
+    a server change, and reading it as one of these two would be a guess."""
+    scope: PolicyClauseScope
+    condition: dict[str, Any] | None = None
+    body: str | None = None
+    is_retracted: bool
+    """REQUIRED, deliberately — no default.
+
+    A defaulted ``False`` would read "the server told us nothing" as "this clause
+    is in force". That is the fail-open shape ``_tolerant.py``'s docstring names
+    for a field whose default GRANTS something, and this is the field that decides
+    whether a clause is live. A missing value here is a server fault worth
+    raising on."""
+    authored_by_role_id: str | None = None
+    authored_by_authority_level: str | None = None
+    """Snapshotted at author time by the SERVER. This surface never sends either
+    one — see :meth:`GovernanceModule.create_policy_clause`."""
+
+
+class CompilationRun(TolerantModel):
+    """A compilation run: what was compiled, against which source version, and
+    what effect the gate measured.
+    """
+
+    id: str
+    organization_id: str
+    clause_set_id: str
+    source_version: int
+    """The ``ClauseSet.version`` this run compiled — the compare-and-swap token
+    an apply is pinned to."""
+    requested_by: str
+    requested_authority: str | None = None
+    projected_state: dict[str, Any] | None = None
+    """The projected effective-governance state, keyed by constraint dimension."""
+    effect_outcome: str | None = None
+    """One of :data:`COMPILATION_OUTCOME_ADMIT` / ``_WIDENS`` / ``_UNDECIDABLE``.
+
+    Typed ``str`` and NOT ``Literal[...]``, which is a deliberate asymmetry with
+    ``PolicyClause.effect`` above. This field is an OBSERVATION of a gate result
+    on a surface whose job is to report what the server measured; a Literal here
+    would make a fourth outcome unrepresentable and turn ``get_compilation_run``
+    into a validation error against a newer server. Fidelity is the requirement,
+    so the string is carried verbatim and the comparison names above are offered
+    for callers that branch."""
+    effect_measured: dict[str, Any] | None = None
+    """The per-effect widening classification the gate computed, naming
+    ``(dimension, field, pre, post)`` rows. Carried VERBATIM: the row shape is the
+    server's to name, and re-typing a payload whose server has not landed would be
+    a guess that raises on the real thing."""
+    applied_at: str | None = None
+    applied_version: int | None = None
 
 
 class GovernanceModule:
@@ -1022,3 +1192,241 @@ class GovernanceModule:
             f"/api/v1/data-governance/lineage/nodes/{encode_path_param(node_id)}/impact",
         )
         return [LineageNode(**n) for n in response.get("nodes", [])]
+
+    # Policy clause compilation methods
+    #
+    # Wire shape: snake_case request and response fields, following the plan's
+    # model tables (§ (b)) and the ``CheckPermissionRequest`` precedent in this
+    # same module — NOT the alias-carrying camelCase the older RBAC models use.
+    #
+    # None of these methods wraps its transport call. That is deliberate and is
+    # the whole refusal contract: a refusal arrives as the shared
+    # GovernanceViolationError raised by ``_http.py`` on HTTP 423, carrying the
+    # server's reason code on ``exc.details["code"]``. A ``try/except`` here that
+    # re-raised with its own message — or that mapped "no code" onto one of the
+    # three — would destroy the distinction between a measured widening and an
+    # unmeasured one. Read the reason with :func:`compilation_refusal_reason`.
+    async def compile_policy_clauses(
+        self,
+        clause_set_id: str,
+    ) -> CompilationRun:
+        """
+        Project a clause set into a compilation run.
+
+        Args:
+            clause_set_id: The clause set to project.
+
+        Returns:
+            CompilationRun: The run, whose ``effect_outcome`` is
+            ``COMPILATION_OUTCOME_ADMIT`` when the projection was measured and
+            admits no new verdict for any protected principal.
+
+        Raises:
+            GovernanceViolationError: The compilation was REFUSED — HTTP 423.
+                ``exc.details["code"]`` is ``COMPILATION_WIDENS_REQUESTER_AUTHORITY``
+                when the projection was measured and DOES admit a new verdict,
+                and ``COMPILATION_EFFECT_UNDECIDABLE`` when it could not be
+                measured at all. The two prescribe opposite remedies: edit the
+                clause set, versus retry. ``exc.details["details"]`` carries the
+                ``clause_set_id``, the principal, and — for a widening — the
+                ``(dimension, field, pre, post)`` rows.
+        """
+        response = await self._http.request(
+            "POST",
+            "/api/v1/compilation-runs",
+            json_data={"clause_set_id": clause_set_id},
+        )
+        return CompilationRun(**response)
+
+    async def get_compilation_run(self, run_id: str) -> CompilationRun:
+        """
+        Observe a compilation run, including its measured effect and its outcome.
+
+        An OBSERVATION, so it does not refuse on a non-admitting outcome: a run
+        whose ``effect_outcome`` is ``WIDENS`` or ``UNDECIDABLE`` is read as
+        what it is. The refusal belongs to the write surfaces, where it decides.
+
+        Args:
+            run_id: Compilation run ID.
+
+        Returns:
+            CompilationRun: The run as recorded.
+        """
+        response = await self._http.request(
+            "GET",
+            f"/api/v1/compilation-runs/{encode_path_param(run_id)}",
+        )
+        return CompilationRun(**response)
+
+    async def list_compilation_runs(
+        self,
+        clause_set_id: str | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[CompilationRun]:
+        """
+        Enumerate compilation runs.
+
+        NO ORDER IS PROMISED. ``limit`` and ``offset`` are forwarded and no sort
+        key is sent, mirroring ``observe_audit.list_logs``. A saturated page is a
+        cannot-determine, never an absence — so nothing may be derived from the
+        order rows arrive in, and nothing here implies one.
+
+        Args:
+            clause_set_id: Restrict to one clause set.
+            limit: Maximum results.
+            offset: Pagination offset.
+
+        Returns:
+            List[CompilationRun]: Runs, in an order this surface does not define.
+        """
+        params: dict[str, Any] = {"limit": limit, "offset": offset}
+        if clause_set_id:
+            params["clause_set_id"] = clause_set_id
+
+        response = await self._http.request(
+            "GET",
+            "/api/v1/compilation-runs",
+            params=params,
+        )
+        return [CompilationRun(**r) for r in response.get("records", [])]
+
+    async def apply_compilation_run(self, run_id: str) -> CompilationRun:
+        """
+        Apply a compilation run — a compare-and-swap on the clause-set version,
+        re-checking the effect at apply.
+
+        Args:
+            run_id: Compilation run ID.
+
+        Returns:
+            CompilationRun: The applied run, carrying ``applied_at`` and
+            ``applied_version``.
+
+        Raises:
+            GovernanceViolationError: The apply was REFUSED — HTTP 423.
+                ``exc.details["code"]`` is ``COMPILATION_RUN_STALE`` when the
+                compare-and-swap matched no row, which means the clause set moved
+                under this run. That is a THIRD reason, distinct from a widening:
+                the remedy is to re-compile against the current version, because
+                the effect must be re-measured against a baseline that has moved —
+                never to retry the stale run. It is also distinct from
+                ``COMPILATION_WIDENS_REQUESTER_AUTHORITY``, which the re-check can
+                raise at apply time.
+        """
+        response = await self._http.request(
+            "POST",
+            f"/api/v1/compilation-runs/{encode_path_param(run_id)}/apply",
+        )
+        return CompilationRun(**response)
+
+    async def list_policy_clauses(
+        self,
+        clause_set_id: str | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[PolicyClause]:
+        """
+        List the clauses of a set.
+
+        Pair by ``PolicyClause.position``, never by the order of this response:
+        no order is promised here either, and a reconciliation that zips two
+        paginated lists assumes an ordering no surface guarantees — failing
+        exactly when a page saturates, which is to say on the largest tenants.
+
+        Args:
+            clause_set_id: Restrict to one clause set.
+            limit: Maximum results.
+            offset: Pagination offset.
+
+        Returns:
+            List[PolicyClause]: Clauses, in an order this surface does not define.
+        """
+        params: dict[str, Any] = {"limit": limit, "offset": offset}
+        if clause_set_id:
+            params["clause_set_id"] = clause_set_id
+
+        response = await self._http.request(
+            "GET",
+            "/api/v1/policy-clauses",
+            params=params,
+        )
+        return [PolicyClause(**c) for c in response.get("records", [])]
+
+    async def create_policy_clause(
+        self,
+        clause_set_id: str,
+        position: int,
+        role_id: str,
+        effect: Literal["allow", "deny"],
+        scope: dict[str, Any],
+        condition: dict[str, Any] | None = None,
+        body: str | None = None,
+    ) -> PolicyClause:
+        """
+        Author a governance clause at a position in a set.
+
+        THE AUTHORING IDENTITY IS NOT A PARAMETER, and that is load-bearing.
+        ``authored_by_role_id`` and ``authored_by_authority_level`` are
+        snapshotted by the SERVER from the authenticated session, so this method
+        does not accept them and does not send them. An SDK that let a caller
+        declare its own authority level would be a body-trusted approver
+        identity — the same gap that lets a re-registration pass as
+        "tightening".
+
+        Args:
+            clause_set_id: The set this clause joins.
+            position: The ordinal within the set — the pairing key. Retraction
+                later keeps this position; it is never re-used or compacted.
+            role_id: The role binding this clause carries.
+            effect: ``"allow"`` or ``"deny"`` — the axis wideness is classified per.
+            scope: The ``{"resource_type": ..., "action": ...}`` pair; each field
+                admits ``"*"``.
+            condition: The condition tree, evaluated by ``abac_condition_mapper``.
+            body: The clause's own declaration.
+
+        Returns:
+            PolicyClause: The authored clause, with the server's author snapshot.
+        """
+        json_data: dict[str, Any] = {
+            "clause_set_id": clause_set_id,
+            "position": position,
+            "role_id": role_id,
+            "effect": effect,
+            "scope": scope,
+        }
+        if condition is not None:
+            json_data["condition"] = condition
+        if body is not None:
+            json_data["body"] = body
+
+        response = await self._http.request(
+            "POST",
+            "/api/v1/policy-clauses",
+            json_data=json_data,
+        )
+        return PolicyClause(**response)
+
+    async def retract_policy_clause(self, clause_id: str) -> PolicyClause:
+        """
+        Retract a clause.
+
+        A STATE CHANGE, NOT A DELETION — hence ``POST .../retract`` rather than
+        an HTTP ``DELETE``. Deleting the row and closing the gap would re-bind
+        every following row to the position — and therefore to the role binding —
+        of its predecessor, which is a silent authority misassignment: the
+        compiled state reads as well-formed, every row resolves, and it governs
+        the wrong roles.
+
+        Args:
+            clause_id: Clause ID.
+
+        Returns:
+            PolicyClause: The clause with ``is_retracted`` set — still at its
+            position, still carrying its role binding.
+        """
+        response = await self._http.request(
+            "POST",
+            f"/api/v1/policy-clauses/{encode_path_param(clause_id)}/retract",
+        )
+        return PolicyClause(**response)

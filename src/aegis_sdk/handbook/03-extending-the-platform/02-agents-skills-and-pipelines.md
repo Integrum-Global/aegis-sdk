@@ -298,102 +298,6 @@ routing · ensemble · saga · event_driven
 
 `api:POST /api/v1/pipelines` creates one, `api:GET /api/v1/pipelines` lists them.
 
-### What nodes can I use? Ask the deployment — never carry a list
-
-**No number of node types belongs on this page, and none would survive.** The
-catalogue is the built-in types PLUS every node type your deployment's packs
-added, intersected with what that deployment permits on its canvas — so the same
-client against two deployments sees two different sets, and a node type this
-SDK never names can exist on yours. A count copied from someone else's
-deployment, or from an earlier release of your own, is a wrong answer given
-confidently.
-
-Ask at runtime:
-
-```python
-catalog = await client.pipelines.list_node_types()
-for node in catalog.flat:
-    print(node.type, "—", node.label)
-```
-
-`api:GET /api/v1/pipelines/node-types`, requiring the same `agents:read` as
-reading pipelines, and returning `sdk:aegis_sdk.NodeTypeCatalog`.
-
-**It carries two counts because they answer different questions.** `total_types`
-is the **palette** — what this deployment offers on its canvas. `node_types`
-covers the **whole pipeline vocabulary**, including types the palette withholds,
-each carrying its own verdict: `executable`, `reason`, and `fabricates`.
-
-⛔ **Read the verdicts before you wire a graph. A type can be recognised, appear
-in the catalogue, and still refuse to run** — validation and execution ask
-different questions (03.2's `validate` section below is the same split). The
-verdicts are per-type on `sdk:aegis_sdk.NodeTypeVerdict`, and the catalogue-wide
-`executable` / `unavailable_reason` state it once for the whole palette when the
-deployment cannot run its own — which is a real configuration, not a defect
-report: a deployment whose palette holds only connector-shaped nodes answers
-`executable: False` and explains that the default compiled executor has no SDK
-binding for them.
-
-**`fabricates` is the field that matters most, and it is not a synonym for
-`executable: False`.** It separates the two ways a node fails to run:
-
-- `fabricates: False` — a **loud** failure. The run stops and names the node.
-- `fabricates: True` — a **silent** one. The node emits a diagnostic string **as
-  its output** and feeds it downstream, so the pipeline completes carrying a
-  plausible-looking result built on an error message.
-
-Any surface that renders those two identically is how a fabricated result
-reaches a client. Read `fabricates: True` as _unusable_, not as _unavailable_.
-
-### From the catalogue to a running graph
-
-Discovery on its own builds nothing. The order that avoids learning things late:
-
-```python
-catalog = await client.pipelines.list_node_types()
-
-# 1. Filter BEFORE building. A graph assembled from non-executable types
-#    passes validate() and then refuses at RUN time — a slow way to learn
-#    what the catalogue already said.
-runnable = {n for n, verdict in catalog.node_types.items() if verdict.executable}
-
-# 2. Build from `runnable`. create() takes id + name + node_type.
-pipeline = await client.pipelines.create(
-    name="Draft",
-    pattern="sequential",
-    nodes=[
-        {"id": "n1", "name": "Topic", "node_type": "input"},
-        {"id": "n2", "name": "Draft", "node_type": "agent", "agent_id": some_agent_id},
-        {"id": "n3", "name": "Result", "node_type": "output"},
-    ],
-    connections=[
-        {"source_node_id": "n1", "target_node_id": "n2"},
-        {"source_node_id": "n2", "target_node_id": "n3"},
-    ],
-)
-
-# 3. Validate, and read the WARNINGS as well as `valid`.
-report = await client.pipelines.validate(pipeline.id)
-
-# 4. Only then run.
-execution = await client.pipelines.execute(pipeline.id, inputs={"topic": "..."})
-```
-
-A working version of exactly this ships as `build_a_pipeline.py` under
-`examples/` — it prints your deployment's verdicts first, and stops with the
-catalogue's own explanation rather than assembling a graph that cannot run.
-
-**Two failure modes this ordering avoids**, each of which costs an afternoon when
-you build first and ask afterwards:
-
-- A graph built from **non-executable types validates clean** and refuses at
-  execution, because validation and execution ask different questions.
-- An `agent` node with **no `agent_id`** is a valid graph that resolves to no
-  agent at run time.
-
-Both are the same lesson as the verdict list above: the catalogue answers "will
-this run?" and `validate` answers "is this wired?", and only the first is cheap.
-
 ### ⚠ The create path and the graph-save path take different node shapes
 
 This is the one thing in this section most likely to cost you an afternoon.
@@ -458,8 +362,8 @@ Two related classes ARE hard errors and do flip `valid` to `False`: a node
 type with **no execution handler that the run can actually reach**, and an
 agent binding that **resolves to no agent in the organization** — the second
 of these previously read back as a silent `valid: true` and is the confirmed
-root cause of the partner-reported symptom _"validate returns `valid: true`
-... over graphs carrying ... an agent id that resolves on no agent route"_.
+root cause of the partner-reported symptom *"validate returns `valid: true`
+... over graphs carrying ... an agent id that resolves on no agent route"*.
 
 **If your acceptance criterion is "nothing could possibly go wrong", check
 `report["warnings"]` too, not only `report["valid"]`.** A pipeline that

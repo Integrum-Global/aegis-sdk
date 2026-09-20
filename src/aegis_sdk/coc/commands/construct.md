@@ -4,6 +4,8 @@ description: "Build and run the governed organisation — describe it, bound it,
 stage: 02-working-through-the-harness
 ---
 
+<!-- anchor-floor: exempt (procedure; routes to handbook chapters and skills by name) -->
+
 This is the architect's unit of work: **a deployment construction**. Not a code
 change — an organisation that exists on somebody's live platform when you are
 done, and that somebody else has to be able to rebuild, review and promote.

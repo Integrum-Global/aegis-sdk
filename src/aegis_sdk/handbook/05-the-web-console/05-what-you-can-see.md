@@ -1,5 +1,7 @@
 # 05.5 — What you can see, and why
 
+<!-- anchor-floor: ungrammatical (no anchor kind exists for a front-end route) -->
+
 ## Being a colleague does not make you an audience
 
 Most systems assume that if you work somewhere, you can see what happens there,
@@ -12,8 +14,7 @@ structure works. Someone sitting beside you, on the same floor, at the same
 grade, may legitimately be unable to see the work you are doing — and you theirs.
 
 The practical consequence is that **"I cannot see it" and "it does not exist" are
-different sentences**, and the interface is not always good at telling you which
-one you are in. This chapter is mostly about that.
+different sentences**. This chapter is mostly about telling which one you are in.
 
 ## The four ways a boundary shows up
 
@@ -36,8 +37,8 @@ headed **"Access Restricted"** which names what the area requires and what you
 currently have, and suggests contacting your administrator. There is a **Go
 Back** button.
 
-This message uses internal vocabulary — it will say something like *"This area
-requires admin persona. Your current persona is user."* Do not be put off by the
+This message uses internal vocabulary — it will say something like _"This area
+requires admin persona. Your current persona is user."_ Do not be put off by the
 wording. It is telling you the area needs a different role from yours, and it is
 naming both so that a request to your administrator can be specific. Quote it
 verbatim when you ask; it is precisely the information they need.
@@ -128,9 +129,8 @@ who actually did. The boundaries are what make that account true.
 Sometimes it genuinely is. You have changed roles, or you have been brought into
 a piece of work and nobody adjusted anything.
 
-This is not something you can fix from these screens, and the interface offers no
-"request access" button — if you find something that looks like one, it is not
-wired up. Go to whoever administers Aegis for your organisation, and give them:
+Access is granted by whoever administers Aegis for your organisation rather than
+from these screens. Go to them, and give them:
 
 - **what you were trying to reach** — the page, or the link you followed;
 - **exactly what the screen said**, including any role or permission it named;
@@ -143,6 +143,6 @@ gets you either too much or nothing.
 
 ---
 
-*Next: [05.6 — The rest of your workspace](06-the-rest-of-your-workspace.md). If
+_Next: [05.6 — The rest of your workspace](06-the-rest-of-your-workspace.md). If
 something has stopped and you are not sure why, 05.4 is the one to re-read — most confusion about this product resolves into either a
-held action nobody has decided, or a boundary nobody explained.*
+held action nobody has decided, or a boundary nobody explained._

@@ -196,3 +196,7 @@ than no explanation: it will be believed.
 
 A chapter in this part that uses none of those markers should be read as
 claiming more than an outside read can support.
+
+---
+
+_Next: [06.1 — What core and the SDK are](01-what-core-and-the-sdk-are.md)_

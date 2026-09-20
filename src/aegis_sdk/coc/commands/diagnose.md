@@ -22,7 +22,7 @@ except AgenticOSError as exc:
     print(exc.details.get("status_code"), repr(exc.details.get("message")))
 ```
 
-**The exception class does not identify the status.** The mapping from HTTP
+**`sdk:aegis_sdk.AgenticOSError` does not identify the status by class.** The mapping from HTTP
 status to subclass is partial, and the gaps include statuses an integrator meets
 routinely. A `try/except` written from the class names alone lets several
 failures past and mistakes others for each other.
@@ -55,7 +55,7 @@ Four outcomes, and they are not degrees of the same thing:
 | **refused** | it was reached and said no | authorization, tenancy, or a governance hold |
 | **fault** | it was reached and broke | not yours to fix; report it |
 
-`python -m aegis_sdk.coc.probe` separates the first two for your deployment and
+`sdk:aegis_sdk.coc.probe` separates the first two for your deployment and
 your credential. Its exit `3` is UNDETERMINED and is not a `0` — a probe that
 could not tell you and a probe that found nothing wrong are different results.
 

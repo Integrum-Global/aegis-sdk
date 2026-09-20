@@ -1,0 +1,154 @@
+---
+name: structure
+description: "Model a real client organisation as a governed structure — derive the D/T/R shape from how they are actually accountable, attach the reporting edges, and restructure later without silently detaching what is already delegated."
+stage: 10-the-organization-structure-framework
+---
+
+<!-- anchor-floor: exempt (procedure; routes to handbook chapters and skills by name) -->
+
+You are about to describe a client's organisation to a platform that treats your
+description as **the addressing scheme of the whole system** — envelopes compose
+along it, trust chains derive from it, knowledge boundaries are drawn by it. A
+structure that is merely plausible produces governance that is confidently wrong
+and refuses nothing. Read **The organisation is the system** first; it is the
+premise everything here assumes. Run this before creating a single unit — and if
+units already exist, run step 5 now, because you may already be building on a
+detached structure.
+
+## 1 — Derive the shape from accountability, not from the chart you were handed
+
+An org chart drawn for HR groups people by function; you need the grouping by
+**who is answerable for what**. Ask, and write down: **who signs off on what**
+("the team decides" means you have not found the node yet); **what must not be
+visible to whom** (each is a containment boundary, carrying a classification
+default and a posture ceiling whether you wanted them or not); and **who answers
+to whom, and is that the same as who sits where** — because containment and
+reporting are **two independent relations** over the same nodes, and assuming
+one implies the other is the most expensive modelling error available here.
+
+## 2 — Lay the containment tree, and let the grammar refuse you
+
+Work **top-down, depth-first**, completing each level before the next. A script
+that creates every unit first and every role second is refused on its first
+child unit.
+
+```python
+ceo_office = await client.units.create(
+    name="CEO Office",
+    unit_type="department",
+    default_classification="confidential",
+)
+```
+
+Read **The D/T/R grammar** for what may attach to what. Three things to expect
+rather than debug: creating a unit **auto-creates its head role**, vacant and
+primary; a unit beneath a parent with no head role is **refused**, so create the
+parent's head first; and `department` and `team` are the only unit types, with a
+**team unit** barred from being the organisation's root. When that refusal
+lands, create the missing head role — do not re-parent the child somewhere it
+happens to fit, which moves the work under an authority nobody chose and every
+bound beneath composes from it, correctly, forever.
+
+⚠ "Team" names two unrelated things. A **team unit** is a node in this tree with
+an address and a head role; a flat **Team** is a membership list beside the tree
+with no boundary semantics. If you want a boundary, you want a unit.
+
+## 3 — Set the reporting edge at CREATE time
+
+The typed standup surface exposes `create`, `get` and `list` — **there is no
+`update`**. The reporting edge is not something you attach afterwards here; pass
+it when you create the role.
+
+```python
+cfo = await client.roles.create(
+    organization_unit_id=finance["id"],
+    title="Chief Financial Officer",
+    authority_level=5,
+    reports_to_role_id=ceo_role_id,
+    job_description="Accountable for treasury, control and external reporting...",
+    responsibilities=["Month-end close", "Liquidity forecast", "Audit liaison"],
+)
+```
+
+⛔ **The auto-created head role arrives with no reporting edge, and nothing
+attaches it for you.** This is the most common defect in a freshly provisioned
+organisation: every unit exists, every unit has a head, every address resolves,
+and each subtree is its own separate authority island. No call fails. Nothing
+warns you. A role with no reporting edge is a **chain root** — correct at the top
+of the organisation, an orphan everywhere else, and indistinguishable in every
+listing. **Roles, authority and intent** covers the attach.
+
+## 4 — Fill the intent fields before you trust any agent
+
+`job_description` and `responsibilities` are not documentation. They become the
+**instructions of the role's agent**, and every organisational role has one.
+Leave them empty and you get a structurally perfect organisation whose agents
+all answer generically, with nothing erroring.
+
+Set `authority_level` deliberately — it fixes the posture the agent is
+provisioned at and caps what a caller may grant, but it does **not** gate what
+anyone may see; clearance does. Read **Role agents** before raising a level to
+make an agent more autonomous: it is the wrong lever and moves four unrelated
+things.
+
+## 5 — Verify the structure before you build on it
+
+Creating is not granting, and a chart that lists correctly can enforce nothing.
+
+```python
+await client.governance_explain.probe_corrupted_roles()
+await client.governance_explain.envelope_coverage()
+await client.governance_explain.explain_envelope(address="D1-R1-D2-R1")
+```
+
+`probe_corrupted_roles` names roles with no address or an unmarked head.
+`envelope_coverage` and `envelope_hydration_status` separate **created** from
+**in force** — an envelope enforces nothing until activated, a clearance grants
+nothing until approved. `explain_envelope` is what to reach for whenever a bound
+surprises you: it returns the composition rather than making you rebuild it.
+`describe_address` teaches the grammar against the client's own deployment;
+**Addressing** covers computing the rest yourself.
+
+## 6 — Restructure and withdraw authority without detaching what is delegated
+
+Moving a unit is a governance event, not a chart edit: addresses recompute for
+the organisation, posture ceilings recompute, knowledge-share policies are
+revalidated and suspended where ancestry no longer holds, and trust chains
+beneath the moved subtree are torn down and rebuilt. Read the cascade summary;
+renames are free, moves invalidate anything you cached by address. Two hazards
+when withdrawing authority, both reading smaller than they are:
+
+⛔ **Revocation always cascades.** `client.trust.revocation.revoke(agent_id,
+reason)` takes no cascade flag, and every chain descending from that agent is
+affected. There is no non-cascading revoke. Establish the blast radius before
+you call it, never after. It raises rather than reporting success when the agent
+holds no active chain — a revocation that revoked nothing fails loudly.
+
+⛔ **There is no trust-chain suspend, so do not plan a reversible stand-down
+around one.** For a leave of absence or an investigation, lower the agent's
+autonomy instead — `client.trust.postures.override(...)` — and raise it back
+afterwards. Revocation is terminal, and the record it leaves says something
+different about what happened.
+
+After any cascade over a large subtree, check
+`client.trust.revocation.list_incomplete_jobs()` and resume with `resume_job`.
+An interrupted cascade leaves part of the tree still trusted, and a chain never
+reached looks exactly like an ordinary active one. **Trust chains and
+delegation** and **Re-orgs, bridges and workspaces** carry the rest, including
+bridges — how work crosses a boundary you drew on purpose without becoming a reporting edge.
+
+## What this leaves you holding
+
+A structure derived from accountability, with containment and reporting decided
+separately and on purpose; every head role attached, verified by walking a
+reporting chain rather than by checking a head exists; intent fields filled, so
+the agents mean something; and a receipt separating created from in force.
+
+## Next
+
+- `/construct` — stand the organisation up and run work through it
+- `/extend` — add a capability to a structure that already exists
+- `/diagnose` — a call against this structure was refused
+
+**Skills:** `reading-trust-and-governance` for what the bounds mean once in
+force; `day-two-operations` for the re-org and withdrawal paths.

@@ -1,6 +1,6 @@
 # Unresolved — what this repository does not settle
 
-Assembled 2026-09-17. Each entry names what is open, who decides, and what
+Assembled 2026-09-20. Each entry names what is open, who decides, and what
 would close it. Nothing here is a placeholder for work that was skipped; each is
 a decision that was deliberately not taken by the assembly.
 
@@ -136,17 +136,22 @@ the same remedy applies.
 
 ## 3c. `project.urls.Documentation` — CLOSED
 
-The `Documentation` URL no longer names a host at all. It previously pointed
-into the private platform repository, which was neither resolvable from outside
-nor a name that belonged in a partner-facing descriptor; it was then repointed
-at a second repository that is ALSO private, and the entry was marked closed
-here on that basis — a closure that did not hold, because a partner cannot read
-a private repository either.
+This repository has a published home — **`Integrum-Global/aegis-sdk`** — and `pyproject.toml`'s
+`Documentation` URL points at it: `https://github.com/Integrum-Global/aegis-sdk/tree/main/src/aegis_sdk/docs`.
 
-⚠ THIS REPOSITORY IS PUBLISHED PER DEPLOYMENT. The address a partner clones from
-belongs to the deployment, not to this file, and canon does not know it. Any
-absolute URL written here is therefore wrong for every reader except one, which
-is why the field is now absent rather than repointed a third time.
+It previously pointed into the private platform repository, which was neither
+resolvable from outside nor a name that belonged in a partner-facing descriptor.
+It was then repointed at a second repository that was ALSO private and the entry
+was marked closed on that basis — a closure that did not hold, because a partner
+cannot read a private repository either.
+
+⚠ THE SECOND VALUE LOOKED RIGHT AND STILL FAILED FOR A DIFFERENT REASON, which
+is why this entry is worth reading rather than skimming: the value was not wrong
+about which repository is public, it was written into canonical content whose
+identifier fence forbade naming that repository's org at all. The fence has since
+been given a declared own-org exclusion — the org is ours — so the name can now
+be written. A URL that cannot be represented where it is needed regenerates its
+own defect, and that is what this one did twice.
 Kept here as a closed entry rather than deleted, so the next reader does not
 re-open a decision that has been taken. The documentation itself ships in this
 tree under `src/aegis_sdk/docs/`.

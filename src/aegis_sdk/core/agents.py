@@ -690,6 +690,9 @@ class AgentToolsModule:
         ``name`` and ``description``. An MCP binding that references a shared
         server registration (``config["mcpServerId"]``) must not also carry
         inline ``url``/``headers``/``command``; the server refuses that with 422.
+        Nor may an MCP config carry those keys with NO ``mcpServerId`` unless
+        ``is_enabled=False`` declares the row as storage; the server refuses
+        that with 422 as well. Register the server once and reference it.
 
         Args:
             agent_id: Agent ID
@@ -762,7 +765,10 @@ class AgentToolsModule:
 
         An MCP binding that references a shared server registration
         (``config["mcpServerId"]``) must not also carry inline
-        ``url``/``headers``/``command``; the server refuses that with 422.
+        ``url``/``headers``/``command``; the server refuses that with 422. Nor
+        may an MCP config carry those keys with NO ``mcpServerId`` unless
+        ``is_enabled=False`` declares the row as storage; the server refuses
+        that with 422 as well. Register the server once and reference it.
 
         Args:
             agent_id: Agent ID

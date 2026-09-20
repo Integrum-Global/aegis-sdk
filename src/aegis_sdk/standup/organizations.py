@@ -47,7 +47,9 @@ class OrganizationsModule:
         Args:
             name: Organization display name (1-100 chars).
             slug: URL slug, lowercase alphanumeric + hyphens (``^[a-z0-9-]+$``).
-            plan_tier: One of ``free``, ``pro``, ``enterprise`` (default ``free``).
+            plan_tier: One of ``free``, ``starter``, ``professional``, ``enterprise``
+                (default ``free``); ``trial`` is also accepted. Any other value is
+                rejected with a ``422`` — it is not silently downgraded to ``free``.
 
         Example:
             >>> resp = await client.organizations.create(name="Acme", slug="acme")

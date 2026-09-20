@@ -34,6 +34,13 @@ envelope = await client.role_envelopes.create(
 
 `api:POST /api/v1/role-envelopes`.
 
+⚠ **This write needs the exact scope `roles:write` on an API-key caller.** The
+router admits any key holding SOME `roles:*` scope, but the route itself carries
+`require_scope("roles:write")` -- so `roles:read` does not stand in for it, and
+the refusal arrives on the call AFTER the role (and any agent auto-generated for
+it) already exists. If you are provisioning with a key, mint it with the set
+`examples/stand_up_a_vertical.py::REQUIRED_SCOPES` names before you start.
+
 The five dimensions come from CARE and are the vocabulary to design in:
 
 | dimension | bounds |
@@ -50,7 +57,7 @@ The five dimensions come from CARE and are the vocabulary to design in:
 description of an intention. It is not in force.
 
 ```python
-await client.org_standup.activate_role_envelope(envelope["id"])   # now it enforces
+await client.trust_posture.activate_role_envelope(envelope["id"])   # now it enforces
 ```
 
 `api:POST /api/v1/role-envelopes/{id}/activate`, and
@@ -63,10 +70,17 @@ fully bounded in every listing and enforces nothing. Nothing errors. The
 it:
 
 ```python
-envelopes = await client.org_standup.list_role_envelopes()
+envelopes = await client.trust_posture.list_role_envelopes(head_role_id)
 for e in envelopes.records:
     assert e.status == "active", f"envelope {e.id} is {e.status}, not enforcing"
 ```
+
+⚠ **`defining_role_id` is required — there is no org-wide listing.** The backend
+exposes list-by-supervisor and nothing else, so you enumerate the envelopes of the
+defining roles you provisioned, not every envelope in the organisation. A
+completeness check written as "list them all and assert" is therefore only as wide
+as the roles you named: pass each supervisor you created, and treat a role you
+forgot to pass as invisible rather than empty.
 
 You can pass `status="active"` at creation instead. Prefer that when the envelope
 is fully specified, and use `draft` deliberately when a human is going to review

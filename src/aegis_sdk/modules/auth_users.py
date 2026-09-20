@@ -18,8 +18,8 @@ so this module does not re-implement them. This module DOES add
 ``api_keys_regenerate`` (truly missing from ``AuthModule`` — no
 ``regenerate`` method exists there today).
 
-Every route below is verified against the deployed API, mounted
-at ``settings.api_prefix`` = ``/api/v1``:
+Every route below is verified against the deployed API, mounted under
+``/api/v1``:
 
     GET    /api/v1/users                        -> users_list()
     POST   /api/v1/users                         -> users_create()

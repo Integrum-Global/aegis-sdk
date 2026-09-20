@@ -309,7 +309,7 @@ class LineageGraphModule:
 
         ⛔ ONLY the PARSING is shared, never the request. The two routes differ
         by one path segment and the DRY move is to interpolate it — which is
-        precisely what must not happen here. ``scripts/audit/sdk_parity_gap.py``
+        precisely what must not happen here. An internal coverage audit
         derives SDK coverage by AST over the LITERAL path argument, turning
         every interpolated segment into ``{}``; a parameterised direction emits
         ``/api/v1/data-governance/lineage/nodes/{}/{}``, which matches no live

@@ -26,7 +26,7 @@ The `Agent` model represents an AI agent:
 | `model_id`        | `Optional[str]`          | LLM model identifier                                                                                                                                          |
 | `system_prompt`   | `Optional[str]`          | System prompt for the agent                                                                                                                                   |
 | `organization_id` | `str`                    | Owning organization                                                                                                                                           |
-| `workspace_id`    | `Optional[str]`          | Owning workspace; `None` on servers that no longer have workspaces — do not use it as a list filter                                                           |
+| `workspace_id`    | `str`                    | Owning workspace                                                                                                                                              |
 | `capabilities`    | `List[str]`              | Capability tags                                                                                                                                               |
 | `a2a_enabled`     | `bool`                   | Agent-to-agent communication enabled                                                                                                                          |
 | `description`     | `Optional[str]`          | Human-readable description                                                                                                                                    |
@@ -180,27 +180,26 @@ print(f"Current status: {execution.status}")
 
 Stream execution events in real time via SSE:
 
-```python
-from typing import Any, Dict
+The event kind is on the key `type`, and the event fields are FLAT on the frame
+— there is no `data` wrapper on this stream:
 
+```python
 async for event in client.agents.stream(
     agent_id="agent_abc123",
-    objective="Write a report on AI trends",
+    message="Write a report on AI trends",
     context={"format": "markdown"},
 ):
-    event_type: str = event.get("event_type", "unknown")
-    data: Dict[str, Any] = event.get("data", {})
+    event_type: str = event.get("type", "unknown")
 
-    if event_type == "started":
-        print("Execution started")
-    elif event_type == "thinking":
-        print(f"Processing: {data.get('description', '')}")
-    elif event_type == "output":
-        print(data.get("content", ""), end="", flush=True)
-    elif event_type == "completed":
-        print(f"\nCompleted in {data.get('duration_ms')}ms")
+    if event_type == "start":
+        # Resolved model for this execution — see `start` in the event table.
+        print(f"Execution started on {event.get('model') or 'model unresolved'}")
+    elif event_type == "content":
+        print(event.get("content", ""), end="", flush=True)
+    elif event_type == "done":
+        print("\nExecution completed")
     elif event_type == "error":
-        print(f"\nError: {data.get('message')}")
+        print(f"\nError: {event.get('error')}")
 ```
 
 ### List Executions

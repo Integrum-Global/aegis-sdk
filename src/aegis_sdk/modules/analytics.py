@@ -20,19 +20,32 @@ step is needed here.
 - :meth:`~AnalyticsModule.list_agents` — analytics-tracked agents list
 - :meth:`~AnalyticsModule.trends` — completion-rate trends
 
-Five further methods — :meth:`~AnalyticsModule.workspace_metrics`,
-:meth:`~AnalyticsModule.team_metrics`, :meth:`~AnalyticsModule.usage_history`,
-:meth:`~AnalyticsModule.usage_breakdown` and
-:meth:`~AnalyticsModule.top_agents` — address routes the API does not
-currently serve and return 404. Each carries a warning in its own docstring.
+⛔ FIVE FURTHER METHODS ARE NOT USABLE, IN TWO DIFFERENT WAYS — and the
+distinction matters, because one kind fails loudly and the other used not to.
+
+Three **make a request to a route the API does not serve, and return 404**;
+each carries a warning in its own docstring:
+:meth:`~AnalyticsModule.workspace_metrics`, :meth:`~AnalyticsModule.team_metrics`
+and :meth:`~AnalyticsModule.top_agents`.
+
+Two are **RETIRED: they make no request at all and always raise**
+``UnsupportedOperationError``:
+:meth:`~AnalyticsModule.usage_history` and
+:meth:`~AnalyticsModule.usage_breakdown`. Until 2026-09-18 those two CALLED the
+dead route and returned an empty result, which a caller could not distinguish
+from "no usage in this period". See :mod:`aegis_sdk.revenue.usage` for why that
+was the dangerous half of this set, and for the six surfaces that describe a
+method's behaviour when you change it.
 """
 
+import warnings
 from typing import Any, Literal
 
 from pydantic import ConfigDict, Field
 
 from .._http import encode_path_param
 from .._tolerant import TolerantModel
+from ..exceptions import UnsupportedOperationError
 
 
 # Response Models
@@ -992,13 +1005,21 @@ class AnalyticsModule:
         resource_type: str | None = None,
     ) -> list[UsageHistoryItem]:
         """
-        Get historical usage data.
+        DEPRECATED — no backing server capability.
 
-        .. warning::
-            **Not available in the current API — this call returns 404.**
-            ``GET /api/v1/analytics/usage/history`` is not served; there are
-            no ``/usage/*`` routes. For cost-shaped usage over a period, use
-            :meth:`costs` or :meth:`cost_breakdown`.
+        ``GET /api/v1/analytics/usage/history`` was never served; the API
+        exposes no ``/usage/*`` routes at all. For cost-shaped usage over a
+        period use :meth:`costs` or :meth:`cost_breakdown`.
+
+        ⛔ **This is a retirement, not a repoint.** The capability the caller
+        wants does exist, at a different route — but :meth:`costs` and
+        :meth:`cost_breakdown` return cost shapes, NOT the
+        ``UsageHistoryItem`` records this method promises. Repointing it at
+        one of them would silently hand callers the wrong data shape under
+        the right-looking name, which is the failure ``trust/audit.py``'s
+        ``get_entry`` shim already documents for the same reason. Naming a
+        working SUCCESSOR and naming an EQUIVALENT successor are different
+        claims; only the second licenses a repoint.
 
         Args:
             start_date: Start date (ISO format)
@@ -1007,20 +1028,31 @@ class AnalyticsModule:
 
         Returns:
             List[UsageHistoryItem]: Historical usage records
-        """
-        params: dict[str, Any] = {
-            "start_date": start_date,
-            "end_date": end_date,
-        }
-        if resource_type:
-            params["resource_type"] = resource_type
 
-        response = await self._http.request(
-            "GET",
-            "/api/v1/analytics/usage/history",
-            params=params,
+        Raises:
+            UnsupportedOperationError: Always — this method has no backing
+                server route.
+        """
+        warnings.warn(
+            "AnalyticsModule.usage_history() is deprecated and "
+            "non-functional — no server route exists for historical usage "
+            "(the API serves no /analytics/usage/* endpoint). For "
+            "cost-shaped usage over a period, use "
+            "client.analytics.costs() or client.analytics.cost_breakdown() "
+            "— note those return cost shapes, not the UsageHistoryItem "
+            "records this method declared. This method will be removed in a "
+            "future release.",
+            DeprecationWarning,
+            stacklevel=2,
         )
-        return [UsageHistoryItem(**item) for item in response.get("history", [])]
+        raise UnsupportedOperationError(
+            f"usage_history({start_date!r}, {end_date!r}, "
+            f"resource_type={resource_type!r}) has no backing server route; "
+            "there is no /analytics/usage/history endpoint on the Aegis API. "
+            "For cost-shaped usage over a period, use costs() or "
+            "cost_breakdown() — those return cost shapes, not the "
+            "UsageHistoryItem records this method declared."
+        )
 
     async def usage_breakdown(
         self,
@@ -1031,10 +1063,18 @@ class AnalyticsModule:
         Get usage breakdown by dimension.
 
         .. warning::
-            **Not available in the current API — this call returns 404.**
-            ``GET /api/v1/analytics/usage/breakdown`` is not served — see
-            :meth:`usage_history`. Use :meth:`cost_breakdown` for a
-            dimensioned view of spend.
+            **DEPRECATED, RETIRED — this method always raises and makes no
+            request.** ``GET /api/v1/analytics/usage/breakdown`` was never
+            served. For a dimensioned view of spend use :meth:`cost_breakdown`.
+
+        ⛔ **This docstring is the worked case for why "faithful conversion"
+        is the wrong goal.** It previously named TWO successors:
+        :meth:`usage_history`, which is ITSELF unserved, and
+        :meth:`cost_breakdown`, which is served. Converting it faithfully to
+        its FIRST-named successor would have raised a typed error sending the
+        caller to a second dead route, with the authority of a named error —
+        a more confident lie than the 404 it replaced. **A correct conversion
+        requires reading the successor, not matching its name.**
 
         Args:
             resource_type: Resource type to analyze
@@ -1042,16 +1082,29 @@ class AnalyticsModule:
 
         Returns:
             UsageBreakdownItem: Usage breakdown data
+
+        Raises:
+            UnsupportedOperationError: Always — this method has no backing
+                server route.
         """
-        response = await self._http.request(
-            "GET",
-            "/api/v1/analytics/usage/breakdown",
-            params={
-                "resource_type": resource_type,
-                "dimension": dimension,
-            },
+        warnings.warn(
+            "AnalyticsModule.usage_breakdown() is deprecated and "
+            "non-functional — no server route exists for usage breakdown "
+            "(the API serves no /analytics/usage/* endpoint). For a "
+            "dimensioned view of spend, use "
+            "client.analytics.cost_breakdown() — note it returns a cost "
+            "shape, not the UsageBreakdownItem this method declared. This "
+            "method will be removed in a future release.",
+            DeprecationWarning,
+            stacklevel=2,
         )
-        return UsageBreakdownItem(**response)
+        raise UnsupportedOperationError(
+            f"usage_breakdown({resource_type!r}, dimension={dimension!r}) "
+            "has no backing server route; there is no "
+            "/analytics/usage/breakdown endpoint on the Aegis API. For a "
+            "dimensioned view of spend, use cost_breakdown() — it returns a "
+            "cost shape, not the UsageBreakdownItem this method declared."
+        )
 
     async def top_agents(
         self,

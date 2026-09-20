@@ -18,6 +18,39 @@ provisioning script reads that as "cannot reconcile" and refuses to create:
     ontology        apply_preset · update_config · get_config · list_presets
     approvals       list_pending · get · approve · reject · modify
 
+SCOPES PER MODULE -- stated for the same reason, and it costs a partner more
+than a missing verb does. A verb that does not exist raises ``AttributeError``
+on the call you are looking at. A scope you did not mint raises 403 on a LATER
+call, after the earlier ones have already created organization, unit and role
+rows -- leaving a half-provisioned tenant, which is the state an idempotent
+provisioning script is least able to reconcile.
+
+``agents:read``/``agents:write`` -- the pair the SDK's agent-workflow docs show
+-- is NOT sufficient for this package. The resources here are gated in two
+different ways, and the difference matters:
+
+    organizations   some ``organizations:*``         (router scope_resources)
+    units           some ``organizations:*`` AND ``units:*``
+    roles           some ``organizations:*`` AND ``roles:*``
+    and the WRITE routes name the scope exactly: the role-envelope create
+    carries ``require_scope("roles:write")``, which ``roles:read`` does not
+    satisfy. Area coverage is necessary and not sufficient.
+
+NINE calls in this package are reachable by NO API key at ANY scope, because
+their routers gate on ``require_persona`` alone and an API-key principal
+resolves to ``personas: []`` by construction: every route on the ontology router
+and every route on the approvals router. Those need a JWT/bearer session.
+
+That list -- and the reason for each surface -- is declared ONCE, in
+``aegis_sdk.standup.session_only``, and re-exported here as
+``SESSION_ONLY_CALLS`` / ``SESSION_ONLY_REASON``. Read it there rather than
+inferring which calls are safe from a router name: the ontology router serves
+``apply_preset``, both config methods AND ``list_presets``, so "it is only the
+write that needs a session" is false. The working set of scopes for the rest is
+carried verbatim in
+``examples/stand_up_a_vertical.py::REQUIRED_SCOPES`` -- use it rather than
+assembling one by hand.
+
 ⚠ THESE MODULES ARE NOT THE WHOLE SURFACE, and the obvious name is the smaller
 one. Update and delete live elsewhere, on modules that are NOT cross-linked
 from the client attribute a standup caller reaches first:
@@ -41,6 +74,7 @@ from .knowledge import KnowledgeModule
 from .ontology import OntologyModule
 from .organizations import OrganizationsModule
 from .roles import OrganizationRolesModule
+from .session_only import SESSION_ONLY_CALLS, SESSION_ONLY_REASON, is_session_only
 from .teams import TeamsModule
 from .units import OrganizationUnitsModule
 
@@ -53,4 +87,7 @@ __all__ = [
     "KnowledgeModule",
     "OntologyModule",
     "ApprovalsModule",
+    "SESSION_ONLY_CALLS",
+    "SESSION_ONLY_REASON",
+    "is_session_only",
 ]

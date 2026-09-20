@@ -75,8 +75,7 @@ class ExternalAgent(TolerantModel):
 
     id: str
     organization_id: str
-    # Optional: servers that removed the Workspace entity emit null here (the
-    # key is kept for older clients). Null means "no workspace"; it grants nothing.
+    # Response-side widening — see aegis_sdk.types.Agent.workspace_id.
     workspace_id: str | None = None
     name: str
     description: str | None = None

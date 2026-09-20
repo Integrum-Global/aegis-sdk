@@ -577,8 +577,7 @@ for entry in history:
 ⛔ This section used to carry its own independent copy of a workflow that
 already exists as a shipped, signature-pinned example
 (`examples/trust_chain_management.py` — CI fails if any call in it stops
-binding against the real SDK, per
-`tests/deployment/test_sdk_examples_bind_real_signatures.py`). That
+binding against the real SDK). That
 independence is exactly how it drifted: the embedded copy kept the
 deprecated `verify(resource=...)` call and a bare `TrustVerificationResult`
 type hint long after the real example (and the SDK itself) moved on. Rather

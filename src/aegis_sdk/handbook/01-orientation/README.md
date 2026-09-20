@@ -1,5 +1,7 @@
 # Part 01 — Orientation
 
+<!-- anchor-floor: exempt (part navigation; chapters carry the anchors) -->
+
 Three chapters, read in order. They are the only part of this book that is meant
 to be read straight through, and skipping them is the most expensive shortcut
 available: chapter 01.2 in particular describes a model people routinely guess
@@ -29,3 +31,7 @@ you can operate a deployment competently without reading any of them, and this
 book uses the Foundation's vocabulary where it uses it rather than inventing a
 parallel one. Where a term is load-bearing — *envelope*, *posture*, *clearance*,
 *verification gradient* — the chapter that first needs it defines it in place.
+
+---
+
+_Next: [01.1 — What you were given](01-what-you-were-given.md)_

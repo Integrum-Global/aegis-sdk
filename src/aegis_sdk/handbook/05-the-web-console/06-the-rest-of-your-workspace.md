@@ -1,5 +1,7 @@
 # 05.6 — The rest of your workspace
 
+<!-- anchor-floor: ungrammatical (no anchor kind exists for a front-end route) -->
+
 Chapters 1 to 5 cover the things you will do most days: sign in, ask for work,
 work your inbox, deal with something that stopped, and understand why parts of
 the system are invisible to you.
@@ -30,8 +32,8 @@ many fall into it:
 - **Completed** — finished, whether it succeeded or not.
 
 If the list is empty you get **"No sessions found"**. As chapter 5 explains, an
-empty list means *nothing you are entitled to see*, which is not always the same
-as *nothing happened*.
+empty list means _nothing you are entitled to see_, which is not always the same
+as _nothing happened_.
 
 You can delete a session from here. It asks you to confirm first. Deleting
 removes the session from your list — it does **not** erase the audit record of
@@ -40,7 +42,7 @@ distinction is the point of the audit trail, not a limitation of this screen.
 
 > **[SCREENSHOT]** id: `work-sessions-mixed` · route: `/work/sessions` · state:
 > `northwind.sessions.mixed_status` · persona: `field_service_lead`
-> *Must show:* the four filters with non-zero counts, including at least one
+> _Must show:_ the four filters with non-zero counts, including at least one
 > paused session, so the filter row is legible as a summary.
 
 ## My Applications
@@ -70,12 +72,11 @@ The page opens with four counts, which is usually all you need:
 - **Completed** — shown in green.
 
 Below the counts is the task list itself. If your organisation does not use the
-EATP task surface, expect these to sit at zero permanently; that is a
-configuration choice, not a fault.
+EATP task surface, expect these to sit at zero; that is a configuration choice.
 
 > **[SCREENSHOT]** id: `work-eatp-tasks-with-overdue` · route: `/work/eatp/tasks`
 > · state: `northwind.eatp.tasks_one_overdue` · persona: `field_service_lead`
-> *Must show:* the four count tiles with a non-zero red Overdue tile, so the
+> _Must show:_ the four count tiles with a non-zero red Overdue tile, so the
 > colour coding is legible.
 
 ## EATP Processes
@@ -87,7 +88,7 @@ ones, and a button to start a new one where you are permitted to.
 **One thing here will look different for you than it does in this handbook.**
 The labels on this page come from your organisation's own vocabulary rather than
 being fixed in the software. If your organisation calls these things
-*workflows*, or *cases*, or *engagements*, that is the word you will see — on the
+_workflows_, or _cases_, or _engagements_, that is the word you will see — on the
 heading, on the search box, on the button, and in the empty state. The page works
 identically whatever it is called. So if your sidebar does not say "Processes",
 you are still in the right place.
@@ -104,18 +105,16 @@ that are unavailable to you. That is the expected state, not a permissions
 problem to report.
 
 Teams appears twice in the navigation config — once under **WORK** and once
-under **GOVERN** — and both point at the same page. Which of them *you* see
+under **GOVERN** — and both point at the same page. Which of them _you_ see
 depends on your persona: the WORK entry is the one ordinary users get, the GOVERN
 one is administrators'. If a colleague describes reaching Teams by a route you do
 not have, that is why, and you have not found two different screens.
 
-⚠ **A general note for this whole part, learned the hard way in chapter 4.**
-Being *allowed* to open a page and being *shown a link to it* are separate
-things, decided in different files. Where this handbook says "you will find X in
-the sidebar", it has been checked against the navigation entry for an ordinary
-user — not merely against whether the page would let you in. If you are following
-an instruction from anywhere else and the menu item is not there, check that
-distinction before concluding you lack permission.
+⚠ **A general note for this whole part.** Being _allowed_ to open a page and
+being _shown a link to it_ are separate things. Where this handbook says "you
+will find X in the sidebar", it means the navigation entry exists for an ordinary
+user, not merely that the page would admit you. If the menu item is not there,
+check that distinction before concluding you lack permission.
 
 ## If something in your sidebar is not in this handbook
 

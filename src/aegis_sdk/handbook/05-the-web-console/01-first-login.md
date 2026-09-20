@@ -1,5 +1,7 @@
 # 05.1 — First login
 
+<!-- anchor-floor: ungrammatical (no anchor kind exists for a front-end route) -->
+
 ## What actually happens when you sign in
 
 You will not land where you expect. Almost everyone's first sign-in goes to a
@@ -22,23 +24,21 @@ looks normal but fails, that is a different problem — see below.
 
 ![The Aegis sign-in page: an email and password form with a Remember me tickbox and a Sign In button, above a divider reading "OR CONTINUE WITH" and four single-sign-on buttons — Google, Microsoft, Apple and GitHub.](../assets/screenshots/login-clean.png)
 
-*The sign-in page on the demo tenant. Three of the four sign-on buttons read
+_The sign-in page on the demo tenant. Three of the four sign-on buttons read
 "unavailable" and are greyed out; only **Continue with Microsoft** is live,
 because that is the only provider this deployment has enabled. Yours will differ.
 Note the eye icon inside the password field, and the "Register" link at the
-foot — both described above.*
+foot — both described above._
 
-**Things that will not happen at sign-in, so you are not left waiting for them:**
+**Two more things to expect at sign-in:**
 
-- **There is no second-factor step.** You will not be asked for a code from an
-  app or a text message. Your organisation's settings contain a
-  multi-factor option, but no second-factor challenge is presented at sign-in
-  today. If someone tells you to expect one, they are describing a setting, not
-  the screen you will see.
-- **There is no "account locked" screen.** If you get the password wrong
-  repeatedly, or trip a rate limit, you get a red message box rather than a
-  distinct page — often *"Too many requests. Please wait a moment and try
-  again."* Wait, then try again.
+- **Multi-factor authentication follows your organisation's settings.** Where
+  your organisation has enabled it, you are challenged for a second factor after
+  your password. [immediate roadmap]
+- **Rate limiting surfaces as a message rather than a separate page.** Get the
+  password wrong repeatedly, or trip a rate limit, and you get a red message
+  box — often _"Too many requests. Please wait a moment and try again."_ Wait,
+  then try again.
 
 **If sign-in fails**, a red box appears in the corner titled **"Login failed"**
 with the reason underneath. The reason comes from the server, so it is usually
@@ -64,14 +64,14 @@ handbook will make considerably more sense if you spend the ten minutes.
 
 ![The Getting Started walkthrough: a row of twelve progress dots with the first filled, a panel headed "Transform Your Organization", and a Skip link in the top right.](../assets/screenshots/getting-started-first-login.png)
 
-*The first screen of the walkthrough — this is where most people land instead of
+_The first screen of the walkthrough — this is where most people land instead of
 the main application. The row of dots is the progress indicator: twelve steps,
 and you are on the first. **"Skip" is in the top right** and works from any step.
 The panel introduces CARE — the Collaborative Autonomous Reflective Enterprise
 framework, an open standard published by the Terrene Foundation that Aegis
-implements.*
+implements._
 
-> ### ⚠ The walkthrough will come back, and it is not a fault
+> ### The walkthrough is remembered per browser
 >
 > Whether you finished or skipped it is remembered **in the browser you used**,
 > not in your account. Sign in from a different browser, a different computer, or
@@ -91,12 +91,12 @@ with the time of day and shows your level and role.
 If you are brand new, most of it is empty, and the empty states are worth
 recognising so you do not think something is broken:
 
-| Panel | What a new account sees |
-|---|---|
-| Recent Activity | *"No recent activity. Submit an objective to get started."* |
-| Pending Your Action | a green tick and *"All caught up!"* |
-| In Progress | *"No active objectives"* |
-| Agent status | *"No agent assigned"*, if none has been |
+| Panel               | What a new account sees                                     |
+| ------------------- | ----------------------------------------------------------- |
+| Recent Activity     | _"No recent activity. Submit an objective to get started."_ |
+| Pending Your Action | a green tick and _"All caught up!"_                         |
+| In Progress         | _"No active objectives"_                                    |
+| Agent status        | _"No agent assigned"_, if none has been                     |
 
 The orange summary banner that regular users see across the top does not appear
 until you actually have something pending or completed. Its absence is normal on
@@ -104,19 +104,19 @@ day one.
 
 ![The Work Home screen: a greeting reading "Good afternoon, Rowan Calder", a large box asking "What would you like to accomplish?", a trust selector reading Supervised, and panels for Recent Activity and Pending Your Action.](../assets/screenshots/work-home-field-service.png)
 
-*Home, for a seeded demo user. Four things worth finding: the **greeting** with
+_Home, for a seeded demo user. Four things worth finding: the **greeting** with
 your role beneath it (`Member`, `L1 - Task Performer`) and `No agent assigned`;
 the **objective box**, which is the main thing you will use; the **trust
 selector** under it, reading `Supervised — "I approve each action"`, which is
 where you choose how much latitude the agent has for this piece of work; and the
 counters top-right, here `Pending: 0` and `In Progress: 1`. The suggestion chips
-below the box are starting points, not limits.*
+below the box are starting points, not limits._
 
 The centre of the screen is a box headed **"What would you like to accomplish?"**
 That is the main thing you do here, and it is chapter 2.
 
-Beneath it sit four example prompts — things like *"Run a competitive analysis
-for Q1"*. Read them as **examples of the shape of a good request**, not as
+Beneath it sit four example prompts — things like _"Run a competitive analysis
+for Q1"_. Read them as **examples of the shape of a good request**, not as
 suggestions tailored to you or to your organisation. They are the same four for
 everybody.
 
@@ -127,19 +127,16 @@ handbook or a colleague mentions**, and an item missing from your sidebar is
 usually not a fault — it is a section you have not been given. Chapter 5 covers
 how to tell that apart from something being broken.
 
-Two navigation quirks worth knowing now, because both look like defects:
+Two navigation behaviours worth knowing now:
 
-- Some items are hidden behind a **"Show more"** control in a section rather than
-  being absent. If you cannot find something named in this handbook, expand the
+- Some items sit behind a **"Show more"** control in a section rather than at the
+  top level. If you cannot find something named in this handbook, expand the
   section before concluding you lack access.
-- **Mistyping a web address does not produce an error page.** There is no "page
-  not found" screen; an unrecognised address quietly returns you to your usual
-  landing page. If you followed a link and ended up somewhere unexpected, the
-  link was probably stale — nothing went wrong with your account.
+- **An unrecognised web address returns you to your usual landing page** rather
+  than to an error screen. If you followed a link and ended up somewhere
+  unexpected, the link was stale — nothing went wrong with your account.
 
-One item you may find and should ignore: **Value Chains** appears in the sidebar
-but opens a "coming soon" page. It is not built yet. It is in the menu, which is
-unfortunate, but you have not misunderstood it.
+**Value Chains** appears in the sidebar and opens shortly. [immediate roadmap]
 
 ## If your screen does not match a colleague's
 
@@ -148,13 +145,12 @@ because what you see depends on the role you were given, the organisational unit
 you sit in, and your clearance. That is the system working as designed, and
 chapter 5 explains the reasoning.
 
-There is also a less satisfying reason, and it is worth knowing it exists: **what
-your account can see is partly remembered by the browser**, so the same account
-in two different browsers can occasionally present differently. If your access
-looks wrong rather than merely narrow — a section you used yesterday has gone —
-sign out fully and sign back in before raising it. If it persists after that, it
-is worth reporting.
+There is also a mechanical reason worth knowing: **what your account can see is
+cached in the browser**, so the same account in two different browsers can
+present differently until each refreshes. If your access looks wrong rather than
+merely narrow — a section you used yesterday has gone — sign out fully and sign
+back in, which refreshes it. If it persists after that, it is worth reporting.
 
 ---
 
-*Next: [05.2 — Submitting an objective](02-submitting-an-objective.md)*
+_Next: [05.2 — Submitting an objective](02-submitting-an-objective.md)_

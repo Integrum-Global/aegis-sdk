@@ -10,15 +10,15 @@
     "`source_sha256_16` is the digest of the SOURCE at projection time, so a source",
     "edit that was never re-projected is visible here rather than only in a diff."
   ],
-  "projected_on": "2026-09-18",
+  "projected_on": "2026-09-20",
   "counts": {
     "agents": 2,
     "skills": 6,
     "guardrails": 7,
-    "commands": 4,
+    "commands": 8,
     "hooks": 6,
     "hook_scripts": 8,
-    "projected_files": 71
+    "projected_files": 83
   },
   "lifecycle": [
     {
@@ -66,6 +66,34 @@
       "warranted": false,
       "commands": [],
       "reason": "NOT drivable from a session: 0 python example(s), 0 client surface(s) — nothing here is driven through this client, so there is no session work for a command to order"
+    },
+    {
+      "stage": "08-the-capability-catalogue",
+      "warranted": true,
+      "commands": [
+        "catalogue"
+      ]
+    },
+    {
+      "stage": "09-the-governance-architecture",
+      "warranted": true,
+      "commands": [
+        "govern"
+      ]
+    },
+    {
+      "stage": "10-the-organization-structure-framework",
+      "warranted": true,
+      "commands": [
+        "structure"
+      ]
+    },
+    {
+      "stage": "11-the-deployment-pack",
+      "warranted": true,
+      "commands": [
+        "deploy"
+      ]
     }
   ],
   "enforcement": {
@@ -93,27 +121,47 @@
     {
       "dest": ".claude/agents/aegis-sdk-specialist.md",
       "source": "src/aegis_sdk/coc/agents/aegis-sdk-specialist.md",
-      "source_sha256_16": "7076aaab3d687caa"
+      "source_sha256_16": "3f4a121506d85c2b"
+    },
+    {
+      "dest": ".claude/commands/catalogue.md",
+      "source": "src/aegis_sdk/coc/commands/catalogue.md",
+      "source_sha256_16": "682aaa732ec4150b"
     },
     {
       "dest": ".claude/commands/construct.md",
       "source": "src/aegis_sdk/coc/commands/construct.md",
-      "source_sha256_16": "2b97d0f2f13351c9"
+      "source_sha256_16": "ef3bc1b69ecf3a40"
+    },
+    {
+      "dest": ".claude/commands/deploy.md",
+      "source": "src/aegis_sdk/coc/commands/deploy.md",
+      "source_sha256_16": "5fdbee7d84f5fd31"
     },
     {
       "dest": ".claude/commands/diagnose.md",
       "source": "src/aegis_sdk/coc/commands/diagnose.md",
-      "source_sha256_16": "6364efa65c6835b4"
+      "source_sha256_16": "499e12a4262a0a94"
     },
     {
       "dest": ".claude/commands/extend.md",
       "source": "src/aegis_sdk/coc/commands/extend.md",
-      "source_sha256_16": "e8d8bfe7366566ae"
+      "source_sha256_16": "b691dcd0533d345e"
+    },
+    {
+      "dest": ".claude/commands/govern.md",
+      "source": "src/aegis_sdk/coc/commands/govern.md",
+      "source_sha256_16": "5a1e438546309292"
     },
     {
       "dest": ".claude/commands/orient.md",
       "source": "src/aegis_sdk/coc/commands/orient.md",
-      "source_sha256_16": "510df94ddba4fbd3"
+      "source_sha256_16": "39dfd6c70becaa27"
+    },
+    {
+      "dest": ".claude/commands/structure.md",
+      "source": "src/aegis_sdk/coc/commands/structure.md",
+      "source_sha256_16": "38928a72ad1d9637"
     },
     {
       "dest": ".claude/hooks/anchor-integrity.js",
@@ -231,24 +279,39 @@
       "source_sha256_16": "d20e2e65086adc6d"
     },
     {
+      "dest": ".codex/prompts/catalogue.md",
+      "source": "src/aegis_sdk/coc/commands/catalogue.md",
+      "source_sha256_16": "682aaa732ec4150b"
+    },
+    {
       "dest": ".codex/prompts/construct.md",
       "source": "src/aegis_sdk/coc/commands/construct.md",
-      "source_sha256_16": "2b97d0f2f13351c9"
+      "source_sha256_16": "ef3bc1b69ecf3a40"
+    },
+    {
+      "dest": ".codex/prompts/deploy.md",
+      "source": "src/aegis_sdk/coc/commands/deploy.md",
+      "source_sha256_16": "5fdbee7d84f5fd31"
     },
     {
       "dest": ".codex/prompts/diagnose.md",
       "source": "src/aegis_sdk/coc/commands/diagnose.md",
-      "source_sha256_16": "6364efa65c6835b4"
+      "source_sha256_16": "499e12a4262a0a94"
     },
     {
       "dest": ".codex/prompts/extend.md",
       "source": "src/aegis_sdk/coc/commands/extend.md",
-      "source_sha256_16": "e8d8bfe7366566ae"
+      "source_sha256_16": "b691dcd0533d345e"
+    },
+    {
+      "dest": ".codex/prompts/govern.md",
+      "source": "src/aegis_sdk/coc/commands/govern.md",
+      "source_sha256_16": "5a1e438546309292"
     },
     {
       "dest": ".codex/prompts/orient.md",
       "source": "src/aegis_sdk/coc/commands/orient.md",
-      "source_sha256_16": "510df94ddba4fbd3"
+      "source_sha256_16": "39dfd6c70becaa27"
     },
     {
       "dest": ".codex/prompts/specialist-aegis-operator.md",
@@ -258,7 +321,12 @@
     {
       "dest": ".codex/prompts/specialist-aegis-sdk-specialist.md",
       "source": "src/aegis_sdk/coc/agents/aegis-sdk-specialist.md",
-      "source_sha256_16": "7076aaab3d687caa"
+      "source_sha256_16": "3f4a121506d85c2b"
+    },
+    {
+      "dest": ".codex/prompts/structure.md",
+      "source": "src/aegis_sdk/coc/commands/structure.md",
+      "source_sha256_16": "38928a72ad1d9637"
     },
     {
       "dest": ".codex/skills/billing-integrity/SKILL.md",
@@ -333,27 +401,47 @@
     {
       "dest": ".gemini/agents/aegis-sdk-specialist.md",
       "source": "src/aegis_sdk/coc/agents/aegis-sdk-specialist.md",
-      "source_sha256_16": "7076aaab3d687caa"
+      "source_sha256_16": "3f4a121506d85c2b"
+    },
+    {
+      "dest": ".gemini/commands/catalogue.toml",
+      "source": "src/aegis_sdk/coc/commands/catalogue.md",
+      "source_sha256_16": "682aaa732ec4150b"
     },
     {
       "dest": ".gemini/commands/construct.toml",
       "source": "src/aegis_sdk/coc/commands/construct.md",
-      "source_sha256_16": "2b97d0f2f13351c9"
+      "source_sha256_16": "ef3bc1b69ecf3a40"
+    },
+    {
+      "dest": ".gemini/commands/deploy.toml",
+      "source": "src/aegis_sdk/coc/commands/deploy.md",
+      "source_sha256_16": "5fdbee7d84f5fd31"
     },
     {
       "dest": ".gemini/commands/diagnose.toml",
       "source": "src/aegis_sdk/coc/commands/diagnose.md",
-      "source_sha256_16": "6364efa65c6835b4"
+      "source_sha256_16": "499e12a4262a0a94"
     },
     {
       "dest": ".gemini/commands/extend.toml",
       "source": "src/aegis_sdk/coc/commands/extend.md",
-      "source_sha256_16": "e8d8bfe7366566ae"
+      "source_sha256_16": "b691dcd0533d345e"
+    },
+    {
+      "dest": ".gemini/commands/govern.toml",
+      "source": "src/aegis_sdk/coc/commands/govern.md",
+      "source_sha256_16": "5a1e438546309292"
     },
     {
       "dest": ".gemini/commands/orient.toml",
       "source": "src/aegis_sdk/coc/commands/orient.md",
-      "source_sha256_16": "510df94ddba4fbd3"
+      "source_sha256_16": "39dfd6c70becaa27"
+    },
+    {
+      "dest": ".gemini/commands/structure.toml",
+      "source": "src/aegis_sdk/coc/commands/structure.md",
+      "source_sha256_16": "38928a72ad1d9637"
     },
     {
       "dest": ".gemini/settings.json",
@@ -428,17 +516,17 @@
     {
       "dest": "AGENTS.md",
       "source": "coc-context.md",
-      "source_sha256_16": "d5a73cf6e96d48ab"
+      "source_sha256_16": "3abd8c35dbd1dda0"
     },
     {
       "dest": "CLAUDE.md",
       "source": "coc-context.md",
-      "source_sha256_16": "d5a73cf6e96d48ab"
+      "source_sha256_16": "3abd8c35dbd1dda0"
     },
     {
       "dest": "GEMINI.md",
       "source": "coc-context.md",
-      "source_sha256_16": "d5a73cf6e96d48ab"
+      "source_sha256_16": "3abd8c35dbd1dda0"
     }
   ]
 }

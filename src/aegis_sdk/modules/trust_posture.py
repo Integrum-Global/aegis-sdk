@@ -481,11 +481,92 @@ class OperationalConstraints(TolerantModel):
     prohibited_actions: list[str] = Field(default_factory=list)
 
 
-class TransactionConstraints(TolerantModel):
-    """Transaction constraints (``TransactionConstraintsModel``)."""
+#: The explicit-unbounded DoA declaration, RESTATED rather than imported: this
+#: module is self-contained by contract (see its header — local models, no
+#: shared imports). The value mirrors the server's own unbounded-DoA token and
+#: a test pins the two spellings together.
+_UNBOUNDED_DOA_TOKEN = "unbounded"
 
-    max_transaction_amount: float | None = None
+
+class TransactionConstraints(TolerantModel):
+    """Transaction constraints (``TransactionConstraintsModel``).
+
+    ⛔ THE TWO FIELDS DO **NOT** CARRY THE SAME STATES. This model previously
+    annotated both as ``float | Literal["unbounded"] | None`` and said in its own
+    docstring that "the wire accepts all three" for both — an assertion of a
+    state core forbids on one of them. Corrected against core, field by field:
+
+    ``max_transaction_amount`` (the CEILING) carries THREE:
+
+    - a finite amount — a real ceiling that blocks a larger transaction;
+    - ``None`` — NOTHING DECLARED, which keeps failing closed. An absence must
+      never be rendered as the declaration below, and the two are separate model
+      values here, not two spellings of one;
+    - ``"unbounded"`` — the EXPLICIT declaration that no amount bounds this
+      tier. Without it a partner had to write a large finite number instead,
+      i.e. a limit nobody chose.
+
+    The declaration is the core's ``UNBOUNDED_DOA_TOKEN``, recognised
+    server-side by ONE shared recogniser.
+    That recogniser folds CASE and SURROUNDING WHITESPACE, and this model now
+    folds identically — a bare ``Literal`` rejected ``"UNBOUNDED"``,
+    ``"Unbounded"`` and ``"  unbounded  "`` with a ``ValidationError``, i.e. it
+    refused spellings the server honours and the endpoint would have accepted.
+    Folding repairs the ACCEPTANCE SET; it does not widen the TYPE, which still
+    admits the declaration and nothing else.
+
+    ``require_approval_above`` (the THRESHOLD) carries TWO — there is NO
+    unbounded state. A ceiling is a BOUND, and "no bound" is a meaningful thing
+    to declare about a bound; a threshold is a TRIGGER, so reading the token
+    there would mean "approval is never required" — deleting a control rather
+    than stating one. Core refuses it and fails closed to ``$0``, the most
+    restrictive reading and what enforcement applies -- the server's own
+    threshold parser returns a ``float``, which makes the marker unassignable
+    to that field.
+
+    So a token on the THRESHOLD raises here rather than being quietly rewritten
+    into a number, and that direction is deliberate: core never emits one on the
+    read path (it has already folded it to ``0.0``), and on the write path a
+    caller who asks for "no approval required" and silently receives "approval
+    required above $0" is the exact silent substitution this model must not make.
+    A caller who wants no threshold declares ``None`` and owns that choice.
+    """
+
+    max_transaction_amount: float | Literal["unbounded"] | None = None
     require_approval_above: float | None = None
+
+    @field_validator("max_transaction_amount", mode="before")
+    @classmethod
+    def _fold_doa_declaration(cls, value: Any) -> Any:
+        """Fold the declaration's spellings exactly as core's recogniser does.
+
+        ``str.strip().lower() == "unbounded"`` is the whole rule, and it is the
+        SAME rule as ``is_explicit_unbounded_declaration``. Every DIFFERENT word
+        is left untouched and still fails validation, so the state cannot be
+        reached by approximation.
+        """
+        if isinstance(value, str) and value.strip().lower() == _UNBOUNDED_DOA_TOKEN:
+            return _UNBOUNDED_DOA_TOKEN
+        return value
+
+    @field_validator("require_approval_above", mode="before")
+    @classmethod
+    def _refuse_unbounded_threshold(cls, value: Any) -> Any:
+        """Refuse the declaration on the field that has no such state.
+
+        Named explicitly rather than left to a union's parse error: the default
+        message ("unable to parse string as a number") would read as a bad
+        number, when what is actually wrong is that this field has no unbounded
+        state at all.
+        """
+        if isinstance(value, str) and value.strip().lower() == _UNBOUNDED_DOA_TOKEN:
+            raise ValueError(
+                "require_approval_above has no unbounded state: an unbounded "
+                "approval trigger would delete the control rather than bound it, "
+                "so the server fails it closed to $0. Declare a finite threshold, "
+                "or None for no declared threshold."
+            )
+        return value
 
 
 class CommunicationConstraints(TolerantModel):

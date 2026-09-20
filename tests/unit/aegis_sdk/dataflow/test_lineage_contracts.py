@@ -1,7 +1,7 @@
 """Contract tests for the `aegis_sdk.dataflow` lineage surface.
 
 Pins route + method + request shape + response parsing against a stubbed
-HTTPClient, in the idiom of ``tests/unit/sdk/test_modules_knowledge_govern.py``.
+HTTPClient, in the idiom of the SDK's other module contract tests.
 
 Route coverage — the thing the parity ratchet measures — is asserted separately
 in ``test_lineage_route_coverage.py``. These tests answer the other half: that

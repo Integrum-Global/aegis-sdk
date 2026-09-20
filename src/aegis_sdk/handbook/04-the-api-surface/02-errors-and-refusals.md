@@ -2,19 +2,19 @@
 
 There are **four** kinds of bad outcome, and telling them apart is the whole job:
 
-| | what happened | what you have measured |
-| --- | --- | --- |
-| **not reached** | the deployment never answered | **nothing** — not permissions, not existence, not state |
-| **not known** | it answered: *I do not know who is asking, in the way this operation requires* | your authentication, and nothing about your permissions |
-| **refused** | it answered: *I know who you are, and the answer is no* | a governance verdict |
-| **fault** | something broke — a malformed request, a server error, a contract the client cannot model | that somebody has to fix something |
+|                 | what happened                                                                             | what you have measured                                  |
+| --------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| **not reached** | the deployment never answered                                                             | **nothing** — not permissions, not existence, not state |
+| **not known**   | it answered: _I do not know who is asking, in the way this operation requires_            | your authentication, and nothing about your permissions |
+| **refused**     | it answered: _I know who you are, and the answer is no_                                   | a governance verdict                                    |
+| **fault**       | something broke — a malformed request, a server error, a contract the client cannot model | that somebody has to fix something                      |
 
 **A refusal is the product working.** [Part 02](../02-working-through-the-harness/)
 makes that claim; this chapter is where it becomes actionable. A refusal is
 evidence, and it belongs in your audit story rather than in your incident
 channel. The other three do not.
 
-⚠ **The distinction that costs a day is *not known* versus *refused* — `401`
+⚠ **The distinction that costs a day is _not known_ versus _refused_ — `401`
 versus `403`.** They read alike, they are both "denied" in casual speech, and
 they have opposite remedies. A `401` says the platform could not establish who is
 asking to the standard this operation demands; reissuing a credential may be the
@@ -22,7 +22,7 @@ answer, and no permission change will be. A `403` says it established exactly wh
 you are and declined; reissuing the credential is wasted work.
 
 An architect who learns "denied means 403" will misread the other one, and the
-misreading is expensive in both directions — see § *A refusal is not one status*
+misreading is expensive in both directions — see § _A refusal is not one status_
 below, which is the case where a perfectly valid key gets a `401`.
 
 The rest of this chapter is the mapping that lets you tell. For the diagnostic
@@ -33,26 +33,26 @@ shipped beside this book, and
 [the error-taxonomy guardrail](../../coc/guardrails/error-taxonomy.md) it rests
 on.
 
-## The status-to-exception table, measured
+## The status-to-exception table
 
-Every entry below was produced by driving `sdk:aegis_sdk.AgenticOSClient`'s
-transport against each status in turn and recording what came back. Reproduce it
-on your own build; it takes under a second.
+Every entry below comes from driving `sdk:aegis_sdk.AgenticOSClient`'s transport
+against each status in turn. Reproduce it on your own build; it takes under a
+second.
 
-| status | what the client does | kind |
-| --- | --- | --- |
-| `200` `201` `202` | returns the parsed JSON body | — |
-| `204` | returns `None` | — |
-| `400` | `sdk:aegis_sdk.ValidationError` | fault (your request) |
-| `401` | `sdk:aegis_sdk.AuthenticationError` | fault (your credential) |
-| `403` | `sdk:aegis_sdk.AuthorizationError` | **refusal** |
-| `404` | `sdk:aegis_sdk.NotFoundError` | either — see below |
-| `422` | `sdk:aegis_sdk.ValidationError` | fault (your request) |
-| `423` | `sdk:aegis_sdk.GovernanceViolationError` | **refusal** |
-| `429` | `sdk:aegis_sdk.RateLimitError` | not reached, yet |
-| `451` | `sdk:aegis_sdk.TrustViolationError` | **refusal** |
-| `5xx` | `sdk:aegis_sdk.ServiceError` | fault (theirs) |
-| **anything else** | `sdk:aegis_sdk.AgenticOSError`, message `Unexpected status code: <n>` | unclassified |
+| status            | what the client does                                                  | kind                    |
+| ----------------- | --------------------------------------------------------------------- | ----------------------- |
+| `200` `201` `202` | returns the parsed JSON body                                          | —                       |
+| `204`             | returns `None`                                                        | —                       |
+| `400`             | `sdk:aegis_sdk.ValidationError`                                       | fault (your request)    |
+| `401`             | `sdk:aegis_sdk.AuthenticationError`                                   | fault (your credential) |
+| `403`             | `sdk:aegis_sdk.AuthorizationError`                                    | **refusal**             |
+| `404`             | `sdk:aegis_sdk.NotFoundError`                                         | either — see below      |
+| `422`             | `sdk:aegis_sdk.ValidationError`                                       | fault (your request)    |
+| `423`             | `sdk:aegis_sdk.GovernanceViolationError`                              | **refusal**             |
+| `429`             | `sdk:aegis_sdk.RateLimitError`                                        | not reached, yet        |
+| `451`             | `sdk:aegis_sdk.TrustViolationError`                                   | **refusal**             |
+| `5xx`             | `sdk:aegis_sdk.ServiceError`                                          | fault (theirs)          |
+| **anything else** | `sdk:aegis_sdk.AgenticOSError`, message `Unexpected status code: <n>` | unclassified            |
 
 Three of those are refusals and each says something different. `403` is an
 authorization decision — a principal was judged and found wanting. `423` is a
@@ -81,7 +81,7 @@ Read `step_reached`: when `allowed` is `False` it names where the chain stopped,
 and `access_path` carries the route taken.
 
 ⚠ **It is a dry run, and it is not a record of the refusal you received.** It
-evaluates the item *you describe* — it reads no stored record, records no access,
+evaluates the item _you describe_ — it reads no stored record, records no access,
 and a wrong or missing field changes the verdict. Reconstruct the item the
 refused call was about and re-run the chain. It answers about a role plus a
 knowledge item, not about a connector or a tool.
@@ -92,8 +92,8 @@ effective envelope through its ancestor chain, and `envelope_hydration_status()`
 fail-closed bootstrap default, so a skip reads exactly like a governance refusal
 and is silent everywhere else.
 
-`404` is the ambiguous one. It means *this client asked for something the server
-does not have* — which covers a deleted record, a mistyped id, and a route that
+`404` is the ambiguous one. It means _this client asked for something the server
+does not have_ — which covers a deleted record, a mistyped id, and a route that
 does not exist on this deployment. The client cannot separate them, and neither
 can you from the status alone.
 
@@ -107,7 +107,7 @@ judged against what the route requires, and declined. This is the case the word
 "denied" makes people picture, and it is the only one of the three where looking
 at roles and permissions is the right next move.
 
-**2. Some surfaces are gated at the whole-router level, so even a *read* is
+**2. Some surfaces are gated at the whole-router level, so even a _read_ is
 refused for an API key.** This is the open defect [04.1](01-calling-the-api.md)
 documents, and it is worth restating in status terms: the refusal is a `403`
 carrying a message about personas, and it is **not about the route you called**.
@@ -122,7 +122,7 @@ The client raises `sdk:aegis_sdk.AuthenticationError`, whose own documentation
 says "API key is invalid or malformed / token has expired", and **both of those
 readings are wrong here**. Reissuing the key produces an identical `401`.
 
-*Design intent, not observable:* which control demands a verified session, and
+_Design intent, not observable:_ which control demands a verified session, and
 what makes a session count as verified, is decided at the platform side. You
 cannot query it from here and this book will not invent a way to tell you.
 
@@ -145,7 +145,7 @@ The most confusing refusal on this API is the one where you hold every grant the
 operation names and are still refused — **with those grants never consulted**.
 
 The mechanism is ordering. On at least one surface the identity gate runs
-*before* the permission check, so a caller who fails the first gate is turned
+_before_ the permission check, so a caller who fails the first gate is turned
 away while the grants that would have satisfied the second sit inert. The
 verdict is a `403` whose message names something to obtain, and obtaining it
 changes nothing.
@@ -153,8 +153,8 @@ changes nothing.
 Your instinct on seeing that message will be to add permissions. **Adding
 permissions will not help**, and you will finish holding a wider credential than
 the job needs, permanently, having fixed nothing. This is the same trap
-[04.1](01-calling-the-api.md) frames as *"was I refused at the door, or at the
-desk?"* — and the answer is not in the response body.
+[04.1](01-calling-the-api.md) frames as _"was I refused at the door, or at the
+desk?"_ — and the answer is not in the response body.
 
 The observable signature, from your side, is precisely that: **a change that
 should have worked and did not.** Treat "I granted the thing it asked for and
@@ -168,13 +168,13 @@ and the rules; you cannot.
 to the base class carrying `Unexpected status code: <n>`, which reads like a
 platform malfunction and is nothing of the sort:
 
-| status | what it actually means | what a naive handler does |
-| --- | --- | --- |
-| `402` | payment required | retries |
-| `405` | wrong method for this path | retries |
-| `409` | conflict — the state moved under you | **retries, and re-loses** |
-| `410` | gone — permanently, not temporarily | **polls forever** |
-| `413` `415` `428` | too large / wrong content type / precondition required | retries |
+| status            | what it actually means                                 | what a naive handler does |
+| ----------------- | ------------------------------------------------------ | ------------------------- |
+| `402`             | payment required                                       | retries                   |
+| `405`             | wrong method for this path                             | retries                   |
+| `409`             | conflict — the state moved under you                   | **retries, and re-loses** |
+| `410`             | gone — permanently, not temporarily                    | **polls forever**         |
+| `413` `415` `428` | too large / wrong content type / precondition required | retries                   |
 
 `409` and `410` are the expensive two. A conflict means your precondition has
 already failed, so re-asserting it fails again; a `410` means the id will never
@@ -183,13 +183,11 @@ retry-by-default handler gets exactly wrong.
 
 **And the boundary is wide, not a corner case.** That the client has no branch
 for either is checkable by you, in seconds, and is the fact this book anchors on.
-How much of the platform can *emit* them is not checkable from here: the count
-measured on the platform's own side is **90 call sites** across the two statuses.
-Treat that number as reported rather than verified — you cannot reproduce it from
-what you were given, which is exactly why it is written down as a magnitude
-rather than left as "some". What follows from it is not a magnitude: **write the
-`409` and `410` branches**, because the client will not, and the base class will
-not tell you which one you have without reading the status.
+Both statuses are ordinary answers rather than exotic ones — a `409` on any
+contended write, a `410` on anything deliberately retired — so a retry-by-default
+handler meets them on normal paths, not at the edges. What follows is concrete:
+**write the `409` and `410` branches**, because the client will not, and the base
+class will not tell you which one you have without reading the status.
 
 ⚠ **`sdk:aegis_sdk.PaymentError` exists, is exported, and is never raised.** The
 transport has no `402` branch, and the whole package contains no site that
@@ -213,15 +211,15 @@ billing failures; a `402` arrives as the base class.
 ## What escapes the taxonomy entirely
 
 `except AgenticOSError` is the idiom, and it is not complete. Four failures are
-not `sdk:aegis_sdk.AgenticOSError` at all, measured:
+not `sdk:aegis_sdk.AgenticOSError` at all:
 
-| what happens | what is raised |
-| --- | --- |
-| a `200`, `201` or `202` whose body is empty, truncated, or not JSON | `json.JSONDecodeError` |
-| a list route that returns an envelope where this client expects a bare array | `TypeError` |
-| **a client method that hands the transport a keyword it does not accept** | `TypeError`, **before anything is sent** |
-| any call on a client you already closed | `RuntimeError` |
-| **any transport failure during a stream** | the raw underlying HTTP-library exception |
+| what happens                                                                 | what is raised                            |
+| ---------------------------------------------------------------------------- | ----------------------------------------- |
+| a `200`, `201` or `202` whose body is empty, truncated, or not JSON          | `json.JSONDecodeError`                    |
+| a list route that returns an envelope where this client expects a bare array | `TypeError`                               |
+| **a client method that hands the transport a keyword it does not accept**    | `TypeError`, **before anything is sent**  |
+| any call on a client you already closed                                      | `RuntimeError`                            |
+| **any transport failure during a stream**                                    | the raw underlying HTTP-library exception |
 
 The first is the one you will hit most often. A proxy or gateway that returns an
 HTML page with a `200`, or an endpoint that accepts with `202` and an empty
@@ -274,7 +272,7 @@ one failure mode where the deployment is definitively not involved.
 # "SDK Request:" line for it, nothing was sent.
 ```
 
-The other five sites are the quieter half: a keyword the HTTP library *does*
+The other five sites are the quieter half: a keyword the HTTP library _does_
 accept, which sends a form body or a file upload where a JSON body was intended,
 or attaches query parameters to a stream. Those fail on the wire rather than
 before it, so they surface as a `400` or a `422` that looks like your data is
@@ -296,17 +294,31 @@ Neither is a deployment problem, and both are frequently reported as one.
 Covered in [01.3](../01-orientation/03-your-first-session.md).
 
 **`sdk:aegis_sdk.UnsupportedOperationError`** — the method you called targets a
-server operation that does not exist. **Six methods raise it unconditionally,
-before any request is made**, and all six are on the trust surface:
+server operation that does not exist. **Ten methods raise it unconditionally,
+before any request is made.** Six are on the trust surface:
 `sdk:aegis_sdk.trust.ChainsModule.suspend` and
-`sdk:aegis_sdk.trust.ChainsModule.reinstate`, the three delegation *read*
-methods, and a single-entry audit read. Two more raise it only for an argument
-the client cannot honour — asking the analytics exports for `csv` or `xlsx`,
-which this transport cannot return because it always parses a response as JSON.
+`sdk:aegis_sdk.trust.ChainsModule.reinstate`, the three delegation _read_
+methods, and a single-entry audit read. Four are on the usage surface:
+`sdk:aegis_sdk.revenue.usage.UsageModule.get_history` and `.get_breakdown`,
+and their duplicates `AnalyticsModule.usage_history` and `.usage_breakdown`.
 None of these recover, and retrying is meaningless: the operation is not
 implemented, not down.
 
-**That is not the whole of the dead surface.** Separately, **eighteen methods
+⛔ **Until 2026-09-18 the two `revenue.usage` methods did not raise — they
+LIED.** They caught the `404` and returned an EMPTY result with no log and no
+warning, so a caller could not distinguish "no usage in this period" from
+"this endpoint does not exist". Both answers were the same empty value, on a
+billing surface. They now raise, which is the only honest answer available.
+Both were ALSO the two the bundled documentation taught you to call, so if you
+have code that expected `[]` from them, that code was reading a false negative.
+
+⚠ An earlier revision of this section described _two further_ methods raising
+only for a `csv`/`xlsx` argument on the analytics exports. **That guard was
+removed** — it rested on the false premise that the transport has no raw-bytes
+path, which `_http.py` does have and two shipped methods already used. The
+count is ten, and the export methods are not among them.
+
+**That is not the whole of the dead surface.** Separately, **nineteen methods
 carry a warning in their own docstring that the route they call currently
 returns `404`** — a known-dead path rather than a missing record. They are
 spread across agent executions, skills, objectives, sessions, analytics and
@@ -327,24 +339,24 @@ The exception's string is built from the first of the body's `detail`, `message`
 or `error` keys that is present. When an error body carries none of them, that
 value is `None` — and because the key **exists** and holds `None`, a
 `details.get("message", "some default")` returns `None` rather than your default.
-Measured, on a `403`:
+On a `403`:
 
-| the error body | `str(exc)` |
-| --- | --- |
-| `{"error": {"code": …, "message": "real detail", …}}` — **what Aegis sends** | `'real detail'` |
-| `{"detail": "real detail"}` | `'real detail'` |
-| `{}` or `{"foo": "bar"}` | the per-status default, e.g. `'Insufficient permissions'` |
-| no body at all | `'Unknown error'` |
-| `<html>…</html>` from a proxy | the raw HTML, to 500 characters |
+| the error body                                                               | `str(exc)`                                                |
+| ---------------------------------------------------------------------------- | --------------------------------------------------------- |
+| `{"error": {"code": …, "message": "real detail", …}}` — **what Aegis sends** | `'real detail'`                                           |
+| `{"detail": "real detail"}`                                                  | `'real detail'`                                           |
+| `{}` or `{"foo": "bar"}`                                                     | the per-status default, e.g. `'Insufficient permissions'` |
+| no body at all                                                               | `'Unknown error'`                                         |
+| `<html>…</html>` from a proxy                                                | the raw HTML, to 500 characters                           |
 
 > **Corrected.** The second and third rows used to read differently, and both
-> corrections come from the same defect. This client parsed only the *flat*
+> corrections come from the same defect. This client parsed only the _flat_
 > `{"detail": …}` shape, while the platform wraps **every** error in the
 > `{"error": {…}}` envelope on the first row — so `str(exc)` rendered a Python
 > dict repr instead of the message, `exc.details["code"]` was `None` on every
 > error the platform raises, and every structured field the server attached was
 > discarded. The third row's old answer, a literal `'None'`, was the same bug
-> reaching the empty-body case. Both are fixed; see § *Branching on a refusal*.
+> reaching the empty-body case. Both are fixed; see § _Branching on a refusal_.
 
 Build your own log line from the status rather than relying on the default: it
 tells a reader which of the four kinds they are looking at.
@@ -374,12 +386,12 @@ The message is prose written for a human and may be reworded in any release
 without notice — a handler that matches on its wording is a handler that breaks
 silently on a copy-edit.
 
-| attribute | what it holds |
-| --- | --- |
-| `exc.error_code` | the server's code for this refusal — `'FORBIDDEN'`, `'DEPENDENCY_UNAVAILABLE'`, … — or `None` when the error did not come from a server response |
-| `exc.server_details` | the structured fields attached beside the message; `{}` when none were sent |
-| `exc.request_id` | the server's correlation id, when supplied. Quote it when reporting a refusal you cannot explain — it is what lets an operator find the same event on their side |
-| `exc.status_code` | the HTTP status, or `None` for a local failure |
+| attribute            | what it holds                                                                                                                                                    |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `exc.error_code`     | the server's code for this refusal — `'FORBIDDEN'`, `'DEPENDENCY_UNAVAILABLE'`, … — or `None` when the error did not come from a server response                 |
+| `exc.server_details` | the structured fields attached beside the message; `{}` when none were sent                                                                                      |
+| `exc.request_id`     | the server's correlation id, when supplied. Quote it when reporting a refusal you cannot explain — it is what lets an operator find the same event on their side |
+| `exc.status_code`    | the HTTP status, or `None` for a local failure                                                                                                                   |
 
 ```python
 from aegis_sdk import AgenticOSError
@@ -399,12 +411,12 @@ except AgenticOSError as exc:
 
 ### An absent field means UNDETERMINED, never the negative case
 
-`exc.server_details` carries what the server sent on *this* response. A missing
+`exc.server_details` carries what the server sent on _this_ response. A missing
 key means it sent nothing under that name — it does **not** mean the underlying
 condition is absent. Several refusal paths still serialise only a prose
-sentence, so their structured half arrives as `{}`. Record that as *undetermined*
-and say so, exactly as you would record a timeout as *not reached* rather than as
-*refused*.
+sentence, so their structured half arrives as `{}`. Record that as _undetermined_
+and say so, exactly as you would record a timeout as _not reached_ rather than as
+_refused_.
 
 ### The gap this book will not paper over — a refusal that is the platform's, not yours
 
@@ -429,12 +441,12 @@ computed. Closing it is a change to the Aegis API layer, not to this client, and
 it is tracked platform-side.
 
 **Until it closes, the honest handling is:** treat a `403` on execution as a
-refusal (do not retry it), and when you need to know *which kind* it was, quote
+refusal (do not retry it), and when you need to know _which kind_ it was, quote
 `exc.request_id` to whoever operates your deployment. They can see the verdict's
 structured basis in the audit record; you cannot see it from here, and this book
 will not invent a way to tell you.
 
-> ⚠ **A `422` puts a *list* where you expect a string.** A field-validation
+> ⚠ **A `422` puts a _list_ where you expect a string.** A field-validation
 > failure carries a list of per-field objects, and that list is what lands in the
 > message. `str(exc)` becomes the printed repr of a list of dicts, each with the
 > field path and the reason. It is genuinely the most useful error body the API
@@ -451,16 +463,16 @@ will not invent a way to tell you.
 
 ## What to retry, and what never to
 
-| | |
-| --- | --- |
+|           |                                                                                                                                                        |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **retry** | `sdk:aegis_sdk.RateLimitError` (honour its `retry_after`), `sdk:aegis_sdk.ServiceError`, `sdk:aegis_sdk.ConnectionError`, `sdk:aegis_sdk.TimeoutError` |
-| **never** | `400` `401` `403` `404` `409` `410` `422` `423` `451`, and every `sdk:aegis_sdk.UnsupportedOperationError` |
+| **never** | `400` `401` `403` `404` `409` `410` `422` `423` `451`, and every `sdk:aegis_sdk.UnsupportedOperationError`                                             |
 
 Retrying a refusal produces a slower refusal and, eventually, a rate limit.
 Retrying a `409` re-asserts a precondition that has already failed.
 
 ⚠ **The client does not do this for you, and [04.5](05-concurrency-and-streams.md)
-is blunt about the gap.** It retries *transport* failures only — no HTTP status
+is blunt about the gap.** It retries _transport_ failures only — no HTTP status
 is ever retried, including `429` and `503`. `RateLimitError` carries a
 `retry_after` parsed from the response header, and nothing acts on it. If your
 integration needs status-level retry, you write it.
@@ -480,4 +492,4 @@ and saying so is the whole of the discipline.
 
 ---
 
-*Next: [04.3 — Credentials, and what a key is not](03-credentials-and-keys.md)*
+_Next: [04.3 — Credentials, and what a key is not](03-credentials-and-keys.md)_

@@ -1,16 +1,18 @@
 # 05.3 — Your inbox
 
+<!-- anchor-floor: ungrammatical (no anchor kind exists for a front-end route) -->
+
 ## There are three of them, and they are not the same thing
 
 This is the part of the interface most likely to confuse you, because "inbox"
 appears three times in the sidebar and the three lists hold genuinely different
 things. In short:
 
-| Where | What is in it | What you do there |
-|---|---|---|
-| **Task Inbox** | pieces of work — yours, and unclaimed work you could take | claim it, work on it, complete it, hand it back |
-| **Pending Requests** | an agent has asked a human for something and is waiting | claim it and respond |
-| **Leadership Inbox** | notifications routed to you because of your position | read them |
+| Where                | What is in it                                             | What you do there                               |
+| -------------------- | --------------------------------------------------------- | ----------------------------------------------- |
+| **Task Inbox**       | pieces of work — yours, and unclaimed work you could take | claim it, work on it, complete it, hand it back |
+| **Pending Requests** | an agent has asked a human for something and is waiting   | claim it and respond                            |
+| **Leadership Inbox** | notifications routed to you because of your position      | read them                                       |
 
 The first two are things to **do**. The third is things to **know**.
 
@@ -25,8 +27,8 @@ Six counters across the top — **My Tasks**, **Available**, **Pending**,
 **Escalated**, **Overdue**, **Completed** — and three tabs: **All Tasks**, **My
 Tasks**, and **Needs Validation**.
 
-The distinction that matters is between work that is *yours* and work that is
-*available*. Unclaimed work sits in All Tasks; claiming it makes it yours and
+The distinction that matters is between work that is _yours_ and work that is
+_available_. Unclaimed work sits in All Tasks; claiming it makes it yours and
 takes it off everyone else's list. There is a confirmation step, because claiming
 is a commitment other people can see.
 
@@ -44,13 +46,12 @@ simply do not want.
 
 ![The Task Inbox: six counter tiles — My Tasks, Available, Pending, Escalated, Overdue, Completed — all reading zero, above an empty list saying "No tasks available".](../assets/screenshots/work-tasks-inbox.png)
 
-*The Task Inbox on the demo tenant, and it is **empty** — all six counters at
-zero and "No tasks available. There are no tasks available at this time." That is
-not a broken screenshot; it is the exact screen this chapter is about. Read it as
-"nothing for you here", never as "nothing here": a list emptied by your
+_The Task Inbox on the demo tenant, and it is **empty** — all six counters at
+zero and "No tasks available. There are no tasks available at this time." Read it
+as "nothing for you here", never as "nothing here": a list emptied by your
 permissions and a genuinely empty list are the same picture. The six counters and
 the three tabs — All Tasks, My Tasks, Needs Validation — are the parts to learn
-now, because they are where the numbers will appear when there is work.*
+now, because they are where the numbers will appear when there is work._
 
 ### Reading urgency
 
@@ -62,7 +63,7 @@ such.
 **The list does not sort by priority.** Priority is shown, not enforced, so an
 Urgent item can sit below routine work. Sort or filter yourself, and do not
 assume the top of the list is the most important thing. (The **Pending Your
-Action** panel on your home screen *does* order by priority, which makes it the
+Action** panel on your home screen _does_ order by priority, which makes it the
 better first glance of the day.)
 
 ## Pending Requests
@@ -80,14 +81,14 @@ Statuses you will see: **Pending**, **Assigned**, **In Progress**,
 nobody answered in time — the request expired rather than being decided, and
 whatever was waiting on it did not get what it needed.
 
-Empty, it reads *"All requests have been handled. Great work!"*
+Empty, it reads _"All requests have been handled. Great work!"_
 
 ![Pending Requests: four counter tiles — My Requests, Unassigned, Escalated, Overdue — all reading zero, above an empty state reading "No pending requests. All requests have been handled. Great work!"](../assets/screenshots/work-requests-finance.png)
 
-*Pending Requests, subtitled "Human-in-the-loop requests awaiting your response".
+_Pending Requests, subtitled "Human-in-the-loop requests awaiting your response".
 Also empty on the demo tenant. The reassuring copy — "All requests have been
 handled. Great work!" — is worth noticing precisely because it is **not**
-evidence that nothing was requested of anyone. It reports on what you can see.*
+evidence that nothing was requested of anyone. It reports on what you can see._
 
 ## Leadership Inbox
 
@@ -99,29 +100,28 @@ You can **Mark read** on a row, and toggle between **Show unread only** and
 Rows carry a priority badge and a data-classification badge, and unread ones are
 marked.
 
-> ### This page is functional rather than friendly
+> ### The expanded row carries the underlying notification
 >
 > Expanding a row shows the raw underlying notification, including a block of
 > technical data. You will see lines labelled **Event** and **Routing** written
 > in system vocabulary rather than plain English.
 >
-> This is not a fault and it is not hidden information — it is an unpolished
-> surface. Read the summary, the priority and the classification badge; ignore
-> the technical block unless you are chasing something specific. If a
-> notification matters and you cannot decode it, the person who set up the
-> routing can tell you what the event type means.
+> Read the summary, the priority and the classification badge; the technical
+> block is there for when you are chasing something specific. If a notification
+> matters and you need the event type decoded, the person who set up the routing
+> can tell you what it means.
 
 > **[SCREENSHOT]** id: `leadership-inbox-unread` ·
 > route: `/agentic/leadership-inbox` · state: `northwind.inbox.unread` ·
 > persona: `operations_director`
-> *Must show:* the unread/read toggle, priority and classification badges, and
+> _Must show:_ the unread/read toggle, priority and classification badges, and
 > one row expanded — with any identifying values in the technical block
 > obscured before publication.
 
 ## What "empty" does and does not tell you
 
 Every one of these lists shows a cheerful empty state when it has nothing for
-you: *"No tasks available"*, *"All caught up!"*, *"You're all caught up."*
+you: _"No tasks available"_, _"All caught up!"_, _"You're all caught up."_
 
 **Read those as "nothing for you here", not as "nothing here".** These lists show
 what you are entitled to see, and they do not tell you when something has been
@@ -148,4 +148,4 @@ next chapter.
 
 ---
 
-*Next: [05.4 — When something is held](04-when-something-is-held.md)*
+_Next: [05.4 — When something is held](04-when-something-is-held.md)_

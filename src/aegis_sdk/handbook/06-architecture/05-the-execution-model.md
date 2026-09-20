@@ -483,7 +483,7 @@ serve all three:
 | stream | route | events |
 | --- | --- | --- |
 | objective progress | `api:GET /api/v1/objectives/{}/progress/stream` | `execution_started`, `step_started`, `step_completed`, `progress_update`, `execution_completed`, `execution_error`, `heartbeat` |
-| session | `api:GET /api/v1/sessions/{}/stream` | `started`, `thinking`, `message`, `tool_use`, `tool_result`, `subagent_spawn`, `cost_update`, `completed`, `error` |
+| session | `api:GET /api/v1/sessions/{}/stream` | `progress_update`, `subagent_spawned`, `cost_update`, `objective_completed`, `objective_failed`, `escalation_created`, `agent_auto_claimed`, `agent_auto_executing`, `cancelled`, `error` |
 | agent execution | `api:POST /api/v1/agents/{}/execute/stream` | `start`, `content`, `done`, `error` |
 | escalations | `api:GET /api/v1/agent-escalations/stream` | pending human decisions |
 
@@ -636,9 +636,18 @@ rejected it; the two vocabularies look adjacent and are unrelated.
 
 **Subagents exist at runtime but not as a request.** Sessions list what an agent
 spawned at `api:GET /api/v1/sessions/{}/subagents`, and spawns arrive on the
-session stream as `subagent_spawn` — but there is no request-side route to trigger
+session stream as `subagent_spawned` — but there is no request-side route to trigger
 one. If your design needs to direct a subagent, it is directed by the agent, not
 by you.
+
+**Which model each agent is running is ON the stream, not behind a second call.**
+Every agent-activity event carries `data.model` — the resolved model of the agent
+that emitted it, read through
+`sdk:aegis_sdk.execution.SessionsModule.stream_events`. Agents within one session
+do not share a model, so a multi-agent view has to read it per event rather than
+resolve it once per session. It is a string and is `""` when unresolved: treat
+empty as *unknown*, never as a default, because collapsing the two is how a view
+ends up attributing one agent's model to another.
 
 ## The output end, and where it attaches
 

@@ -10,12 +10,9 @@ defined LOCALLY in this file. Do not import from ``aegis_sdk.types`` or
 edit ``modules/__init__.py`` / ``client.py`` -- a separate orchestrator
 wiring pass registers this module on the client.
 
-Backend routers (verified against the real source, cited per-method below):
-  (FastAPI prefix ``/admin``)
-  (FastAPI prefix ``/admin/access``)
-Both mount under the app-wide ``settings.api_prefix`` (``/api/v1`` --
-verified), so
-every path below is ``/api/v1/admin/...``.
+Backend routes, cited per-method below. The server mounts both surfaces --
+``/admin`` and ``/admin/access`` -- under ``/api/v1``, so every path below is
+``/api/v1/admin/...``.
 
 18 methods:
   Pools:

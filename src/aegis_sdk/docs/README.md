@@ -13,7 +13,7 @@ The distribution name in `pyproject.toml` is `agentic-os-sdk`, it is
 source:
 
 ```bash
-# From your local checkout of the SDK repository — the one you cloned to get here
+# From your local checkout of the SDK repository (Integrum-Global/aegis-sdk)
 pip install -e .
 ```
 

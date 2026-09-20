@@ -35,9 +35,9 @@ export AGENTIC_OS_API_KEY="sk_live_..."                           # your key
 
 If you omit the base URL, `sdk:aegis_sdk.ClientConfig` raises
 `sdk:aegis_sdk.ConfigurationError` with a message naming the variable. That
-refusal is the design working — *design intent, not observable*: a client that
-fell back to a built-in host would send production traffic to a placeholder
-endpoint and report success, so the failure is made loud and early instead.
+refusal is the design working: a client that fell back to a built-in host would
+send production traffic to a placeholder endpoint and report success, so the
+failure is made loud and early instead.
 
 Other variables the client reads, all optional: `AGENTIC_OS_TIMEOUT` (default
 30.0 seconds), `AGENTIC_OS_MAX_RETRIES` (3), `AGENTIC_OS_VERIFY_SSL` (true),
@@ -89,51 +89,32 @@ asyncio.run(main())
 `sdk:aegis_sdk.User`.
 
 This one call is a better smoke test than a health check, because it exercises
-the whole chain rather than only reachability. Read the failure by *kind*:
+the whole chain rather than only reachability. Read the failure by _kind_:
 
-| what you see | what it means | where to go |
-| --- | --- | --- |
-| `ConfigurationError` | the client never made a request — no base URL | set `AGENTIC_OS_BASE_URL` |
-| `ConnectionError` / `NetworkError` | DNS, TLS or routing — the deployment was not reached | your network, VPN, or the URL itself |
-| `AuthenticationError` | reached it; the key is absent, malformed or revoked | reissue the key |
-| `AuthorizationError` | reached it, key is valid, this principal may not do this | 04.1 — and read the warning below first |
-| a `ValidationError` on `role` | the call **succeeded**; the client could not parse the reply | see immediately below |
-| a `User` printed | everything works | continue |
+| what you see                       | what it means                                                | where to go                             |
+| ---------------------------------- | ------------------------------------------------------------ | --------------------------------------- |
+| `ConfigurationError`               | the client never made a request — no base URL                | set `AGENTIC_OS_BASE_URL`               |
+| `ConnectionError` / `NetworkError` | DNS, TLS or routing — the deployment was not reached         | your network, VPN, or the URL itself    |
+| `AuthenticationError`              | reached it; the key is absent, malformed or revoked          | reissue the key                         |
+| `AuthorizationError`               | reached it, key is valid, this principal may not do this     | 04.1 — and read the warning below first |
+| a `ValidationError` on `role`      | the call **succeeded**; the client could not parse the reply | see immediately below                   |
+| a `User` printed                   | everything works                                             | continue                                |
 
 > ⚠ **This diagnostic can fail for the very credential it exists to diagnose, and
-> the failure does not look like an auth problem.** `sdk:aegis_sdk.User` declares
-> `role` as a **required** `str`, and an API-key principal is documented as
-> carrying no role. Measured against the installed model, with every other
-> required field supplied:
+> the failure does not look like an auth problem.** `sdk:aegis_sdk.User` requires
+> **six** fields — `id`, `email`, `name`, `organization_id`, `organization_name`
+> and `role` — and a principal thin on any one of them does not fit the model.
+> `role` is the one this bites on, because an API-key principal carries no role:
 >
-> | what the server sends | what the client does |
-> | --- | --- |
-> | `role` omitted | raises `ValidationError` — `role: missing` |
-> | `role: null` | raises `ValidationError` — `role: string_type` |
-> | `role: ""` | parses |
->
-> Two of the three plausible shapes raise. **UNVERIFIED:** which one a real
-> deployment sends — settling it needs a live call against a deployment, which
-> this edition could not make.
->
-> **`role` is not alone.** Measured by omitting each field in turn against a
-> control with all of them present, `sdk:aegis_sdk.User` requires **six**: `id`,
-> `email`, `name`, `organization_id`, `organization_name`, `role`. Each reports
-> `missing` on its own; the control parses. A principal thin on any one of them
-> hits the same wall.
->
-> ⚠ **A note on how to measure this, because the obvious way gives a confident
-> wrong answer.** Vary **one** field and supply every other. The first attempt at
-> the table above omitted several at once, and then all three shapes reported
-> `missing` — the rows became indistinguishable, and the table read as
-> confirmation while being wrong. A result that is identical across the branches
-> of your question is not evidence about that question, however cleanly it
-> prints. This applies well beyond this one model, and it is the reason the
-> control row exists.
+> | what the server sends | what the client does                           |
+> | --------------------- | ---------------------------------------------- |
+> | `role` omitted        | raises `ValidationError` — `role: missing`     |
+> | `role: null`          | raises `ValidationError` — `role: string_type` |
+> | `role: ""`            | parses                                         |
 >
 > **If you hit it, do not conclude your key is broken.** A `ValidationError` here
 > means the request was authenticated and answered — the reply simply did not fit
-> the model. Drop to the raw call to see what actually came back, and continue:
+> `sdk:aegis_sdk.User`. Drop to the raw call to see what came back, and continue:
 > nothing else in this book depends on `get_current_user()` succeeding.
 
 **If you are using a token rather than an API key**, this call is the
@@ -142,11 +123,11 @@ both if you hold both, because the two credential types do not reach the same
 surface — see 04.1.
 
 > ⛔ **Do not spend a day tuning scopes on an `AuthorizationError` before reading
-> chapter 04.1.** There is an **open defect** in which a large number of routes
-> are unreachable by *every* API key regardless of the scopes attached to it, and
-> the denial is a generic 403 that is indistinguishable from a genuine scope
-> problem. 04.1 gives you a one-minute test that settles which one you have. If
-> your scopes look right, they probably are.
+> chapter 04.1.** An API key and a token do not reach the same surface, and a
+> reachability denial and a scope denial arrive as the same generic 403 — the
+> response itself cannot tell you which one you are holding. 04.1 gives you a
+> one-minute test that settles it. If your scopes look right, they probably are;
+> widened API-key route coverage is [immediate roadmap].
 
 ## Now do something that changes state
 
@@ -157,7 +138,7 @@ every other noun hangs off.
 org = await client.organizations.create(
     name="Northwind Manufacturing",
     slug="northwind",
-    plan_tier="pro",
+    plan_tier="professional",
 )
 print(org["id"])          # note: a dict, not a model — see 01.1
 ```
@@ -180,4 +161,4 @@ chapter left you in.
 
 ---
 
-*Next: [Part 02 — Working through the harness](../02-working-through-the-harness/)*
+_Next: [Part 02 — Working through the harness](../02-working-through-the-harness/)_
