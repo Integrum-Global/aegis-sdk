@@ -3,7 +3,7 @@ Agentic OS SDK Internal HTTP Client.
 
 Provides an async-first HTTP client with:
 - Connection pooling
-- Automatic retry with exponential backoff
+- Automatic retry with exponential backoff, for idempotent verbs only
 - Exception mapping for HTTP status codes
 - SDK version headers
 """
@@ -281,6 +281,14 @@ def _with_default_content_type(
 
 _CREDENTIAL_HEADERS: tuple[str, ...] = ("Authorization", "X-API-Key")
 
+#: Verbs the transport may retry after a timeout or a dropped connection.
+#:
+#: THE SET IS THE HTTP IDEMPOTENCY DEFINITION, NOT A PREFERENCE. A retry is only
+#: sound when re-sending the SAME request cannot produce a second effect, and
+#: ``POST``/``PATCH`` are excluded for that reason alone. See ``request()`` for
+#: what this fences and the measured case that put it here.
+_IDEMPOTENT_METHODS: frozenset[str] = frozenset({"GET", "HEAD", "OPTIONS", "PUT", "DELETE"})
+
 
 def _credential_headers(credential: str) -> dict[str, str]:
     """Return the header(s) that present ``credential`` on its own channel.
@@ -473,6 +481,21 @@ class HTTPClient:
 
         last_exception: Exception | None = None
 
+        # ⛔ ONLY IDEMPOTENT VERBS ARE RETRIED, and the reason is measured
+        # rather than stylistic. This loop IS the send loop, so a retried verb
+        # re-sends a request the server may already have applied: a
+        # ``POST /organization-units`` that timed out AFTER the unit was created
+        # produced a SECOND unit on the retry, and units cannot be renamed or
+        # merged, so the duplicate was unfixable through this client. The
+        # transport mints no idempotency key, so the verb is the only
+        # discriminator available here — a reply that never arrived and a reply
+        # that arrived too slowly are indistinguishable at this layer.
+        #
+        # A non-retryable verb still SENDS on the first pass and still re-raises
+        # with the same type and the same ``__cause__`` as before this guard
+        # existed; only the ``continue`` is suppressed.
+        retryable = method.upper() in _IDEMPOTENT_METHODS
+
         for attempt in range(self._max_retries):
             try:
                 response = await self._client.request(
@@ -493,7 +516,7 @@ class HTTPClient:
                 last_exception = TimeoutError(
                     f"Request timed out after {self._timeout}s: {method} {safe_url}"
                 )
-                if attempt < self._max_retries - 1:
+                if retryable and attempt < self._max_retries - 1:
                     await self._retry_delay(attempt)
                     continue
                 raise last_exception from e
@@ -503,7 +526,7 @@ class HTTPClient:
                     f"Network error: {e}",
                     details={"url": safe_url, "method": method},
                 )
-                if attempt < self._max_retries - 1:
+                if retryable and attempt < self._max_retries - 1:
                     await self._retry_delay(attempt)
                     continue
                 raise last_exception from e
@@ -513,7 +536,7 @@ class HTTPClient:
                     f"Request error: {e}",
                     details={"url": safe_url, "method": method},
                 )
-                if attempt < self._max_retries - 1:
+                if retryable and attempt < self._max_retries - 1:
                     await self._retry_delay(attempt)
                     continue
                 raise last_exception from e

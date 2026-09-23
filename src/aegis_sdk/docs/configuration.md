@@ -167,7 +167,7 @@ Note: Streaming operations (`client.agents.stream()`, `client.sessions.stream_me
 
 ## Retry Configuration
 
-The SDK automatically retries on transient errors (network errors, timeouts) with exponential backoff:
+The SDK automatically retries on transient errors (network errors, timeouts) with exponential backoff — **for idempotent verbs only**. `GET`, `HEAD`, `OPTIONS`, `PUT` and `DELETE` are retried; `POST` and `PATCH` are not. Re-sending a non-idempotent request can produce a second effect, and the transport mints no idempotency key, so a `POST` that times out is sent once and raises.
 
 ```
 Delay = retry_backoff ^ attempt
@@ -178,19 +178,19 @@ With the default `retry_backoff=1.5`:
 - Attempt 1: 1.5s delay
 - Attempt 2: 2.25s delay
 
-To customize:
+That schedule applies to the retryable verbs above. To customize:
 
 ```python
 from aegis_sdk import AgenticOSClient
 
 client = AgenticOSClient(
     api_key="sk_live_...",
-    max_retries=5,       # Up to 5 attempts
+    max_retries=5,       # Up to 5 attempts, retryable verbs only
     timeout=60.0,        # 60s per attempt
 )
 ```
 
-Retryable errors: `TimeoutError`, `ConnectionError`, network-level failures.
+Retryable errors: `TimeoutError`, `ConnectionError`, network-level failures — raised on an idempotent verb, where a repeat cannot double-apply.
 
 Non-retryable errors (raised immediately): `AuthenticationError`, `AuthorizationError`, `NotFoundError`, `ValidationError`, `RateLimitError`, `GovernanceViolationError`, `TrustViolationError`.
 
