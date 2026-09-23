@@ -110,14 +110,19 @@ stay with it.
 Nothing here sandboxes for you. The isolation you get is the isolation you build,
 and there are three levels of it.
 
-**Duplicate the object.** Every configurable object in this part has a fork
-operation: `api:POST /api/v1/agents/{id}/duplicate`,
-`api:POST /api/v1/skills/{id}/duplicate`,
+**Duplicate the object.** The configurable objects in this part have fork
+operations: `api:POST /api/v1/agents/{id}/duplicate`,
 `api:POST /api/v1/pipelines/{id}/duplicate`, and
 `api:POST /api/v1/specialist-system/specialists/{id}/clone`. Fork, change the fork,
 test the fork. This is the cheapest isolation available and it is the honest way to
 try a variant — editing the shared one and surprising every agent that had it is
 the alternative.
+
+⚠ **Skills are the exception, and the omission is not an oversight.** There is no
+skills duplicate route, so `skills.duplicate()` raises
+`sdk:aegis_sdk.UnsupportedOperationError` rather than answering a 404 — it is kept
+as a named stub so the gap names itself instead of looking like a server fault. To
+fork a skill, `get` it and `create` a new one from the same fields.
 
 **Use a separate application.** Create a test application with its own tiny
 `budget_monthly`, grant it the agent under a deliberately low `posture_ceiling`,

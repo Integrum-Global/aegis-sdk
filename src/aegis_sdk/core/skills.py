@@ -21,10 +21,11 @@ module's methods over constructing those types by hand.
 """
 
 import builtins
+import warnings
 from typing import TYPE_CHECKING, Any
 
 from .._http import encode_path_param
-from ..exceptions import ValidationError
+from ..exceptions import UnsupportedOperationError, ValidationError
 from .models import PaginatedResponse, Skill
 
 if TYPE_CHECKING:
@@ -339,36 +340,38 @@ class SkillsModule:
 
     async def duplicate(self, skill_id: str, name: str) -> Skill:
         """
-        Duplicate an existing skill.
+        DEPRECATED — no backing server capability.
 
-        .. warning::
-            **Not available in the current API — this call returns 404.**
-            ``POST /api/v1/skills/{skill_id}/duplicate`` is not served. To
-            duplicate a skill today, :meth:`get` it and :meth:`create` a new
-            one with the same fields.
+        The API exposes no route for duplicating a skill.
+        ``POST /api/v1/skills/{skill_id}/duplicate`` is not served, so the
+        request this method used to make answered 404 on every call — the route
+        was never there to be reached. Skills are the one configurable object
+        in this client with no fork operation: ``agents`` and ``pipelines`` both
+        have one, and this method generalised their convention to a resource the
+        platform never implemented.
 
-        Args:
-            skill_id: Source skill ID
-            name: Name for the duplicated skill
-
-        Returns:
-            New Skill object (copy)
+        To duplicate a skill, :meth:`get` it and :meth:`create` a new one with
+        the same fields. This method is retained as a named, throwing stub
+        rather than deleted, so a caller gets a message naming the gap instead
+        of an ``AttributeError``; it will be removed in a future release.
 
         Raises:
-            NotFoundError: If source skill doesn't exist
-
-        Example:
-            >>> copy = await client.skills.duplicate(
-            ...     "skill_abc123",
-            ...     name="Web Search (Copy)"
-            ... )
+            UnsupportedOperationError: Always — this method has no backing
+                server route.
         """
-        response = await self._http.request(
-            "POST",
-            f"/api/v1/skills/{encode_path_param(skill_id)}/duplicate",
-            json_data={"name": name},
+        warnings.warn(
+            "SkillsModule.duplicate() is deprecated and non-functional — no "
+            "server route exists for duplicating a skill. Use get() and "
+            "create() with the same fields instead. This method will be "
+            "removed in a future release.",
+            DeprecationWarning,
+            stacklevel=2,
         )
-        return Skill(**_normalize_skill(response))
+        raise UnsupportedOperationError(
+            "duplicate() has no backing server route; the Aegis API does not "
+            "support duplicating a skill. Use get() and create() with the same "
+            "fields instead."
+        )
 
     # -------------------------------------------------------------------------
     # Agent-Skill Assignment

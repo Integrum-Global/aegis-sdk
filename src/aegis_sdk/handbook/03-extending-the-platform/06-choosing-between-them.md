@@ -117,9 +117,12 @@ created without a valid category is not created at all.
 It decides precedence when an agent holds several skills that speak to the same
 situation. Assigning a skill twice raises rather than silently re-ordering.
 
-**`duplicate` is the honest way to fork a skill for a variant** —
-`api:POST /api/v1/skills/{id}/duplicate` — rather than editing the shared one and
-surprising every agent that had it.
+**Skills cannot be forked: there is no skills duplicate route.** The fork convention
+this part describes for other objects — `api:POST /api/v1/agents/{id}/duplicate`,
+for example — was never implemented for skills, so `skills.duplicate()` raises
+`sdk:aegis_sdk.UnsupportedOperationError` rather than answering a 404. To fork a
+skill, `get` it and `create` a new one from the same fields; editing the shared one
+and surprising every agent that had it is the alternative.
 
 ### ⚠ The trap: `get_by_name` scans a window, not the whole set
 
