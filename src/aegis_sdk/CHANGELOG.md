@@ -5,6 +5,76 @@ version here is the SDK's own; it is not the server's.
 
 ## Unreleased
 
+### Added — `client.units.update_unit`, so a unit can be renamed
+
+`client.units` was `create · get · list`, and a unit could not be corrected once
+created. Units cannot be merged, so a typo in a name had exactly one remedy —
+archive the unit and rebuild it — which is not something to attempt during a live
+standup. `update_unit(unit_id, **fields)` sends
+`PUT /api/v1/organization-units/{unit_id}`.
+
+It covers every field the route accepts: the identity fields (`name`,
+`unit_type`, `code`, `description`, `mission_statement`), the budget and
+headcount fields, `status` — so `status="archived"` is now reachable — the
+classification and posture ceiling, and `tags` / `metadata`.
+
+⚠ **`isolation_domain` deliberately does not follow the "omit means unchanged"
+rule**, and the difference is a control rather than a convenience. For every other
+field, `None` reads as "not supplied". The isolation plane label must ALSO be
+able to mean UNASSIGN, so omitting the argument leaves the label alone while
+passing `None` explicitly clears it. Both directions are reachable; neither is a
+silent default.
+
+### Deprecated — `skills.duplicate()` has no backing server route
+
+It never worked. `POST /api/v1/skills/{skill_id}/duplicate` is not served, so the
+call answered 404 every time — the method's own docstring admitted it while three
+handbook chapters described it as *"the honest way to fork a skill"*.
+
+Skills are the one configurable object this client reaches with **no** fork
+operation: `agents` and `pipelines` both have one, and the method generalised
+their convention to a resource the platform never implemented. It is now a named,
+throwing stub — `DeprecationWarning` plus `UnsupportedOperationError` — rather
+than a deletion, so a caller gets a message naming the gap instead of an
+`AttributeError`. To fork a skill, `get` it and `create` a new one from the same
+fields.
+
+### Fixed — the transport retried writes that were not idempotent
+
+`request()` retried `httpx.TimeoutException`, `NetworkError` and `RequestError`
+for **any** verb, so a `POST` that timed out after the server had already applied
+it was sent a second time. The measured case: a `POST /organization-units` that
+timed out after the unit was created produced a SECOND unit, and units cannot be
+renamed or merged, so nothing in the client could undo it.
+
+Retry is now restricted to verbs that are idempotent by definition — `GET`,
+`HEAD`, `OPTIONS`, `PUT`, `DELETE`. `POST` and `PATCH` are sent once and raise.
+The transport mints no idempotency key, so the verb is the only discriminator it
+has: a reply that never arrived and a reply that arrived too slowly are
+indistinguishable at that layer.
+
+Two things to know when upgrading:
+
+- **A `POST` or `PATCH` failure now surfaces on the first attempt.** Code that
+  leaned on the transport retrying a flaky write must retry it itself — and
+  should not, unless the operation is idempotent by construction.
+- **`PUT` and `DELETE` still retry**, and the exception type and `__cause__` are
+  unchanged from before in every case.
+
+### Fixed — the envelope lifecycle no longer spans two modules
+
+`client.role_envelopes` could `create` an envelope — which is born `draft`, and a
+draft constrains nothing — and then had no way to make it effective. `activate`,
+`suspend`, `update` and `delete` existed only on `client.trust_posture`, a module
+the standup path never handed the caller. Finishing the lifecycle meant switching
+modules, which nothing on the surface announced.
+
+Those four verbs are now on `client.role_envelopes` as well, over the same routes.
+`client.trust_posture` keeps its copies: it already carried typed duplicates of
+this module's `list` and `get`, so the duplication now runs in both directions
+instead of one. This module returns raw dicts like its siblings; `trust_posture`
+returns the parsed `RoleEnvelope` model.
+
 ### Added — `client.mcp`, an MCP capability surface
 
 Reported by a partner, in their words: the installed SDK exposed no MCP verb at
