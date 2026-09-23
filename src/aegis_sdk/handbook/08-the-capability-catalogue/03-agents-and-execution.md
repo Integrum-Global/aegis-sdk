@@ -414,16 +414,20 @@ do, as distinct from the tools it may call.
 | ---------------------------- | ------------------------------------------ |
 | **Create / update / delete** | Standard lifecycle                         |
 | **List / get / by name**     | Address skills                             |
-| **Duplicate**                | Copy a skill                               |
+| **Duplicate**                | Not served — `get` then `create` instead   |
 | **Agent skills**             | List and assign the skills one agent holds |
 
 Entry point: `sdk:aegis_sdk.core.skills.SkillsModule`.
 
 Operations: `api:POST /api/v1/skills` · `api:GET /api/v1/skills` ·
 `api:GET /api/v1/skills/{id}` · `api:PUT /api/v1/skills/{id}` ·
-`api:DELETE /api/v1/skills/{id}` · `api:POST /api/v1/skills/{id}/duplicate` ·
+`api:DELETE /api/v1/skills/{id}` ·
 `api:GET /api/v1/skills/agents/{agent_id}/skills` ·
 `api:POST /api/v1/skills/agents/{agent_id}/skills`
+
+⚠ Skills have **no** duplicate route, unlike agents and pipelines, so
+`skills.duplicate()` raises `sdk:aegis_sdk.UnsupportedOperationError` rather
+than answering a 404.
 
 ## Tools
 

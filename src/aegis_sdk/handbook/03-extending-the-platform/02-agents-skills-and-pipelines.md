@@ -262,7 +262,7 @@ older `skill_type` vocabulary is not what the endpoint reads.
 Assigning the same skill twice raises rather than silently re-ordering.
 
 The skills module is the fuller CRUD surface in this part — `list`, `create`,
-`get`, `update`, `delete`, `duplicate`, and `get_by_name`. `list` filters on
+`get`, `update`, `delete`, and `get_by_name`. `list` filters on
 `category`, `is_public` and a `search` substring.
 
 **`get_by_name` returns `None` rather than raising** when nothing matches, which
@@ -281,9 +281,14 @@ organisation with more skills than that window an existing skill can sit outside
 errors. 03.6 has the full treatment and the mitigation — keep your own name→id
 registry once you are past a handful.
 
-`duplicate` (`api:POST /api/v1/skills/{id}/duplicate`) is the honest way to fork a
-skill for a variant rather than editing the shared one and surprising every agent
-that had it.
+`duplicate` is the honest way to fork an **agent** for a variant
+(`api:POST /api/v1/agents/{id}/duplicate`) rather than editing the shared one and
+surprising everyone it was assigned to.
+
+⚠ **Skills have no fork operation.** There is no skills duplicate route, so
+`skills.duplicate()` raises `sdk:aegis_sdk.UnsupportedOperationError` rather than
+answering a 404. To fork a skill, `get` it and `create` a new one from the same
+fields.
 
 ## Pipelines
 

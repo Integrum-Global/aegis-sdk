@@ -1,15 +1,21 @@
-"""Role envelopes module — create/get/list for the vertical-standup path.
+"""Role envelopes module — the full envelope lifecycle for the standup path.
 
 Verified against the server ``role-envelopes`` router (mounted at ``/api/v1``).
 
-⛔ THE ENVELOPE LIFECYCLE IS SPLIT ACROSS TWO MODULES. ``create`` (here)
-defaults to ``status="draft"``, and ``activate`` does NOT exist on this
-module — it lives on ``client.trust_posture``
+THE LIFECYCLE IS COMPLETE ON THIS MODULE. ``create`` defaults to
+``status="draft"``, and a draft constrains nothing — ``activate`` is the call
+that makes an envelope effective, and it lives here alongside ``suspend``,
+``update`` and ``delete``.
+
+The same four verbs are ALSO on ``client.trust_posture``
 (``activate_role_envelope`` / ``suspend_role_envelope`` /
-``update_role_envelope`` / ``delete_role_envelope``). A caller holding only
-``client.role_envelopes`` can create an envelope and has no way to make it
-effective. Reaching for ``client.trust_posture`` to finish is required, not
-optional.
+``update_role_envelope`` / ``delete_role_envelope``), over the same routes.
+Both surfaces are kept deliberately: ``trust_posture`` already carries typed
+duplicates of this module's ``list`` and ``get``, so this module carrying the
+other four is the same trade in the reverse direction. Reach for
+``trust_posture`` when you want the parsed ``RoleEnvelope`` model; reach for
+this module when you are already in ``client.role_envelopes`` and want a raw
+dict like its siblings.
 
 NOTE: the server ``CreateRoleEnvelopeRequest`` uses ``extra="forbid"`` +
 ``populate_by_name=True``, so this module sends ONLY the
@@ -21,13 +27,14 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from .._http import encode_path_param
+from ..modules.trust_posture import ALLOWED_CLEARANCE_LEVELS
 
 if TYPE_CHECKING:
     from .._http import HTTPClient
 
 
 class RoleEnvelopesModule:
-    """Operating-envelope (Layer-1 standing) management (create + get)."""
+    """Operating-envelope (Layer-1 standing) management — the full lifecycle."""
 
     def __init__(self, http_client: HTTPClient) -> None:
         self._http = http_client
@@ -81,6 +88,7 @@ class RoleEnvelopesModule:
             "GET", f"/api/v1/role-envelopes/{encode_path_param(envelope_id)}"
         )
         return resp
+
     async def list(
         self,
         defining_role_id: str,
@@ -123,3 +131,112 @@ class RoleEnvelopesModule:
             "GET", "/api/v1/role-envelopes", params=params
         )
         return resp
+
+    async def activate(self, envelope_id: str) -> dict[str, Any]:
+        """Activate an envelope so it starts enforcing.
+
+        Server: ``POST /api/v1/role-envelopes/{envelope_id}/activate``.
+
+        ``create`` defaults to ``status="draft"`` and a draft constrains
+        nothing, so this is the call that makes an envelope effective. The typed
+        equivalent on ``client.trust_posture`` is ``activate_role_envelope``.
+
+        Args:
+            envelope_id: Envelope ID.
+
+        Returns:
+            The activated envelope, as the server returns it.
+        """
+        resp: dict[str, Any] = await self._http.request(
+            "POST",
+            f"/api/v1/role-envelopes/{encode_path_param(envelope_id)}/activate",
+        )
+        return resp
+
+    async def suspend(self, envelope_id: str) -> dict[str, Any]:
+        """Suspend an active envelope.
+
+        Server: ``POST /api/v1/role-envelopes/{envelope_id}/suspend``.
+
+        A suspended envelope stops enforcing without being deleted, so it can be
+        brought back with :meth:`activate`. The typed equivalent on
+        ``client.trust_posture`` is ``suspend_role_envelope``.
+
+        Args:
+            envelope_id: Envelope ID.
+
+        Returns:
+            The suspended envelope, as the server returns it.
+        """
+        resp: dict[str, Any] = await self._http.request(
+            "POST",
+            f"/api/v1/role-envelopes/{encode_path_param(envelope_id)}/suspend",
+        )
+        return resp
+
+    async def update(
+        self,
+        envelope_id: str,
+        constraint_config: dict[str, Any] | None = None,
+        verification_defaults: dict[str, Any] | None = None,
+        clearance_ceiling: str | None = None,
+        review_at: str | None = None,
+    ) -> dict[str, Any]:
+        """Edit an envelope's constraint config, clearance ceiling or review date.
+
+        Server: ``PUT /api/v1/role-envelopes/{envelope_id}``.
+
+        ⛔ This route does NOT change ``status``, and the omission is a control
+        rather than a gap: status transitions go through :meth:`activate` /
+        :meth:`suspend` / :meth:`delete`, so an edit cannot move an envelope
+        through its lifecycle as a side effect.
+
+        Args:
+            envelope_id: Envelope ID.
+            constraint_config: Replacement constraint config.
+            verification_defaults: Replacement per-dimension gradient config.
+            clearance_ceiling: Replacement clearance ceiling; one of ``public``,
+                ``restricted``, ``confidential``, ``secret``, ``top_secret``.
+            review_at: Replacement next-review timestamp.
+
+        Returns:
+            The updated envelope, as the server returns it.
+
+        Raises:
+            ValueError: If ``clearance_ceiling`` is not in the allowed set.
+        """
+        if clearance_ceiling is not None and clearance_ceiling not in ALLOWED_CLEARANCE_LEVELS:
+            raise ValueError(
+                f"clearance_ceiling must be one of {sorted(ALLOWED_CLEARANCE_LEVELS)}; "
+                f"got {clearance_ceiling!r}"
+            )
+        data: dict[str, Any] = {}
+        if constraint_config is not None:
+            data["constraint_config"] = constraint_config
+        if verification_defaults is not None:
+            data["verification_defaults"] = verification_defaults
+        if clearance_ceiling is not None:
+            data["clearance_ceiling"] = clearance_ceiling
+        if review_at is not None:
+            data["review_at"] = review_at
+        resp: dict[str, Any] = await self._http.request(
+            "PUT",
+            f"/api/v1/role-envelopes/{encode_path_param(envelope_id)}",
+            json_data=data,
+        )
+        return resp
+
+    async def delete(self, envelope_id: str) -> None:
+        """Delete an envelope.
+
+        Server: ``DELETE /api/v1/role-envelopes/{envelope_id}``.
+
+        Not reversible through this client. To stop an envelope enforcing while
+        keeping it, use :meth:`suspend` instead.
+
+        Args:
+            envelope_id: Envelope ID.
+        """
+        await self._http.request(
+            "DELETE", f"/api/v1/role-envelopes/{encode_path_param(envelope_id)}"
+        )

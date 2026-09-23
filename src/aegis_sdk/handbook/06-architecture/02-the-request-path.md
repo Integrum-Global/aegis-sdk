@@ -201,14 +201,24 @@ it is labelled, set the header yourself.**
 
 ## Layer 2, continued — the loop that sends it
 
-The transport sends, and on failure decides whether to send again. Measured at
-the default `max_retries` of 3:
+The transport sends, and on failure decides whether to send again — **and it
+decides by verb first**, because a retried write is a second write. Measured at
+the default `max_retries` of 3, for an idempotent verb (`GET`, `HEAD`,
+`OPTIONS`, `PUT`, `DELETE`):
 
 | what failed | attempts | added delay |
 | --- | ---: | --- |
 | a connect, read or pool timeout | 3 | 2.5 s |
 | a network or request error | 3 | 2.5 s |
 | any HTTP status — `500`, `429`, `403` alike | **1** | none |
+
+`POST` and `PATCH` are **not** retried on any of those failures — they are sent
+once, and the timeout or connection error is raised. A `POST /organization-units`
+that times out *after* the server created the unit is indistinguishable, at this
+layer, from one that never arrived, and units cannot be renamed or merged, so the
+retry that looked harmless was the expensive direction. The verb is the only
+discriminator available here: there is no idempotency key to read, so a verb that
+is not idempotent gets no second attempt.
 
 The backoff is `retry_backoff ** attempt`, so roughly one second then one and a
 half, and it is not configurable from the environment. Only `max_retries` is.
@@ -607,8 +617,11 @@ handled. None of it is a defect; all of it is yours to build:
 - **No status retry.** See layer 2. `RateLimitError` even carries the number to
   wait, and nothing reads it.
 - **No token refresh.** See above.
-- **No idempotency key.** A retried write is a second write, and the transport's
-  own retry covers a case where the deployment may not have received the first.
+- **No idempotency key.** A retried write would be a second write, so the
+  transport does not retry one — `POST` and `PATCH` are sent once. What its retry
+  still covers is the case where the deployment may not have received the first
+  request, and only for an idempotent verb, where a second send cannot
+  double-apply.
 - **No rate limiting.** Nothing throttles you below the connection pool's
   ceiling.
 - **No ordering guarantee.** `asyncio.gather` returns results in argument order

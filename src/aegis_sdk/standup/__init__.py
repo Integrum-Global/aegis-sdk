@@ -10,10 +10,11 @@ the module does not have costs a partner a failed run. The caller writes
 provisioning script reads that as "cannot reconcile" and refuses to create:
 
     organizations   create · get · list
-    units           create · get · list
+    units           create · get · list · update
     roles           create · get · list
     teams           create · get · list
-    envelopes       create · get · list      (list is per-supervisor, see below)
+    envelopes       create · get · list · activate · suspend · update · delete
+                    (list is per-supervisor, see below)
     knowledge       create · get · list · publish
     ontology        apply_preset · update_config · get_config · list_presets
     approvals       list_pending · get · approve · reject · modify
@@ -51,18 +52,19 @@ carried verbatim in
 ``examples/stand_up_a_vertical.py::REQUIRED_SCOPES`` -- use it rather than
 assembling one by hand.
 
-⚠ THESE MODULES ARE NOT THE WHOLE SURFACE, and the obvious name is the smaller
-one. Update and delete live elsewhere, on modules that are NOT cross-linked
-from the client attribute a standup caller reaches first:
+⚠ SOME VERBS ARE ALSO REACHABLE ON A SECOND MODULE, and the obvious name is not
+always the only one that has them:
 
     roles      -> ``client.role_admin`` (``/api/v1/roles``, an ALIAS for
                   ``/api/v1/organization-roles``; same
                   ``OrganizationRoleService.list``, typed responses) and
                   ``client.org_standup`` (update/delete).
-    envelopes  -> ``client.trust_posture`` (update · delete · ACTIVATE ·
-                  suspend). ``create`` exists ONLY here and ``activate``
-                  exists ONLY there, so an envelope created through this
-                  module stays ``draft`` until a different module is used.
+    envelopes  -> the same lifecycle verbs are also on
+                  ``client.trust_posture``, which returns the parsed
+                  ``RoleEnvelope`` model where this package returns a raw
+                  dict. Either module can drive an envelope end to end;
+                  ``create`` exists ONLY here, so every envelope is born on
+                  this module.
 
 Each route/verb/body is verified against the corresponding server router
 (cited per-method).

@@ -112,7 +112,7 @@ node scripts/project_coc.mjs --check        # CLI overlays match their neutral s
 python -m aegis_sdk.coc.probe --transports-only   # which client paths are real (offline)
 ```
 
-This repository carries **50 test files**, and `harness.py tests` runs them.
+This repository carries **54 test files**, and `harness.py tests` runs them.
 They are the ones that could be published. Others exist that pin this client
 against the platform's own server routes; those name internal source coordinates
 in their assertions and stay behind. **So a green run means the client behaves —
