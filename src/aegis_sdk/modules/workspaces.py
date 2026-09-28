@@ -28,6 +28,19 @@ Archive and delete are different operations with different consequences:
 not. Both currently answer with a message envelope rather than the affected
 workspace, so neither returns a :class:`Workspace`.
 
+⛔ EVERY CHANGE TO A WORKSPACE IS GATED ON ITS OWNER, AND A WORKSPACE WITH NO
+MEMBERS HAS NONE. ``update``, ``archive``, ``delete`` and the member operations
+all check the caller's role *in that workspace*. A workspace whose member list
+is empty — typically one that predates membership, or one made before its
+creator was recorded — therefore refuses every one of them with
+``AuthorizationError``, for every caller including an org owner, while still
+reading normally. The message says so: *"no membership roster, so no role can
+be checked"*. There is no API path that repairs it: adding a member is itself a
+change, and is refused the same way. Recording a first owner is an operator step
+on the deployment, not a call this client can make. :meth:`WorkspacesModule.create`
+does not have the problem — it records the caller as owner — so a workspace
+made through this client can be changed and deleted by the user who made it.
+
 Wire-shape note: this surface is camelCase on the wire, so the models below
 carry explicit camelCase aliases. Field names remain snake_case in Python and
 either spelling is accepted when constructing a model directly.
@@ -305,6 +318,12 @@ class WorkspacesModule:
         The workspace is empty unless ``initial_members`` is supplied; work
         units are attached separately via :meth:`add_work_unit`.
 
+        The caller is recorded as the workspace's ``owner``, and that is the
+        role :meth:`delete` requires. ⚠ The owner is permanent: it cannot be
+        reassigned or removed through the API, so create with the credential of
+        the person who should be able to delete the workspace later, not with a
+        shared service login you would rather not make accountable for it.
+
         Args:
             name: Workspace name
             description: Optional description
@@ -433,11 +452,21 @@ class WorkspacesModule:
         Not reversible. Use :meth:`archive` when the workspace may be wanted
         again.
 
+        Requires the ``agents:delete`` permission AND the ``owner`` role in the
+        workspace. The rows the workspace owns (members, threads, sessions) go
+        with it; agents, pipelines and objectives that reference it do not.
+
         Args:
             workspace_id: Workspace ID
 
         Returns:
             A message envelope
+
+        Raises:
+            AuthorizationError: The caller is not the workspace owner — or the
+                workspace has NO members, in which case nobody is, and the call
+                is refused for every caller. See the module docstring: that
+                state is repaired on the deployment, not through this client.
 
         Example:
             >>> await client.workspaces.delete("ws-123")

@@ -5,6 +5,25 @@ version here is the SDK's own; it is not the server's.
 
 ## Unreleased
 
+### Fixed — `client.workspaces` did not say who may change a workspace
+
+Nothing in the module said that every change — `update`, `archive`, `delete`,
+the member calls — is checked against the caller's role *in that workspace*. So
+a workspace with no members, which has no owner, refuses all of them for every
+caller, org owners included, while still listing and reading normally. Measured
+on a live deployment: two such workspaces refused `delete()` with *"no
+membership roster, so no role can be checked"*, and there is no call that can
+add the first owner, because adding a member is refused the same way.
+
+The docstrings now state the rule, and that the repair for an owner-less
+workspace is an operator step on the deployment rather than anything this
+client can do. They also state the half that works: `create()` records the
+caller as owner — permanently — so a workspace made through this client can be
+deleted by the user who made it. That round trip was confirmed on the same
+deployment.
+
+No behaviour changed.
+
 ### Added — `client.units.update_unit`, so a unit can be renamed
 
 `client.units` was `create · get · list`, and a unit could not be corrected once
