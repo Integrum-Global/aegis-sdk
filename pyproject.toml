@@ -1,9 +1,18 @@
-# DERIVED FILE — do not hand-edit; regenerate from the platform repository.
+# THIS REPOSITORY IS THE RELEASE.
 #
-# Every declaration below is carried byte-for-byte from the platform's SDK
-# packaging descriptor, except three paths: this repository holds the package at
-# `src/aegis_sdk` directly, where the packaging build reaches it through a
-# symlink. Maintainer commentary is not carried.
+# This header previously read "DERIVED FILE — do not hand-edit; regenerate from
+# the platform repository." That said the opposite of the truth and is now
+# false. The operator ruling of 2026-10-01 is: THIS repository is the SDK we
+# release; `esperie-enterprise/aegis-sdk` is canon, upstreamed separately; and
+# `src/aegis_sdk/` inside the platform repository is DEPRECATED.
+#
+# The old line was not merely stale. It is why a real defect in a released SDK
+# read as a derived artifact's business, and why "which copy is the source of
+# truth?" looked unanswerable for weeks. It is not unanswerable: edit here.
+# The platform's copy is not regenerated from this file and is not what
+# partners install.
+#
+# The declarations below are maintained here, by hand, like any other package.
 #
 # TWO FACTS THAT COMMENTARY CARRIED, PRESERVED HERE BECAUSE THEY ARE LOAD-BEARING:
 #
