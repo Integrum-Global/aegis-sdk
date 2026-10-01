@@ -43,6 +43,17 @@ the one the route declares; the response is returned as the raw record, so
 no response field is guessed. Verify against a deployment that serves the
 route before relying on it.
 
+⚠ **On `client.trust_posture` the typed return drops any withdrawal-specific
+fields the server adds.** `PostureApproval` declares the fields the approval
+record has always had, and unknown keys are dropped rather than kept — so a
+`withdrawnBy` / `withdrawnAt` / withdrawal-notes field would be discarded
+silently. They are not declared because their wire names are not settled by
+the route's design, and guessing a key is how this module came to send an
+identifier the server drops. Use
+`client.trust.postures.withdraw_transition`, which returns the raw record,
+if you need them.
+
+
 ### Fixed — `client.workspaces` did not say who may change a workspace
 
 Nothing in the module said that every change — `update`, `archive`, `delete`,

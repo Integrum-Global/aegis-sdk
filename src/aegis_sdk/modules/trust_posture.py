@@ -832,6 +832,18 @@ class TrustPostureModule:
             PostureApproval: The now-withdrawn approval record. ``status``
             reads ``"withdrawn"``.
 
+        ⚠ **Any withdrawal-specific fields the server adds are NOT carried
+        by this return value.** ``PostureApproval`` declares the fields the
+        approval record has always had, and unknown keys are dropped rather
+        than kept, so a ``withdrawnBy`` / ``withdrawnAt`` / withdrawal-notes
+        field would be discarded silently. They are not declared here
+        because their wire names are not settled by the route's design —
+        guessing a key is how this module came to send an identifier the
+        server drops. A caller that needs them should call
+        :meth:`aegis_sdk.trust.postures.PosturesModule.withdraw_transition`,
+        which returns the raw record.
+
+
         Raises:
             NotFoundError: If no pending approval matches (none pending, or
                 ``request_id`` does not name a pending request for this
