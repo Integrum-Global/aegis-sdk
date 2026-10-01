@@ -559,6 +559,13 @@ class PosturesModule:
         :meth:`get_my_pending_approvals`, filtered to this agent) to say
         exactly which request to decide.
 
+        The identifier is sent as ``request_id``. It is NOT the camelCase
+        ``approvalId``: the route declares ``request_id`` with no alias, so a
+        camelCase key is dropped on arrival and the caller's named target
+        disappears — the decision then fails as ambiguous even though the
+        caller supplied one. The parameter is named ``approval_id`` for
+        backward compatibility; the wire key is the server's own spelling.
+
         Args:
             agent_id: Agent ID
             notes: Optional approval notes
@@ -597,7 +604,7 @@ class PosturesModule:
         # omission.
         json_body: dict[str, Any] = {"notes": notes}
         if approval_id is not None:
-            json_body["approvalId"] = approval_id
+            json_body["request_id"] = approval_id
         response = await self._http.request(
             "POST",
             f"/api/v1/agents/{encode_path_param(agent_id)}/trust-posture/approve",
@@ -724,6 +731,13 @@ class PosturesModule:
         models, so a caller wanting typed access can parse it with
         ``PostureApprovalRecord.model_validate(record)``.
 
+        The identifier is sent as ``request_id``. It is NOT the camelCase
+        ``approvalId``: the route declares ``request_id`` with no alias, so a
+        camelCase key is dropped on arrival and the caller's named target
+        disappears — the decision then fails as ambiguous even though the
+        caller supplied one. The parameter is named ``approval_id`` for
+        backward compatibility; the wire key is the server's own spelling.
+
         Args:
             agent_id: Agent ID
             notes: Rejection reason (server requires >= 10 characters)
@@ -751,7 +765,7 @@ class PosturesModule:
         # single-pending wire body is unchanged.
         json_body: dict[str, Any] = {"notes": notes}
         if approval_id is not None:
-            json_body["approvalId"] = approval_id
+            json_body["request_id"] = approval_id
         response: dict[str, Any] = await self._http.request(
             "POST",
             f"/api/v1/agents/{encode_path_param(agent_id)}/trust-posture/reject",

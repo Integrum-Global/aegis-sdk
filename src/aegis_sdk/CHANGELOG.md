@@ -5,6 +5,60 @@ version here is the SDK's own; it is not the server's.
 
 ## Unreleased
 
+### Fixed — every posture decision call sent an identifier the server dropped
+
+`postures.approve_transition`, `postures.reject_transition`,
+`trust_posture.approve_posture_transition` and
+`trust_posture.reject_posture_transition` all sent their request identifier
+under the key `approvalId`. **The routes do not read that key.** They declare
+`request_id`, with no camelCase alias, so pydantic's default `extra='ignore'`
+dropped it on arrival and `request_id` was left `None` on every call.
+
+The effect was not a visible error. An agent with more than one pending
+posture request is refused as *ambiguous* unless the caller names which one —
+and a caller who named one got the same refusal, because their answer never
+arrived. From the caller's side that reads as the endpoint ignoring a field
+it lists, so the reasonable conclusion was that the endpoint cannot be told.
+The handbook shipped in this package said exactly that, and told partners to
+never let a second request become pending. That workaround was routing around
+a bug in this client.
+
+The identifier is now sent as `request_id`. **The Python argument keeps its
+existing name, `approval_id`** — it is not renamed here, because renaming a
+public parameter is its own change with its own compatibility question, and
+the defect was the wire key, not the argument name.
+
+The tests that covered this pinned the literal string `approvalId` and passed
+for the whole life of the defect: a literal assertion pins what this SDK
+sends and says nothing about what the route reads, so client and test agreed
+with each other and both were wrong. They now parse the outgoing body through
+a model declaring the route's own field and assert the identifier **binds** —
+an assertion that fails when the key is ignored rather than when it changes
+spelling.
+
+### Fixed — the shipped handbook named the endpoint as the cause of a client bug
+
+`handbook/02-working-through-the-harness/04-trust-chains-and-postures.md`
+told partners *"there is nowhere to send one, because the endpoint has no such
+field"*, presented as a **confirmed root cause** with no receipt behind it.
+
+The observation was right and the diagnosis was wrong. Sending an identifier
+did nothing — because this SDK wrote it under a key the route does not read.
+The section now records the history, states that the endpoint **does** address
+one request when supplied, and keeps only the part that is still true: a
+caller who never lets two requests become pending is not harmed, and that
+remains the cheapest path. It is no longer presented as the only safe one.
+
+### Changed — `pyproject.toml` no longer claims to be a derived file
+
+The header read *"DERIVED FILE — do not hand-edit; regenerate from the
+platform repository."* That stated the opposite of the truth. This repository
+is the SDK that is released; `esperie-enterprise/aegis-sdk` is canon and is
+upstreamed separately; `src/aegis_sdk/` inside the platform repository is
+deprecated. The header now says so, and names the old claim rather than
+deleting it — a reader who acted on the old line needs to see that it was
+wrong, not merely that it is gone.
+
 ### Added — `withdraw_transition`, so a requester can retract their own pending request
 
 Until now a pending posture request had exactly two exits — approve and
@@ -33,8 +87,9 @@ withdrawn, and a withdrawal with no stated reason is not auditable.
 agent has several; it is optional while the agent has exactly one and
 required in effect once it has more than one. The route declares the field
 as `request_id`, with no camelCase alias — so `requestId` and `approvalId`
-are both dropped on arrival by the server. See the note below on the sibling
-decision calls, which send `approvalId` today.
+are both dropped on arrival by the server. The four sibling decision calls
+sent `approvalId` when this entry was first written; they were corrected in
+the same release — see the `Fixed` entry above.
 
 This method calls a route the platform has **specified but not yet
 deployed**. Until it ships, the call returns a 404 naming the missing route,

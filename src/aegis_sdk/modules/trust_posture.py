@@ -723,6 +723,13 @@ class TrustPostureModule:
         ``aegis_sdk.trust.postures.PosturesModule.approve_transition`` — this
         can name WHICH pending request it decides.
 
+        The identifier is sent as ``request_id``. It is NOT the camelCase
+        ``approvalId``: the route declares ``request_id`` with no alias, so a
+        camelCase key is dropped on arrival and the caller's named target
+        disappears — the decision then fails as ambiguous even though the
+        caller supplied one. The parameter is named ``approval_id`` for
+        backward compatibility; the wire key is the server's own spelling.
+
         Args:
             agent_id: Agent ID with a pending transition
             notes: Optional approval notes
@@ -747,7 +754,7 @@ class TrustPostureModule:
         # Omitted entirely (never sent as null) when not given, so the
         # single-pending wire body is unchanged.
         if approval_id is not None:
-            data["approvalId"] = approval_id
+            data["request_id"] = approval_id
         response = await self._http.request(
             "POST",
             f"/api/v1/agents/{encode_path_param(agent_id)}/trust-posture/approve",
@@ -765,6 +772,13 @@ class TrustPostureModule:
         ``aegis_sdk.trust.postures.PosturesModule.reject_transition``. Without
         ``approval_id``, two pending requests made every rejection a
         ``ValidationError`` no caller could resolve.
+
+        The identifier is sent as ``request_id``. It is NOT the camelCase
+        ``approvalId``: the route declares ``request_id`` with no alias, so a
+        camelCase key is dropped on arrival and the caller's named target
+        disappears — the decision then fails as ambiguous even though the
+        caller supplied one. The parameter is named ``approval_id`` for
+        backward compatibility; the wire key is the server's own spelling.
 
         Args:
             agent_id: Agent ID with a pending transition
@@ -785,7 +799,7 @@ class TrustPostureModule:
         """
         json_body: dict[str, Any] = {"notes": notes}
         if approval_id is not None:
-            json_body["approvalId"] = approval_id
+            json_body["request_id"] = approval_id
         response = await self._http.request(
             "POST",
             f"/api/v1/agents/{encode_path_param(agent_id)}/trust-posture/reject",

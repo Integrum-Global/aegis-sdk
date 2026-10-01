@@ -27,9 +27,37 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from pydantic import BaseModel
 
 from aegis_sdk.modules.trust_posture import TrustPostureModule
 from aegis_sdk.trust.postures import PosturesModule
+
+
+class _DecisionBody(BaseModel):
+    """The withdraw route's request body AS THE ROUTE DECLARES IT.
+
+    `request_id` and nothing else addresses the request. The route has no
+    alias generator, so pydantic's default `extra='ignore'` drops every
+    other spelling -- `requestId` and `approvalId` alike -- and the field
+    arrives as `None`.
+    """
+
+    notes: str | None = None
+    request_id: str | None = None
+
+
+def _bound_identifier(sent: dict) -> str | None:
+    """Parse an outgoing body the way the route does, and return what binds.
+
+    Asserting the EFFECT rather than the spelling. A literal assertion pins
+    what this SDK sends and says nothing about what the route reads, which is
+    how the sibling calls shipped `approvalId` for the life of the defect
+    while a test pinned it and passed.
+
+    Cannot see the ROUTE changing: this encodes the contract measured on
+    2026-10-01. It fails when this SDK sends something else.
+    """
+    return _DecisionBody(**sent).request_id
 
 WITHDRAW_URL = "/api/v1/agents/agent_1/trust-posture/withdraw"
 
@@ -74,6 +102,10 @@ class TestWithdrawOnTheTrustSurface:
         args, kwargs = mock_http.request.call_args
         assert args[0] == "POST"
         assert args[1] == WITHDRAW_URL
+        assert _bound_identifier(kwargs["json_data"]) == "approval_b", (
+            "the supplied identifier did not bind to the route's field -- the "
+            f"caller named a target the route cannot see. sent={kwargs['json_data']!r}"
+        )
         assert kwargs["json_data"] == {
             "notes": "superseded by the revised request",
             "request_id": "approval_b",
@@ -109,6 +141,7 @@ class TestWithdrawOnTheTrustSurface:
 
         _args, kwargs = mock_http.request.call_args
         assert kwargs["json_data"] == {"notes": "no longer needed"}
+        assert _bound_identifier(kwargs["json_data"]) is None
 
     async def test_the_withdrawn_record_is_returned(self, mock_http):
         mock_http.request.return_value = WITHDRAWN_BODY
@@ -141,6 +174,10 @@ class TestWithdrawOnTheModuleSurface:
         args, kwargs = mock_http.request.call_args
         assert args[0] == "POST"
         assert args[1] == WITHDRAW_URL
+        assert _bound_identifier(kwargs["json_data"]) == "approval_b", (
+            "the supplied identifier did not bind to the route's field -- the "
+            f"caller named a target the route cannot see. sent={kwargs['json_data']!r}"
+        )
         assert kwargs["json_data"] == {
             "notes": "superseded by the revised request",
             "request_id": "approval_b",
@@ -155,6 +192,7 @@ class TestWithdrawOnTheModuleSurface:
 
         _args, kwargs = mock_http.request.call_args
         assert kwargs["json_data"] == {"notes": "no longer needed"}
+        assert _bound_identifier(kwargs["json_data"]) is None
 
     async def test_the_withdrawn_record_is_typed(self, mock_http):
         mock_http.request.return_value = WITHDRAWN_BODY

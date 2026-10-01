@@ -124,18 +124,32 @@ against the same agent, because the endpoint has no idempotency key.
 connection), call `get_pending_approval(agent_id)` to find out whether the
 first attempt already landed — `None` means it did not.
 
-**Approving is addressed by AGENT, not by request.**
-`postures.approve_transition(agent_id, notes=...)` takes no request
-identifier — there is nowhere to send one, because the endpoint resolves
-whichever request is pending for that agent. **With more than one request
-pending, which one it decides is not something the caller controls.** This
-is the confirmed root cause of a second partner-reported symptom — sending a
-`request_id` to try to disambiguate does nothing, because the endpoint has no
-such field, and the fix is upstream of the call: never let a second request
-become pending while one is already outstanding. Check
-`get_pending_approval(agent_id)` before every `request_progression()` call,
-and treat a non-`None` result as "already asked, do not ask again" rather
-than as an obstacle to route around.
+**Approving is addressed by AGENT, and optionally by request.**
+`postures.approve_transition(agent_id, notes=..., approval_id=...)` sends that
+identifier to the endpoint as `request_id`.
+
+⚠ **This section previously said the endpoint had no such field. That was
+wrong, and it was wrong for a reason worth recording.** Earlier releases of
+this SDK wrote the identifier under the key `approvalId`. The endpoint
+declares `request_id` and reads nothing else, so the key was dropped on
+arrival and the call behaved exactly as if no identifier had been sent —
+including refusing as ambiguous when the agent had several requests pending.
+The symptom was real; the diagnosis in this book was not. If you tried to
+disambiguate before and concluded it does nothing, that was the client, not
+the endpoint. **The endpoint does address one request when you name it.**
+
+**With more than one request pending, name one.** Omit the identifier while
+the agent has exactly one pending request and the call still works; omit it
+once it has more than one and the endpoint refuses rather than picking,
+which is the behaviour you want — a decision must not land on a request
+nobody selected.
+
+Checking `get_pending_approval(agent_id)` before every
+`request_progression()` call and treating a non-`None` result as "already
+asked, do not ask again" is still good advice, and still the cheapest path:
+never letting a second request become pending means never having to
+disambiguate at all. It is no longer the *only* safe path, and it is not a
+workaround for a gap in the endpoint.
 
 **2. Override** — set it directly.
 
