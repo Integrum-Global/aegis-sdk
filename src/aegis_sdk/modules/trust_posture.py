@@ -793,6 +793,64 @@ class TrustPostureModule:
         )
         return PostureApproval(**response)
 
+    async def withdraw_posture_transition(
+        self, agent_id: str, notes: str, request_id: str | None = None
+    ) -> PostureApproval:
+        """
+        Withdraw a pending posture-transition request.
+
+        Parity with
+        ``aegis_sdk.trust.postures.PosturesModule.withdraw_transition``.
+
+        Server route: POST /agents/{agent_id}/trust-posture/withdraw
+        (``notes`` is required and must be >= 10 characters server-side).
+
+        **This is the requester's own exit, and it is not a rejection.**
+        Withdrawing retracts a request the caller filed; rejecting decides
+        one somebody else filed. The record keeps the two apart — the
+        request closes as ``withdrawn`` and no reviewer is recorded, because
+        nobody reviewed it. Before this operation existed the only way to
+        close a pending request was to reject it, which wrote a decision
+        nobody made into the audit trail.
+
+        The agent's posture is unchanged: a pending request was never in
+        force. Its evidence counters are not reset either — those reset only
+        when a posture actually changes.
+
+        Args:
+            agent_id: Agent ID with a pending transition
+            notes: Why the request is being withdrawn (min length 10 --
+                server-enforced)
+            request_id: Which pending request to withdraw. Optional while
+                the agent has exactly one pending request; REQUIRED in
+                effect once it has more than one. Sent as ``request_id``,
+                the key the route declares -- a camelCase spelling is
+                dropped by the server, which makes the caller's named target
+                disappear and the request fail as ambiguous.
+
+        Returns:
+            PostureApproval: The now-withdrawn approval record. ``status``
+            reads ``"withdrawn"``.
+
+        Raises:
+            NotFoundError: If no pending approval matches (none pending, or
+                ``request_id`` does not name a pending request for this
+                agent)
+            ValidationError: If ``notes`` is too short, or ``request_id``
+                was omitted while more than one request is pending
+            AuthorizationError: If the caller may neither approve nor reject
+                for this agent
+        """
+        json_body: dict[str, Any] = {"notes": notes}
+        if request_id is not None:
+            json_body["request_id"] = request_id
+        response = await self._http.request(
+            "POST",
+            f"/api/v1/agents/{encode_path_param(agent_id)}/trust-posture/withdraw",
+            json_data=json_body,
+        )
+        return PostureApproval(**response)
+
     async def update_trust_posture(
         self,
         agent_id: str,

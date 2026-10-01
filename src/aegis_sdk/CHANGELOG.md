@@ -5,6 +5,44 @@ version here is the SDK's own; it is not the server's.
 
 ## Unreleased
 
+### Added — `withdraw_transition`, so a requester can retract their own pending request
+
+Until now a pending posture request had exactly two exits — approve and
+reject — and both of them are _somebody else's_ decision. A requester who
+filed a request and then changed their mind had no way to take it back. The
+only available workaround was to reject their own request, which closes the
+row as `rejected`: a decision nobody made, sitting in the audit trail under
+`reviewed_by`. That is a governance record asserting something false, and it
+is what callers had to do.
+
+`client.trust.postures.withdraw_transition(...)` and
+`client.trust_posture.withdraw_posture_transition(...)` send
+`POST /api/v1/agents/{agent_id}/trust-posture/withdraw`. The request closes
+as `withdrawn`, and no reviewer is recorded — because nobody reviewed it.
+
+Nothing about the agent changes. A pending request was never in force, so
+withdrawing one leaves the posture where it was; the evidence counters are
+not reset, because they reset only when a posture actually changes.
+
+⚠ **`notes` is required and must be at least 10 characters**, the same floor
+the reject route applies. It is the record of why the request was
+withdrawn, and a withdrawal with no stated reason is not auditable.
+
+**`request_id` is the wire key, and that is not a style choice.**
+`request_id` addresses one specific pending request, for the case where the
+agent has several; it is optional while the agent has exactly one and
+required in effect once it has more than one. The route declares the field
+as `request_id`, with no camelCase alias — so `requestId` and `approvalId`
+are both dropped on arrival by the server. See the note below on the sibling
+decision calls, which send `approvalId` today.
+
+This method calls a route the platform has **specified but not yet
+deployed**. Until it ships, the call returns a 404 naming the missing route,
+which is a clearer failure than a silent no-op. The request contract here is
+the one the route declares; the response is returned as the raw record, so
+no response field is guessed. Verify against a deployment that serves the
+route before relying on it.
+
 ### Fixed — `client.workspaces` did not say who may change a workspace
 
 Nothing in the module said that every change — `update`, `archive`, `delete`,
