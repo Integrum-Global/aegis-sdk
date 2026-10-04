@@ -5,6 +5,66 @@ version here is the SDK's own; it is not the server's.
 
 ## Unreleased
 
+### Added — `withdraw_transition`, so a requester can retract their own pending request
+
+Until now a pending posture request had exactly two exits — approve and
+reject — and both of them are _somebody else's_ decision. A requester who
+filed a request and then changed their mind had no way to take it back. The
+only available workaround was to reject their own request, which closes the
+row as `rejected`: a decision nobody made, sitting in the audit trail under
+`reviewed_by`. That is a governance record asserting something false, and it
+is what callers had to do.
+
+`client.trust.postures.withdraw_transition(...)` and
+`client.trust_posture.withdraw_posture_transition(...)` send
+`POST /api/v1/trust-posture/{agent_id}/withdraw`. The request closes as
+`withdrawn`, and records the withdrawer rather than a reviewer — because
+nobody reviewed it.
+
+Nothing about the agent changes. A pending request was never in force, so
+withdrawing one leaves the posture where it was; the evidence counters are
+not reset, because they reset only when a posture actually changes.
+
+⛔ **The path is not the shape its siblings have.** `approve` and `reject` are
+addressed by agent (`/agents/{agent_id}/trust-posture/...`); this route is
+served under its own `/trust-posture` prefix. That is deliberate on both
+sides, and it is not a typo. If you have a sibling-shaped URL in your own
+code, it is a 404 that reads like a missing deployment rather than a wrong
+URL.
+
+⚠ **`notes` is required and must be at least 10 characters**, the same floor
+the reject route applies. It is the record of why the request was withdrawn,
+and a withdrawal with no stated reason is not auditable.
+
+**`request_id` is the wire key, and that is not a style choice.** It
+addresses one specific pending request, for the case where the agent has
+several; it is optional while the agent has exactly one and required in
+effect once it has more than one. The parameter keeps the name `approval_id`
+for consistency with the four sibling decision methods; the wire key is the
+route's own spelling.
+
+**A `409` from this route arrives as the base `AgenticOSError`.** The SDK
+maps no exception subclass to `409`, so discriminate on
+`exc.status_code == 409`. Two server states produce it, and both mean your
+view of the request was stale: the target could not be decided because
+several requests are pending and none was named, or the request stopped being
+pending between resolution and the write — it was decided or withdrawn
+concurrently. Re-read the pending request and decide whether there is still
+anything to withdraw.
+
+⚠ **The withdrawal's own metadata is not on the response.** The record comes
+back with `status` reading `"withdrawn"` and the reviewer fields null; the
+`withdrawn_by` / `withdrawn_at` / withdrawal-notes the operation records are
+not among the fields this client models. They are deliberately not declared:
+a field declared for a key a route does not send reads as `None` for every
+call, which is indistinguishable from the server having sent null. The
+withdrawal's reason is on the platform's audit trail for it.
+
+**On availability.** The platform implements this route; a deployment running
+a platform build that predates it answers `404`. This client declares the
+operation, which is a different claim from any particular deployment serving
+it — check yours with `python -m aegis_sdk.coc.probe`.
+
 ### Fixed — every posture decision call sent an identifier the server dropped
 
 `postures.approve_transition`, `postures.reject_transition`,
