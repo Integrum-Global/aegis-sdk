@@ -733,6 +733,12 @@ class TrustPostureModule:
         parameter is named ``approval_id`` for backward compatibility; the
         wire key is the server's own spelling.
 
+        ⚠ **``expires_at`` is recorded but NOT enforced.** The server stamps
+        it seven days out when a request is filed and returns it on the
+        record, but no decision path reads it — a request past its expiry is
+        STILL approvable. Do not treat the field as a gate; check it
+        yourself if you need one.
+
         Args:
             agent_id: Agent ID with a pending transition
             notes: Optional approval notes
@@ -750,8 +756,7 @@ class TrustPostureModule:
                 ``ValidationError`` below.
             ValidationError: If ``approval_id`` names no pending request for
                 this agent (it belongs to another agent, or was already
-                decided), or the request passed its ``expires_at`` before a
-                decision (it is not approvable; file a new request)
+                decided).
             AgenticOSError: On a 409 conflict -- ``approval_id`` was omitted
                 while more than one request is pending, so the target is
                 ambiguous and the server refuses rather than choosing one.
@@ -794,6 +799,12 @@ class TrustPostureModule:
         parameter is named ``approval_id`` for backward compatibility; the
         wire key is the server's own spelling.
 
+        ⚠ **``expires_at`` is recorded but NOT enforced.** The server stamps
+        it seven days out when a request is filed and returns it on the
+        record, but no decision path reads it — a request past its expiry is
+        STILL approvable. Do not treat the field as a gate; check it
+        yourself if you need one.
+
         Args:
             agent_id: Agent ID with a pending transition
             notes: Rejection reason (min length 10 -- server-enforced)
@@ -810,8 +821,7 @@ class TrustPostureModule:
                 ``ValidationError`` below.
             ValidationError: If notes is too short, or ``approval_id`` names
                 no pending request for this agent (it belongs to another
-                agent, or was already decided), or the request passed its
-                ``expires_at`` before a decision
+                agent, or was already decided).
             AgenticOSError: On a 409 conflict -- ``approval_id`` was omitted
                 while more than one request is pending, so the target is
                 ambiguous and the server refuses rather than choosing one.

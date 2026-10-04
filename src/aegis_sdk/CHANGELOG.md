@@ -70,8 +70,24 @@ This route itself answers `404` when the agent has no pending request, so a
 `404` does not by itself tell you whether your deployment serves the route at
 all. `python -m aegis_sdk.coc.probe` cannot answer it either: it enumerates
 only **parameter-free `GET`s**, and this is a `POST` carrying an
-`{agent_id}`. Reproduce it against an agent you know holds a pending request,
-and read the refusal body rather than the status alone.
+`{agent_id}`.
+
+⛔ **Do NOT probe this route by naming an agent that has a pending request.**
+That is not a test. On a serving build it does exactly what the method says:
+it WITHDRAWS the request, and the withdrawal is real -- a signed audit anchor,
+a closed request, and someone's pending posture change gone. An instruction to
+"reproduce it" must not have a side effect, and this one would.
+
+Use either of these instead. Neither changes anything on any build:
+
+* **Call it for an agent that has NO pending request.** A serving build
+  answers `404` with `No pending approval found for agent ...`; a build that
+  predates the route answers the application's generic `404`. Same status,
+  different body -- so read the body.
+* **Send `notes` shorter than 10 characters.** The body is validated BEFORE
+  the request is resolved or the agent is even looked up, so a serving build
+  answers `422` and an old build answers the generic `404`. Different status,
+  and no request of anyone's is touched either way.
 
 ### Fixed — every posture decision call sent an identifier the server dropped
 
