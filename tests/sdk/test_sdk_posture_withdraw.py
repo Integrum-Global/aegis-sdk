@@ -15,15 +15,16 @@ DIRECTIONS, and both were.
    sibling shape is wrong, and the failure is a 404 that reads like a missing
    deployment rather than a wrong URL.
 
-2. THE IDENTIFIER MUST BIND. The route declares ``request_id``; a camelCase
-   spelling is dropped by pydantic's default ``extra='ignore'`` and arrives as
-   ``None``. That is not a visible error -- with more than one request pending
-   the server refuses as AMBIGUOUS, so a caller who named their target is told
-   they did not. Every wire assertion here parses the outgoing body through a
-   model declaring the route's own field and asserts the value BINDS, rather
-   than pinning the literal key this SDK happens to send. A literal assertion
-   pins what we send and says nothing about what the route reads; that is
-   exactly how the sibling defect survived its own test suite.
+2. THE IDENTIFIER MUST BIND. The route accepts ``request_id`` and
+   ``approvalId`` (a compatibility alias); ``requestId`` is dropped by
+   pydantic's default ``extra='ignore'`` and arrives as ``None``. That is not
+   a visible error -- with more than one request pending the server refuses as
+   AMBIGUOUS, so a caller who named their target is told they did not. Every
+   wire assertion here parses the outgoing body through a model declaring the
+   route's own field and asserts the value BINDS, rather than pinning the
+   literal key this SDK happens to send. A literal assertion pins what we send
+   and says nothing about what the route reads; that is exactly how the
+   sibling defect survived its own test suite.
 
 Tier 1: the HTTP layer is mocked, as in
 ``test_sdk_posture_reject_disambiguation.py``.
@@ -49,10 +50,11 @@ SIBLING_SHAPED_URL = "/api/v1/agents/agent_1/trust-posture/withdraw"
 class _WithdrawBody(BaseModel):
     """The route's withdraw body AS THE ROUTE DECLARES IT.
 
-    ``request_id`` addresses the request; the route declares no alias, so
-    ``requestId`` and ``approvalId`` alike are dropped on arrival and bind as
-    ``None``. Parsing through this model is what makes the assertion about the
-    ROUTE rather than about this SDK's spelling.
+    ``request_id`` addresses the request. The route also accepts ``approvalId``
+    as a compatibility alias; ``requestId`` is not accepted, and is dropped on
+    arrival so it binds as ``None``. This model deliberately declares ONLY the
+    canonical spelling, because that is what this SDK sends -- what the route
+    WOULD accept from someone else is a different question from what we send.
     """
 
     notes: str = Field(..., min_length=10)
@@ -116,15 +118,22 @@ class TestWithdrawOnTheTrustSurface:
         _args, kwargs = mock_http.request.call_args
         assert _bound_identifier(kwargs["json_data"]) == "approval_b", (
             "the identifier did not bind when parsed as the route declares it. "
-            "A camelCase key is dropped by pydantic's extra='ignore', so "
-            "request_id arrives None and a caller who named their target is "
-            "refused as ambiguous."
+            "A spelling the route does not accept is dropped by pydantic's "
+            "extra='ignore', so request_id arrives None and a caller who named "
+            "their target is refused as ambiguous."
         )
 
-    async def test_body_carries_no_identifier_key_beside_the_one_that_binds(self, mock_http):
-        """Stated separately because this is the defect the sibling decision
-        calls had. A future edit that 'harmonises' withdraw with them must
-        fail here, loudly."""
+    async def test_body_carries_the_canonical_key_and_nothing_else(self, mock_http):
+        """The body carries exactly the canonical spelling.
+
+        NOT because the alias would fail -- ``approvalId`` binds too, and that
+        is why this is narrower than the assertion it replaces. ``approvalId``
+        binds only because the route keeps a compatibility alias for already-
+        released clients; ``request_id`` is what the route declares and what
+        survives the alias being withdrawn. A future edit that sends the alias
+        spelling can be green on the wire and still be the wrong choice, which
+        is the case this pin exists for.
+        """
         await PosturesModule(mock_http).withdraw_transition(
             "agent_1", "superseded by the revised request", approval_id="approval_b"
         )

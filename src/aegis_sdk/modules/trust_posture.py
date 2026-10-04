@@ -723,12 +723,15 @@ class TrustPostureModule:
         ``aegis_sdk.trust.postures.PosturesModule.approve_transition`` — this
         can name WHICH pending request it decides.
 
-        The identifier is sent as ``request_id``. It is NOT the camelCase
-        ``approvalId``: the route declares ``request_id`` with no alias, so a
-        camelCase key is dropped on arrival and the caller's named target
-        disappears — the decision then fails as ambiguous even though the
-        caller supplied one. The parameter is named ``approval_id`` for
-        backward compatibility; the wire key is the server's own spelling.
+        The identifier is sent as ``request_id``, the route's canonical
+        spelling. ``approvalId`` ALSO BINDS — the route accepts it as a
+        compatibility alias — so a caller still sending it works. ``requestId``
+        does not: that spelling is dropped on arrival, and the caller's named
+        target then disappears, so the decision fails as ambiguous even though
+        the caller supplied one. ``request_id`` is sent because it is
+        canonical, not because it is the only spelling that binds. The
+        parameter is named ``approval_id`` for backward compatibility; the
+        wire key is the server's own spelling.
 
         Args:
             agent_id: Agent ID with a pending transition
@@ -742,11 +745,19 @@ class TrustPostureModule:
             PostureTransition: The completed transition record
 
         Raises:
-            NotFoundError: If no pending approval matches (none pending, or
-                ``approval_id`` does not name a pending request for this agent)
-            ValidationError: If ``approval_id`` was omitted while more than one
-                request is pending, or the request passed its ``expires_at``
-                before a decision (it is not approvable; file a new request)
+            NotFoundError: If the agent has NO pending approval at all. A
+                named ``approval_id`` that does not match is NOT a 404 — see
+                ``ValidationError`` below.
+            ValidationError: If ``approval_id`` names no pending request for
+                this agent (it belongs to another agent, or was already
+                decided), or the request passed its ``expires_at`` before a
+                decision (it is not approvable; file a new request)
+            AgenticOSError: On a 409 conflict -- ``approval_id`` was omitted
+                while more than one request is pending, so the target is
+                ambiguous and the server refuses rather than choosing one.
+                The SDK maps NO exception subclass to 409, so this arrives as
+                the BASE error rather than a conflict-specific type;
+                discriminate on ``exc.status_code == 409``.
         """
         data: dict[str, Any] = {}
         if notes is not None:
@@ -773,12 +784,15 @@ class TrustPostureModule:
         ``approval_id``, two pending requests made every rejection a
         ``ValidationError`` no caller could resolve.
 
-        The identifier is sent as ``request_id``. It is NOT the camelCase
-        ``approvalId``: the route declares ``request_id`` with no alias, so a
-        camelCase key is dropped on arrival and the caller's named target
-        disappears — the decision then fails as ambiguous even though the
-        caller supplied one. The parameter is named ``approval_id`` for
-        backward compatibility; the wire key is the server's own spelling.
+        The identifier is sent as ``request_id``, the route's canonical
+        spelling. ``approvalId`` ALSO BINDS — the route accepts it as a
+        compatibility alias — so a caller still sending it works. ``requestId``
+        does not: that spelling is dropped on arrival, and the caller's named
+        target then disappears, so the decision fails as ambiguous even though
+        the caller supplied one. ``request_id`` is sent because it is
+        canonical, not because it is the only spelling that binds. The
+        parameter is named ``approval_id`` for backward compatibility; the
+        wire key is the server's own spelling.
 
         Args:
             agent_id: Agent ID with a pending transition
@@ -791,11 +805,19 @@ class TrustPostureModule:
             PostureApproval: The now-rejected approval record
 
         Raises:
-            NotFoundError: If no pending approval matches (none pending, or
-                ``approval_id`` does not name a pending request for this agent)
-            ValidationError: If notes is too short, ``approval_id`` was omitted
-                while more than one request is pending, or the request passed
-                its ``expires_at`` before a decision
+            NotFoundError: If the agent has NO pending approval at all. A
+                named ``approval_id`` that does not match is NOT a 404 — see
+                ``ValidationError`` below.
+            ValidationError: If notes is too short, or ``approval_id`` names
+                no pending request for this agent (it belongs to another
+                agent, or was already decided), or the request passed its
+                ``expires_at`` before a decision
+            AgenticOSError: On a 409 conflict -- ``approval_id`` was omitted
+                while more than one request is pending, so the target is
+                ambiguous and the server refuses rather than choosing one.
+                The SDK maps NO exception subclass to 409, so this arrives as
+                the BASE error rather than a conflict-specific type;
+                discriminate on ``exc.status_code == 409``.
         """
         json_body: dict[str, Any] = {"notes": notes}
         if approval_id is not None:
@@ -829,13 +851,15 @@ class TrustPostureModule:
         evidence counters are not reset -- they reset only when a posture
         actually changes.
 
-        The identifier is sent as ``request_id``. It is NOT the camelCase
-        ``approvalId``: the route declares ``request_id``, so a camelCase key
-        is dropped on arrival and the caller's named target disappears -- the
-        operation then fails as ambiguous even though the caller supplied a
-        target. The parameter is named ``approval_id`` for consistency with
-        the sibling decision methods; the wire key is the server's own
-        spelling.
+        The identifier is sent as ``request_id``, the route's canonical
+        spelling. ``approvalId`` ALSO BINDS here — the route accepts it as a
+        compatibility alias, so a caller still sending it works. ``requestId``
+        does not: that spelling is dropped on arrival, and the caller's named
+        target then disappears, so the operation fails as ambiguous even
+        though the caller supplied one. ``request_id`` is sent because it is
+        canonical, not because it is the only spelling that binds. The
+        parameter is named ``approval_id`` for consistency with the sibling
+        decision methods.
 
         WARNING -- the withdrawal's own metadata is NOT on this return value.
         The response carries the same fields the approval record has always
@@ -860,12 +884,22 @@ class TrustPostureModule:
             reads ``"withdrawn"``.
 
         Raises:
-            NotFoundError: If no pending approval matches (none pending, or
-                ``approval_id`` does not name a pending request for this agent)
-            ValidationError: If ``notes`` is too short, or ``approval_id`` was
-                omitted while more than one request is pending
+            NotFoundError: If the agent has NO pending approval at all. A
+                named ``approval_id`` that does not match is NOT a 404 — see
+                ``ValidationError`` below.
+            ValidationError: If ``notes`` is too short, or ``approval_id``
+                names no pending request for this agent (it belongs to
+                another agent, or was already decided).
             AuthorizationError: If the caller is neither the request's own
-                requester nor a ``trust:delegate`` holder for this agent
+                requester nor a ``trust:delegate`` holder for this agent;
+                or the caller is refused at the adapter's admission gate,
+                which requires an architect / executive / admin persona,
+                or a ``trust`` scope for an API key, BEFORE the per-request
+                decision is reached; or the caller holds ``trust:delegate``
+                but is not the recorded custodian of a
+                custodially-supervised agent (one whose linked role is
+                vacant) — the delegate arm is narrowed to the custodian,
+                while the requester arm is not.
             AgenticOSError: On a 409 conflict. The SDK maps NO exception
                 subclass to 409, so this arrives as the BASE error rather than
                 a conflict-specific type; discriminate on

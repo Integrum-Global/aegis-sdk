@@ -63,16 +63,33 @@ withdrawal's reason is on the platform's audit trail for it.
 **On availability.** The platform implements this route; a deployment running
 a platform build that predates it answers `404`. This client declares the
 operation, which is a different claim from any particular deployment serving
-it — check yours with `python -m aegis_sdk.coc.probe`.
+it — the only way to check yours is to call it.
+
+⚠ **A `404` here is ambiguous, and no probe in this package resolves it.**
+This route itself answers `404` when the agent has no pending request, so a
+`404` does not by itself tell you whether your deployment serves the route at
+all. `python -m aegis_sdk.coc.probe` cannot answer it either: it enumerates
+only **parameter-free `GET`s**, and this is a `POST` carrying an
+`{agent_id}`. Reproduce it against an agent you know holds a pending request,
+and read the refusal body rather than the status alone.
 
 ### Fixed — every posture decision call sent an identifier the server dropped
 
 `postures.approve_transition`, `postures.reject_transition`,
 `trust_posture.approve_posture_transition` and
 `trust_posture.reject_posture_transition` all sent their request identifier
-under the key `approvalId`. **The routes do not read that key.** They declare
-`request_id`, with no camelCase alias, so pydantic's default `extra='ignore'`
-dropped it on arrival and `request_id` was left `None` on every call.
+under the key `approvalId`. **At the time this shipped, the routes did not
+read that key.** They declared `request_id` alone, so pydantic's default
+`extra='ignore'` dropped it on arrival and `request_id` was left `None` on
+every call.
+
+⚠ **Read that in the past tense, because it no longer holds.** The platform
+has since added `approvalId` as a **compatibility alias** on the shared
+identifier field, so today BOTH `request_id` and `approvalId` bind on these
+routes; only `requestId` is dropped. That alias exists so deployed v2.0.0
+clients keep working, not because it is the canonical spelling. Send
+`request_id` — it is what the route declares, what the frontend sends, and
+the only spelling that survives the alias being withdrawn.
 
 The effect was not a visible error. An agent with more than one pending
 posture request is refused as *ambiguous* unless the caller names which one —
