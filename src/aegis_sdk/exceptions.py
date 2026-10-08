@@ -176,6 +176,33 @@ class ValidationError(AgenticOSError):
     pass
 
 
+class ConflictError(AgenticOSError):
+    """
+    The server's state made the request undecidable, so it refused rather than
+    guessing. HTTP 409.
+
+    This is a DELIBERATE refusal, not a fault. A 409 usually means one of two
+    things, and they need different responses:
+
+    * **The call must name which one.** Several routes are keyed on a parent
+      resource that can hold more than one eligible child. When it does and the
+      caller names none, the server refuses instead of picking one -- because
+      picking wrongly acts on something nobody selected. Supply the specific
+      child and re-call.
+    * **A precondition no longer holds.** The row you were acting on stopped
+      being in the state your call required -- someone else decided, withdrew or
+      updated it concurrently. Re-read the resource; retrying unchanged will
+      lose again.
+
+    ``status_code`` is 409 and the server's own explanation is in ``details``.
+
+    Subclasses :class:`AgenticOSError`, so an ``except AgenticOSError`` written
+    before this class existed keeps working unchanged.
+    """
+
+    pass
+
+
 class RateLimitError(AgenticOSError):
     """
     Rate limit exceeded.

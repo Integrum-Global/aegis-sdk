@@ -231,3 +231,163 @@ class TestWithdrawOnTheModuleSurface:
 
         assert record.status == "withdrawn"
         assert record.id == "approval_b"
+
+
+def _response(status: int, body: dict | None = None):
+    """A real httpx.Response so the REAL status mapping runs, not a double."""
+    import httpx
+
+    return httpx.Response(
+        status,
+        json=body if body is not None else {"detail": "refused"},
+        request=httpx.Request("POST", f"http://x{WITHDRAW_URL}"),
+    )
+
+
+def _map_status(status: int):
+    """Drive ``HTTPClient._handle_response`` and return the raised exception.
+
+    The mapping is exercised through the real client rather than a mock: these
+    tests exist to pin which EXCEPTION a caller catches, so substituting the
+    thing under test would pin nothing.
+    """
+    from aegis_sdk._http import HTTPClient
+
+    client = HTTPClient.__new__(HTTPClient)  # no __init__: the mapper needs no state
+    try:
+        client._handle_response(_response(status))
+    except Exception as exc:  # noqa: BLE001 — the point is to inspect what came out
+        return exc
+    raise AssertionError(f"status {status} raised nothing at all")
+
+
+@pytest.mark.asyncio
+class TestTheRefusalsAWithdrawCanProduceAreCatchable:
+    """Each status a caller can actually receive, pinned BY TYPE and BY CODE.
+
+    WHY THIS EXISTS. A status with no branch in ``_handle_response`` does not
+    fail loudly -- it falls through to the generic ``else`` and raises
+    ``AgenticOSError("Unexpected status code: N")``. The caller then cannot tell
+    a deliberate refusal from a broken server, and any ``except <SpecificError>``
+    they wrote raises ``NameError`` in their own code. 409 had exactly that gap
+    until this change, so the 409 case below is the regression pin for it.
+    """
+
+    @pytest.mark.parametrize(
+        ("status", "expected"),
+        [
+            (400, "ValidationError"),
+            (403, "AuthorizationError"),
+            (404, "NotFoundError"),
+            (409, "ConflictError"),
+        ],
+    )
+    def test_the_status_maps_to_its_documented_exception(self, status, expected):
+        exc = _map_status(status)
+
+        assert type(exc).__name__ == expected, (
+            f"HTTP {status} raised {type(exc).__name__}, expected {expected}. An "
+            f"'Unexpected status code' message means this status has no branch, so "
+            f"a caller cannot catch it by type."
+        )
+        assert exc.status_code == status, (
+            f"{expected}.status_code is {exc.status_code!r}, expected {status}. The "
+            f"wire value is the one thing a caller can branch on when the type is "
+            f"unfamiliar."
+        )
+
+    async def test_conflict_error_is_importable_from_the_package_root(self):
+        """Callers catch it as ``aegis_sdk.ConflictError``.
+
+        The withdraw route's own docstrings have advertised ``Raises:
+        ConflictError`` since 2026-09-11 while no such class was importable.
+        A class that exists but is not exported leaves that promise uncatchable.
+        """
+        import aegis_sdk
+
+        assert hasattr(aegis_sdk, "ConflictError"), (
+            "ConflictError is not exported from the package root; the documented "
+            "`Raises: ConflictError` contract cannot be honoured by a caller."
+        )
+        assert issubclass(aegis_sdk.ConflictError, aegis_sdk.AgenticOSError), (
+            "ConflictError must stay a subclass of AgenticOSError or an existing "
+            "`except AgenticOSError` handler stops catching a 409."
+        )
+
+    async def test_an_existing_base_class_handler_still_catches_a_409(self):
+        """Backward compatibility, asserted rather than assumed.
+
+        Before this change a 409 arrived as ``AgenticOSError``. Code written
+        against that must keep working untouched.
+        """
+        from aegis_sdk import AgenticOSError
+
+        try:
+            raise _map_status(409)
+        except AgenticOSError as exc:
+            assert exc.status_code == 409
+        else:
+            raise AssertionError("a 409 was not catchable as AgenticOSError")
+
+
+@pytest.mark.asyncio
+class TestTheWithdrawPathIsEncoded:
+    """An identifier needing encoding must not corrupt the route.
+
+    ``agent_1`` is URL-safe, so every other test here would pass even if the
+    path segment were interpolated raw. These use an identifier that is not.
+    """
+
+    NEEDY = "agent/with space+plus"
+
+    async def test_the_trust_surface_encodes_the_path_segment(self, mock_http):
+        await PosturesModule(mock_http).withdraw_transition(self.NEEDY, "no longer needed")
+
+        _args, kwargs = mock_http.request.call_args
+        sent = kwargs.get("json_data") is not None  # body present, path is args[1]
+        assert sent
+        url = mock_http.request.call_args[0][1]
+        assert self.NEEDY not in url, f"the identifier was interpolated raw: {url!r}"
+        assert " " not in url.split("/api")[1], f"a raw space survived into the URL: {url!r}"
+        assert url.endswith("/withdraw"), url
+
+    async def test_the_module_surface_encodes_the_path_segment(self, mock_http):
+        await TrustPostureModule(mock_http).withdraw_posture_transition(
+            self.NEEDY, "no longer needed"
+        )
+
+        url = mock_http.request.call_args[0][1]
+        assert self.NEEDY not in url, f"the identifier was interpolated raw: {url!r}"
+        assert " " not in url.split("/api")[1], f"a raw space survived into the URL: {url!r}"
+        assert url.endswith("/withdraw"), url
+
+
+@pytest.mark.asyncio
+class TestTheModuleSurfaceBodyIsExactlyTheCanonicalKeys:
+    """The MODULE surface had no exact-key assertion; the trust surface did.
+
+    Without one, a body could gain an extra key that the route drops silently --
+    the caller believes they sent something the server never read.
+    """
+
+    async def test_body_keys_are_exactly_notes_and_request_id(self, mock_http):
+        await TrustPostureModule(mock_http).withdraw_posture_transition(
+            "agent_1", "no longer needed", approval_id="approval_b"
+        )
+
+        _args, kwargs = mock_http.request.call_args
+        assert set(kwargs["json_data"]) == {"notes", "request_id"}, (
+            f"the module surface sent {sorted(kwargs['json_data'])}. An extra key "
+            f"is dropped by the route's model and the caller is never told."
+        )
+
+    async def test_body_keys_without_an_identifier_omit_it_entirely(self, mock_http):
+        await TrustPostureModule(mock_http).withdraw_posture_transition(
+            "agent_1", "no longer needed"
+        )
+
+        _args, kwargs = mock_http.request.call_args
+        assert set(kwargs["json_data"]) == {"notes"}, (
+            f"expected exactly {{'notes'}}, got {sorted(kwargs['json_data'])}. A "
+            f"null request_id is not the same sent value as an omitted one."
+        )

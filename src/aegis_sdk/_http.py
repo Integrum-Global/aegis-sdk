@@ -23,6 +23,7 @@ from .exceptions import (
     AgenticOSError,
     AuthenticationError,
     AuthorizationError,
+    ConflictError,
     ConnectionError,
     GovernanceViolationError,
     NotFoundError,
@@ -643,6 +644,15 @@ class HTTPClient:
             raise RateLimitError(
                 _message_or(error_detail, f"Rate limit exceeded. Retry after {retry_after}s"),
                 retry_after=retry_after,
+                details=error_detail,
+            )
+        elif status == 409:
+            # A DELIBERATE refusal, and this layer used to report it as a
+            # surprise: 409 had no branch, so it fell through to the `else` at
+            # the bottom as "Unexpected status code: 409", while several
+            # methods' own docstrings advertised `Raises: ConflictError`.
+            raise ConflictError(
+                _message_or(error_detail, "Request conflicts with the server's current state"),
                 details=error_detail,
             )
         elif status == 451:
