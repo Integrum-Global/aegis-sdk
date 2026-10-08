@@ -250,24 +250,69 @@ def _response(status: int, body: dict | None = None):
     )
 
 
-def _map_status(status: int):
+def _html_response(status: int):
+    """An error page rather than an error object — what an ingress returns."""
+    import httpx
+
+    return httpx.Response(
+        status,
+        text="<html><body><h1>409 Conflict</h1></body></html>",
+        headers={"content-type": "text/html"},
+        request=httpx.Request("POST", f"http://x{WITHDRAW_URL}"),
+    )
+
+
+def _list_response(status: int):
+    """Well-formed JSON that is not an object — the envelope branch cannot read it."""
+    import httpx
+
+    return httpx.Response(
+        status,
+        json=[{"detail": "a bare list, not the envelope"}],
+        request=httpx.Request("POST", f"http://x{WITHDRAW_URL}"),
+    )
+
+
+def _map(response):
     """Drive ``HTTPClient._handle_response`` and return the raised exception.
 
     The mapping is exercised through the real client rather than a mock: these
     tests exist to pin which EXCEPTION a caller catches, so substituting the
     thing under test would pin nothing.
+
+    Takes the RESPONSE rather than a status because the body SHAPE changes the
+    branch `_extract_error_detail` takes — an HTML body never reaches
+    `response.json()`, and a list body reaches it but is not a dict — and those
+    are separate code paths that a status-only helper cannot reach at all.
     """
     from aegis_sdk._http import HTTPClient
 
     client = HTTPClient.__new__(HTTPClient)  # no __init__: the mapper needs no state
     try:
-        client._handle_response(_response(status))
+        client._handle_response(response)
     except Exception as exc:  # noqa: BLE001 — the point is to inspect what came out
         return exc
-    raise AssertionError(f"status {status} raised nothing at all")
+    raise AssertionError(f"status {response.status_code} raised nothing at all")
 
 
-@pytest.mark.asyncio
+def _map_status(status: int):
+    return _map(_response(status))
+
+
+#: The platform's REAL error envelope. Every error Aegis returns is re-wrapped
+#: into this shape by a global HTTPException handler before it leaves the
+#: server, so a test built on the flat ``{"detail": ...}`` shape is testing a
+#: body no deployment actually sends for a route like this one.
+_ENVELOPE = {
+    "error": {
+        "code": "WITHDRAW_CONFLICT",
+        "message": "Approval request approval_a is 'approved', not pending",
+        "details": {"approval_id": "approval_a"},
+        "request_id": "req-1151",
+    }
+}
+
+
 class TestTheRefusalsAWithdrawCanProduceAreCatchable:
     """Each status a caller can actually receive, pinned BY TYPE and BY CODE.
 
@@ -302,6 +347,83 @@ class TestTheRefusalsAWithdrawCanProduceAreCatchable:
             f"unfamiliar."
         )
 
+    def test_the_409_message_is_the_SERVER_s_explanation_not_a_placeholder(self):
+        """``str(exc)`` carries the server's own sentence, through the REAL envelope.
+
+        ⛔ THIS IS r1's ORIGINAL F1 SYMPTOM, and type-plus-code does not cover it.
+        Before the 409 branch existed, a caller was told
+        ``"Unexpected status code: 409"`` — a deliberate refusal reported as a
+        platform malfunction. Substituting a DIFFERENT fixed sentence for it
+        ("Request conflicts with the server's current state") would satisfy every
+        type and status_code assertion in this class while still throwing away
+        the one thing the server knew and the caller did not: WHICH request was
+        no longer pending, and why.
+
+        Built on the platform's real error envelope rather than the flat
+        ``{"detail": ...}`` shape, because a global HTTPException handler
+        re-wraps every error before it leaves the server — so the envelope is
+        what a deployment actually sends, and the message has to survive being
+        read one level in.
+
+        FALSIFYING RESULT, named: replace the ``_message_or(error_detail, ...)``
+        call in the 409 branch with a bare string literal and this reddens on the
+        message assertion, while every other test in this class stays green.
+        """
+        exc = _map(_response(409, _ENVELOPE))
+
+        assert str(exc) == _ENVELOPE["error"]["message"], (
+            f"str(exc) is {str(exc)!r}; the server sent "
+            f"{_ENVELOPE['error']['message']!r}. The message is the half of the "
+            f"refusal the caller cannot reconstruct from the status."
+        )
+        assert "Unexpected status code" not in str(exc), (
+            f"the refusal is still being reported as a surprise: {str(exc)!r}"
+        )
+
+    @pytest.mark.parametrize(
+        ("label", "response_factory", "expected_code"),
+        [
+            ("html-body", lambda: _html_response(409), 409),
+            ("list-body", lambda: _list_response(409), 409),
+        ],
+        ids=["html-body", "list-body"],
+    )
+    def test_a_409_with_an_unextraordinary_body_still_reports_its_status(
+        self, label, response_factory, expected_code
+    ):
+        """The status survives a body the extractor cannot read as an object.
+
+        WHY THIS IS A SEPARATE TEST AND NOT PART OF THE ONE ABOVE.
+        ``_extract_error_detail`` has THREE returns: the JSON-decode fallback, a
+        non-dict JSON body, and the normal object path. A mutation sweep found
+        that removing ``status_code`` from the first two changes NOTHING in this
+        file — because every other test here sends a dict body and only the third
+        path is ever taken. The status code is the one field a caller can branch
+        on when they do not recognise the type, so it has to be present on all
+        three, not only the convenient one.
+
+        An HTML error page is what a misrouted request or an ingress returns; a
+        list body is a shape the envelope branch cannot read. Neither is exotic
+        enough to lose the status over.
+
+        FALSIFYING RESULT, named: drop ``status_code`` from the matching return
+        in ``_extract_error_detail`` and this reddens for that id alone —
+        ``html-body`` for the decode fallback, ``list-body`` for the non-dict
+        branch.
+        """
+        exc = _map(response_factory())
+
+        assert type(exc).__name__ == "ConflictError", (
+            f"a 409 with a {label} got {type(exc).__name__}"
+        )
+        assert exc.status_code == expected_code, (
+            f"a 409 with a {label} reported status_code={exc.status_code!r}, "
+            f"expected {expected_code}. The status is the only field a caller can "
+            f"branch on when the body is unreadable; losing it on this path means "
+            f"the refusal cannot be identified at all."
+        )
+
+    @pytest.mark.asyncio
     async def test_conflict_error_is_importable_from_the_package_root(self):
         """Callers catch it as ``aegis_sdk.ConflictError``.
 
@@ -320,6 +442,7 @@ class TestTheRefusalsAWithdrawCanProduceAreCatchable:
             "`except AgenticOSError` handler stops catching a 409."
         )
 
+    @pytest.mark.asyncio
     async def test_an_existing_base_class_handler_still_catches_a_409(self):
         """Backward compatibility, asserted rather than assumed.
 

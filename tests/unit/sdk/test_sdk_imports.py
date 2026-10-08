@@ -111,6 +111,7 @@ class TestSDKExceptionImports:
             AuthenticationError,
             AuthorizationError,
             ConfigurationError,
+            ConflictError,
             ConnectionError,
             GovernanceViolationError,
             NotFoundError,
@@ -134,9 +135,48 @@ class TestSDKExceptionImports:
         assert issubclass(GovernanceViolationError, AgenticOSError)
         assert issubclass(ServiceUnavailableError, AgenticOSError)
         assert issubclass(ConfigurationError, AgenticOSError)
+        assert issubclass(ConflictError, AgenticOSError)
         assert issubclass(ConnectionError, AgenticOSError)
         assert issubclass(TimeoutError, AgenticOSError)
         assert issubclass(UnsupportedOperationError, AgenticOSError)
+
+    def test_every_public_exception_is_in_dunder_all(self):
+        """``import x`` succeeding is NOT the same as the name being EXPORTED.
+
+        ⛔ THE GAP THIS CLOSES. ``from aegis_sdk import ConflictError`` works as
+        long as the class is imported anywhere in ``__init__.py`` — a bare
+        ``from .exceptions import ConflictError`` binds it whether or not it
+        appears in ``__all__``. So deleting it from ``__all__``, which is the
+        line that actually declares it public, left every test in this
+        repository green. Same shape one level down as the defect the class was
+        added for: a promise nothing could falsify.
+
+        ``__all__`` is what ``from aegis_sdk import *``, IDE completion and
+        documentation generators read, so a class missing from it is exported by
+        accident rather than on purpose.
+
+        FALSIFYING RESULT, named: remove any name below from ``__init__.__all__``
+        and this reddens naming it.
+        """
+        import aegis_sdk
+
+        exported = set(aegis_sdk.__all__)
+        for name in (
+            "AgenticOSError",
+            "AuthenticationError",
+            "AuthorizationError",
+            "ConflictError",
+            "NotFoundError",
+            "RateLimitError",
+            "ServiceError",
+            "TrustViolationError",
+            "ValidationError",
+        ):
+            assert name in exported, (
+                f"{name!r} is importable but ABSENT from aegis_sdk.__all__, so it "
+                f"is not actually exported — `from aegis_sdk import *` will not "
+                f"provide it and no doc generator will see it."
+            )
 
     def test_exception_aliases_importable(self):
         """Exception aliases should be importable."""

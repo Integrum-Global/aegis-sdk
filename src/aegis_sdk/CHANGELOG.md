@@ -5,6 +5,35 @@ version here is the SDK's own; it is not the server's.
 
 ## Unreleased
 
+### Changed — every `409`, on every route, is now `ConflictError` and says what the server said
+
+**This one reaches every caller, not only the ones using the new withdraw
+method.** Until now the transport had no `409` branch at all, so a conflict fell
+through the status mapping to the base class and arrived as
+`AgenticOSError("Unexpected status code: 409")` — a deliberate, documented
+refusal reported as a platform malfunction, with the server's own explanation
+buried in `exc.details` where no `str(exc)` would show it.
+
+Two things change, and both are why this has its own entry rather than living
+inside the withdraw note:
+
+- **The type.** A `409` is now `aegis_sdk.ConflictError`. It subclasses
+  `AgenticOSError`, so an existing `except AgenticOSError` keeps catching it
+  untouched, and `exc.status_code == 409` still carries the wire value. Only code
+  that was string-matching `str(exc)` sees a new value.
+- **`str(exc)`.** It is now the server's own message — which request was no
+  longer pending, and why — instead of `"Unexpected status code: 409"`.
+
+If you were branching on `exc.status_code == 409`, nothing changes. If you were
+branching on the message text, that was never a contract: use the status, or
+`except ConflictError`.
+
+The same commit corrects the shipped documentation that described the old
+behaviour as a decision — the `error-taxonomy` and `diagnosing-a-refusal`
+guardrails (in all three CLI projections), the handbook's error chapter, and the
+`artifacts` module reference. `409` was documented as unclassifiable in seven
+places; it is documented as refusable in all of them now.
+
 ### Added — `withdraw_transition`, so a requester can retract their own pending request
 
 Until now a pending posture request had exactly two exits — approve and
