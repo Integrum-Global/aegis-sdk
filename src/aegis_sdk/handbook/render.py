@@ -870,6 +870,229 @@ def _pdf_via_chrome(program: str, source: Path, out: Path) -> None:
         raise RenderError(f"chrome failed (exit {result.returncode}): {result.stderr.strip()}")
 
 
+# ─────────────────────── the tagged-PDF structure tree ───────────────────────
+
+#: One PDF object record: ``N 0 obj <body> endobj``, anchored at line start.
+#: Chrome's print-to-pdf writes these uncompressed behind a classic xref table,
+#: which is what makes the strip below a text operation rather than a PDF
+#: parser. Anything shaped differently is REFUSED rather than guessed at.
+_PDF_OBJECT = re.compile(rb"(?m)^(\d+)\s+0\s+obj(.*?)(?=\nendobj)", re.S)
+
+#: An indirect reference. Judged inside dictionaries ONLY: a stream payload is
+#: arbitrary bytes, and a ``\d+ 0 R`` occurring in one is a coincidence, not a
+#: reference. Rewriting it there would corrupt an image.
+_PDF_REFERENCE = re.compile(rb"(\d+)\s+0\s+R")
+
+#: The document itself. These are never dropped, whatever references them —
+#: removing one of these is how a "smaller" file becomes a broken one.
+_PDF_KEEP = re.compile(
+    rb"/Type /Page\b|/Type /Pages|/Subtype /Link|/Type /Font|/FontDescriptor"
+    rb"|/Subtype /Image|/Type /Catalog|/Type /Metadata"
+)
+
+#: Keys that exist only to serve the structure tree. Left behind, they would
+#: point into a tree that is no longer there.
+_PDF_STRUCTURE_KEYS = re.compile(
+    rb"\s*/StructTreeRoot\s+\d+\s+0\s+R"
+    rb"|\s*/MarkInfo\s*<<(?:[^<>]|<<[^>]*>>)*>>"
+    rb"|\s*/StructParents?\s+\d+"
+    rb"|\s*/Tabs\s*/\w+"
+)
+
+
+def _pdf_dict(body: bytes) -> bytes:
+    """An object's dictionary, without any stream payload."""
+    cut = body.find(b"stream")
+    return body[:cut] if cut != -1 else body
+
+
+def _pdf_objects(data: bytes) -> dict[int, bytes]:
+    """``{object number: body}`` for every object record in ``data``."""
+    return {int(m.group(1)): m.group(2) for m in _PDF_OBJECT.finditer(data)}
+
+
+def _pdf_page_count(data: bytes) -> int:
+    """``/Type /Page`` but not ``/Type /Pages`` — the page-tree node."""
+    return len(re.findall(rb"/Type\s*/Page[^s]", data))
+
+
+def dangling_references(data: bytes) -> list[int]:
+    """Every indirect reference in ``data`` that resolves to no object.
+
+    THIS IS THE CHECK THAT MATTERS, and it is why this module ships a test that
+    runs it over the committed handbook rather than a one-off measurement.
+
+    A structure tree removed carelessly leaves the tree's CONTAINER objects
+    behind. The ``/ParentTree`` ``/Nums`` sub-arrays and the ``/IDTree``
+    name-tree nodes hold no ``/Type /StructElem``, so a rule that drops by that
+    string misses them — and they go on pointing at elements that no longer
+    exist. The failure is invisible to every cheap signal: the file opens, the
+    page count is right, the font count is right, and ``pdftotext`` extracts the
+    same words.
+
+    Measured on the first cut of this strip: 9,408,862 bytes, 513 pages, 38
+    fonts, 170,166 extractable words — and **37,681 dangling references**.
+    Reference resolution is the only check that told it apart from a good one.
+    """
+    objects = _pdf_objects(data)
+    return sorted(
+        {
+            int(m.group(1))
+            for body in objects.values()
+            for m in _PDF_REFERENCE.finditer(_pdf_dict(body))
+            if int(m.group(1)) not in objects
+        }
+    )
+
+
+def strip_tagged_structure(data: bytes) -> bytes:
+    """Drop the tagged-PDF structure tree. Returns ``data`` itself if there is none.
+
+    WHY THIS EXISTS. Headless Chrome emits a TAGGED PDF: every text run, table
+    cell and list item becomes a ``StructElem``, and this book's 513 pages
+    produce **56,067** of them — roughly 9 MB, or more than half the file, for a
+    document whose readers are people reading it. Removing them takes the book
+    from 16.1 MB to 9.0 MB, which is what brings it under the repository's
+    "no file over 10 MB" binary rule.
+
+    ⚠ WHAT IS GIVEN UP, and it is a real loss rather than a technicality:
+    tagging is what a screen reader consumes, so the stripped PDF is NOT
+    accessible. That was the operator's decision of 2026-10-08, made with the
+    accessibility loss named and accepted against the alternative of a 16.1 MB
+    file that breaches the rule. Do not re-enable tagging without them.
+
+    WHAT IS KEPT, and why the rule is a TRANSITIVE CLOSURE rather than a string
+    match: pages, every annotation (all ~600 internal links), fonts and images
+    are never dropped, and the tree is removed by walking outward from
+    ``StructTreeRoot``. Dropping only the ``StructElem`` objects leaves the
+    tree's containers orphaned and still pointing at deleted objects — the
+    37,681-reference defect ``dangling_references`` exists to catch — so any
+    object whose references ALL resolve into the dropped set is dropped with it.
+
+    REFUSES rather than guesses: an object-stream PDF, or one with no objects to
+    parse, raises. The result is re-checked for dangling references and for an
+    unchanged page count before it is returned, so a strip that cannot be
+    verified does not produce a file.
+    """
+    if b"/StructTreeRoot" not in data:
+        return data
+    if b"/ObjStm" in data:
+        raise RenderError(
+            "the PDF stores its objects in object streams, which this strip does "
+            "not parse; refusing rather than emitting a file it cannot verify"
+        )
+
+    objects = _pdf_objects(data)
+    if not objects:
+        raise RenderError("no PDF objects found — the file is not shaped as expected")
+
+    # TWO different roots, and conflating them is a real defect: the catalog is
+    # the document's `/Root` and is KEPT, while `/StructTreeRoot` names the tree
+    # being removed. (`/Root\s+` cannot match inside `/StructTreeRoot` — the
+    # character before `Root` there is `e`, not `/` — so these do not collide.)
+    root_ref = re.search(rb"/StructTreeRoot\s+(\d+)\s+0\s+R", data)
+    if root_ref is None:
+        raise RenderError("a structure tree is advertised but no /StructTreeRoot ref was found")
+    structure_number = int(root_ref.group(1))
+
+    catalog_ref = re.search(rb"/Root\s+(\d+)\s+0\s+R", data)
+    if catalog_ref is None:
+        raise RenderError("no /Root ref found in the trailer; refusing to repack the file")
+    catalog_number = int(catalog_ref.group(1))
+
+    dropped = {n for n, body in objects.items() if b"/Type /StructElem" in body}
+    dropped.add(structure_number)
+
+    # Closure. `_PDF_KEEP` holds the document back, so this can only ever remove
+    # tree furniture: nothing that carries a page, a link, a font or an image
+    # can be reached.
+    changed = True
+    while changed:
+        changed = False
+        for number, body in objects.items():
+            if number in dropped or _PDF_KEEP.search(body):
+                continue
+            references = {int(m.group(1)) for m in _PDF_REFERENCE.finditer(_pdf_dict(body))}
+            if references and references <= dropped:
+                dropped.add(number)
+                changed = True
+
+    kept = sorted(number for number in objects if number not in dropped)
+    if not kept:
+        raise RenderError("the strip would remove every object; refusing")
+
+    renumbered = {old: new for new, old in enumerate(kept, start=1)}
+
+    def renumber(text: bytes) -> bytes:
+        # A reference to a DROPPED object becomes ``0`` — never a valid object
+        # number, since objects are 1-based — rather than keeping its own.
+        #
+        # Leaving the original number would be WORSE than dangling. Kept objects
+        # are renumbered from 1, and 2,442 of this book's original numbers fall
+        # inside that new range, so a stale reference can land on a DIFFERENT
+        # object and resolve to the wrong thing: no error, no dangling reference,
+        # just the wrong page. Sending them to 0 makes every one of them a
+        # detected dangling reference instead, which the postcondition below
+        # turns into a refusal. Chrome emits no literal `0 0 R` (measured: 0),
+        # so this cannot collide with a legitimate null.
+        return _PDF_REFERENCE.sub(
+            lambda m: b"%d 0 R" % renumbered.get(int(m.group(1)), 0), text
+        )
+
+    out = bytearray(data[: data.index(b"\n", data.index(b"\n") + 1) + 1])
+    offsets: dict[int, int] = {}
+    for number in kept:
+        body = objects[number]
+        cut = body.find(b"stream")
+        if cut != -1:
+            # ONLY the dictionary ahead of the payload is edited. The payload is
+            # copied byte for byte: image samples and compressed operators are
+            # arbitrary bytes, and a `\d+ 0 R` or a `/StructParent` occurring
+            # inside one is a coincidence — editing it would corrupt the file.
+            head, payload = body[:cut], body[cut:]
+            body = renumber(_PDF_STRUCTURE_KEYS.sub(b"", head)) + payload
+        else:
+            body = renumber(_PDF_STRUCTURE_KEYS.sub(b"", body))
+        offsets[number] = len(out)
+        out += b"%d 0 obj" % renumbered[number] + body + b"\nendobj\n"
+
+    size = len(kept) + 1
+    xref_at = len(out)
+    out += b"xref\n0 %d\n0000000000 65535 f \n" % size
+    for number in kept:
+        out += b"%010d 00000 n \n" % offsets[number]
+
+    trailer = (
+        b"trailer\n<</Size "
+        + str(size).encode()
+        + b" /Root "
+        + str(renumbered[catalog_number]).encode()
+        + b" 0 R"
+    )
+    info_ref = re.search(rb"/Info\s+(\d+)\s+0\s+R", data)
+    if info_ref is not None and int(info_ref.group(1)) in renumbered:
+        trailer += b" /Info " + str(renumbered[int(info_ref.group(1))]).encode() + b" 0 R"
+    out += trailer + b">>\nstartxref\n" + str(xref_at).encode() + b"\n%%EOF\n"
+
+    result = bytes(out)
+
+    # Postconditions. A strip that produced a broken file must fail here rather
+    # than hand one to the caller — see dangling_references for why no cheaper
+    # signal would notice.
+    dangling = dangling_references(result)
+    if dangling:
+        raise RenderError(
+            f"the strip left {len(dangling)} dangling reference(s), first "
+            f"{dangling[:5]}; refusing to emit a broken PDF"
+        )
+    if _pdf_page_count(result) != _pdf_page_count(data):
+        raise RenderError(
+            f"the strip changed the page count "
+            f"({_pdf_page_count(data)} -> {_pdf_page_count(result)}); refusing"
+        )
+    return result
+
+
 def write_pdf(out: Path, root: Path = HANDBOOK, **kwargs: object) -> Path:
     """Build the book and print it to PDF.
 
@@ -879,6 +1102,12 @@ def write_pdf(out: Path, root: Path = HANDBOOK, **kwargs: object) -> Path:
     it is genuinely a fallback: it honours the page box and loses the paged
     generated content. It is used only when WeasyPrint is ABSENT — a WeasyPrint
     that runs and fails is a real failure and is reported as one.
+
+    The result passes through :func:`strip_tagged_structure`, so the file this
+    writes is already the one that belongs in the tree. That is deliberate: a
+    committed PDF has to be reproducible from the chapters beside it, and a
+    post-processing step someone has to remember to run is a step that will not
+    be run. What the strip costs, and why, is documented on it.
     """
     document = build_html(root, **kwargs)  # type: ignore[arg-type]
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -904,6 +1133,11 @@ def write_pdf(out: Path, root: Path = HANDBOOK, **kwargs: object) -> Path:
 
     if not out.is_file() or out.stat().st_size == 0:
         raise RenderError(f"the renderer reported success but produced no PDF at {out}")
+
+    rendered = out.read_bytes()
+    stripped = strip_tagged_structure(rendered)
+    if stripped is not rendered:
+        out.write_bytes(stripped)
     return out
 
 
