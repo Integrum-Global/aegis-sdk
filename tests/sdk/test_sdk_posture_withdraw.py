@@ -37,6 +37,12 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from pydantic import BaseModel, Field
 
+from aegis_sdk import (
+    AuthorizationError,
+    ConflictError,
+    NotFoundError,
+    ValidationError,
+)
 from aegis_sdk.modules.trust_posture import TrustPostureModule
 from aegis_sdk.trust.postures import PosturesModule
 
@@ -391,3 +397,69 @@ class TestTheModuleSurfaceBodyIsExactlyTheCanonicalKeys:
             f"expected exactly {{'notes'}}, got {sorted(kwargs['json_data'])}. A "
             f"null request_id is not the same sent value as an omitted one."
         )
+
+
+@pytest.mark.asyncio
+class TestEachSurfaceLetsARefusalThroughUnchanged:
+    """The METHOD-level error path, on BOTH surfaces.
+
+    The refusals pinned above drive ``HTTPClient._handle_response`` directly, so
+    they pin what the MAPPER does. A surface that caught the refusal and
+    returned an empty record would satisfy every one of them and still hand the
+    caller a silent wrong answer. Each withdraw docstring promises these four
+    types BY NAME, and that promise is kept only if the METHOD propagates them.
+
+    ``type(...) is`` rather than ``isinstance``: the point is that a caller can
+    match the SPECIFIC class, so a bare ``AgenticOSError`` must fail this even
+    though it is the parent of the expected one.
+    """
+
+    EXPECTED = {
+        400: ValidationError,
+        403: AuthorizationError,
+        404: NotFoundError,
+        409: ConflictError,
+    }
+
+    @staticmethod
+    def _refusing_http(status: int):
+        """An HTTP double that refuses exactly the way the real client does."""
+        http = MagicMock()
+
+        def _refuse(*_args, **_kwargs):
+            raise _map_status(status)
+
+        http.request = AsyncMock(side_effect=_refuse)
+        return http
+
+    @pytest.mark.parametrize("status", [400, 403, 404, 409])
+    async def test_the_trust_surface_propagates_it(self, status):
+        expected = self.EXPECTED[status]
+
+        with pytest.raises(expected) as caught:
+            await PosturesModule(self._refusing_http(status)).withdraw_transition(
+                "agent_1", "no longer needed"
+            )
+
+        assert type(caught.value) is expected, (
+            f"the trust surface raised {type(caught.value).__name__}, and the "
+            f"docstring promises {expected.__name__}. A caller writing "
+            f"`except {expected.__name__}` would miss it."
+        )
+        assert caught.value.status_code == status
+
+    @pytest.mark.parametrize("status", [400, 403, 404, 409])
+    async def test_the_module_surface_propagates_it(self, status):
+        expected = self.EXPECTED[status]
+
+        with pytest.raises(expected) as caught:
+            await TrustPostureModule(self._refusing_http(status)).withdraw_posture_transition(
+                "agent_1", "no longer needed"
+            )
+
+        assert type(caught.value) is expected, (
+            f"the module surface raised {type(caught.value).__name__}, and the "
+            f"docstring promises {expected.__name__}. A caller writing "
+            f"`except {expected.__name__}` would miss it."
+        )
+        assert caught.value.status_code == status
