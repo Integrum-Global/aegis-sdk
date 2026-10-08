@@ -307,10 +307,10 @@ class DecisionsModule:
             NotFoundError: ``404`` — no such decision in this organization.
             ValidationError: ``400`` — the justification is required and
                 absent, or the parameters are otherwise rejected.
-            AgenticOSError: ``409`` (already decided) and ``410`` (expired or
-                cancelled) are both raised as the base error rather than a
-                dedicated subclass — the SDK maps no exception type to either
-                status. Read ``.details["status_code"]`` to tell them apart.
+            ConflictError: ``409`` — the decision has already been decided.
+            AgenticOSError: ``410`` (expired or cancelled) is still raised as
+                the base error: the SDK maps no subclass to that status. Read
+                ``.details["status_code"]`` to tell the two apart.
 
         Example:
             >>> result = await client.decisions.decide(
@@ -349,9 +349,8 @@ class DecisionsModule:
             AuthorizationError: ``403`` — same three causes as :meth:`decide`;
                 an API-key credential can never reach this method.
             NotFoundError: ``404`` — no such decision in this organization.
-            AgenticOSError: ``409`` when the decision has already been decided.
-                No dedicated exception subclass is mapped to that status; read
-                ``.details["status_code"]``.
+            ConflictError: ``409`` when the decision has already been decided.
+                Read ``.details["status_code"]`` to confirm.
 
         Example:
             >>> await client.decisions.cancel(

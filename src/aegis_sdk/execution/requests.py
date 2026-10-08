@@ -346,10 +346,10 @@ class RequestsModule:
             completion is reported in the body.
 
         Raises:
-            AgenticOSError: On a 409 conflict -- the request is in a state from which it cannot be completed. The SDK maps NO
-                exception subclass to 409, so this arrives as the BASE error
-                rather than a conflict-specific type; discriminate on
-                ``exc.details["status_code"] == 409``.
+            ConflictError: On a 409 conflict -- the request is in a state from
+                which it cannot be completed. Subclasses ``AgenticOSError``,
+                so an existing ``except AgenticOSError`` still catches it;
+                ``exc.status_code == 409`` carries the wire value.
 
         Example:
             >>> outcome = await client.requests.complete_in_objective(
@@ -416,10 +416,11 @@ class RequestsModule:
 
 
         Raises:
-            AgenticOSError: On a 409 conflict -- the request is in a state from which a deliverable cannot be submitted. The SDK maps NO
-                exception subclass to 409, so this arrives as the BASE error
-                rather than a conflict-specific type; discriminate on
-                ``exc.details["status_code"] == 409``.
+            ConflictError: On a 409 conflict -- the request is in a state from
+                which a deliverable cannot be submitted. Subclasses
+                ``AgenticOSError``, so an existing ``except AgenticOSError``
+                still catches it; ``exc.status_code == 409`` carries the
+                wire value.
 
         Note:
             ``sign_off_confirmed`` is recorded as submitted. Passing ``True``

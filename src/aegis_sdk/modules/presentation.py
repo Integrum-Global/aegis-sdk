@@ -135,10 +135,10 @@ class PresentationModule:
                 EXECUTE verb, not create: rendering a deck is modelled as
                 running work, not as creating an agent.
             NotFoundError: The request does not exist in your organization.
-            AgenticOSError: The request is not attached to any workspace
-                (``exc.status_code == 409`` -- the SDK has no dedicated 409
-                exception, so this arrives as the base class, same as
-                :meth:`ArtifactsModule.create`'s identical case).
+            ConflictError: The request is not attached to any workspace
+                (``exc.status_code == 409``). Subclasses ``AgenticOSError``,
+                so an existing handler still catches it, same as
+                :meth:`ArtifactsModule.create`'s identical case.
             ServiceError: The server failed (5xx) -- a condition the CALLER
                 cannot fix by editing the spec, unlike the 422 above.
                 ``exc.error_code`` is ``PRESENTATION_RENDERER_UNAVAILABLE``

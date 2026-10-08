@@ -590,12 +590,12 @@ class PosturesModule:
             ValidationError: If ``approval_id`` names no pending request for
                 this agent (it belongs to another agent, or was already
                 decided).
-            AgenticOSError: On a 409 conflict -- ``approval_id`` was omitted
+            ConflictError: On a 409 conflict -- ``approval_id`` was omitted
                 while more than one request is pending, so the target is
                 ambiguous and the server refuses rather than choosing one.
-                The SDK maps NO exception subclass to 409, so this arrives as
-                the BASE error rather than a conflict-specific type;
-                discriminate on ``exc.status_code == 409``.
+                Subclasses ``AgenticOSError``, so an ``except AgenticOSError``
+                written before the class existed still catches it;
+                ``exc.status_code == 409`` carries the wire value.
             AuthorizationError: If the caller may not approve transitions
 
         Example:
@@ -769,12 +769,12 @@ class PosturesModule:
             ValidationError: If notes is too short, or ``approval_id`` names
                 no pending request for this agent (it belongs to another
                 agent, or was already decided).
-            AgenticOSError: On a 409 conflict -- ``approval_id`` was omitted
+            ConflictError: On a 409 conflict -- ``approval_id`` was omitted
                 while more than one request is pending, so the target is
                 ambiguous and the server refuses rather than choosing one.
-                The SDK maps NO exception subclass to 409, so this arrives as
-                the BASE error rather than a conflict-specific type;
-                discriminate on ``exc.status_code == 409``.
+                Subclasses ``AgenticOSError``, so an ``except AgenticOSError``
+                written before the class existed still catches it;
+                ``exc.status_code == 409`` carries the wire value.
 
         Example:
             >>> record = await client.trust.postures.reject_transition(
@@ -877,10 +877,10 @@ class PosturesModule:
                 custodially-supervised agent (one whose linked role is
                 vacant) — the delegate arm is narrowed to the custodian,
                 while the requester arm is not.
-            AgenticOSError: On a 409 conflict. The SDK maps NO exception
-                subclass to 409, so this arrives as the BASE error rather than
-                a conflict-specific type; discriminate on
-                ``exc.status_code == 409``. Two server states produce it: the
+            ConflictError: On a 409 conflict. Subclasses ``AgenticOSError``,
+                so an ``except AgenticOSError`` written before the class
+                existed still catches it; ``exc.status_code == 409`` still
+                carries the wire value. Two server states produce it: the
                 target could not be decided because several requests are
                 pending and none was named, or the row stopped being pending
                 between resolution and the write (it was decided or withdrawn

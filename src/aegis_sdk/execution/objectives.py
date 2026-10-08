@@ -766,12 +766,12 @@ class ObjectivesModule:
             ``{"action": "already_complete", ...}`` rather than raising.
 
         Raises:
-            AgenticOSError: On a 409 conflict when the objective is not ready.
+            ConflictError: On a 409 conflict when the objective is not ready.
                 The blockers travel in the ERROR body, not in a success
-                response. The SDK maps NO exception subclass to 409, so this
-                arrives as the BASE error rather than a conflict-specific
-                type; discriminate on ``exc.details["status_code"] == 409``
-                and read the blockers from ``exc.details``.
+                response. Subclasses ``AgenticOSError``, so an existing
+                ``except AgenticOSError`` still catches it;
+                ``exc.status_code == 409`` carries the wire value. Read the
+                blockers from ``exc.details``.
         """
         response: dict[str, Any] = await self._http.request(
             "POST",
@@ -804,10 +804,11 @@ class ObjectivesModule:
             failed completion is reported in the body, not raised.
 
         Raises:
-            AgenticOSError: On a 409 conflict -- the objective is in a state from which it cannot be completed. The SDK maps NO
-                exception subclass to 409, so this arrives as the BASE error
-                rather than a conflict-specific type; discriminate on
-                ``exc.details["status_code"] == 409``.
+            ConflictError: On a 409 conflict -- the objective is in a state
+                from which it cannot be completed. Subclasses
+                ``AgenticOSError``, so an existing ``except AgenticOSError``
+                still catches it; ``exc.status_code == 409`` carries the
+                wire value.
         """
         body: dict[str, Any] = {}
         if final_deliverable_ids is not None:

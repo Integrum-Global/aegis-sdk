@@ -109,9 +109,9 @@ class ArtifactsModule:
 
         Raises:
             NotFoundError: The request does not exist in your organization.
-            AgenticOSError: The request is not attached to any workspace
-                (``exc.status_code == 409``; the SDK has no dedicated 409
-                exception, so this arrives as the base class).
+            ConflictError: The request is not attached to any workspace
+                (``exc.status_code == 409``). Subclasses ``AgenticOSError``,
+                so an existing handler still catches it.
             ValidationError: The upload was refused as invalid (400) --
                 including a classification the request's workspace cannot hold,
                 whose message says so.

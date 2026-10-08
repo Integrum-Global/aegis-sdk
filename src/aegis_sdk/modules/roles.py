@@ -535,9 +535,9 @@ class RolesModule:
             ValidationError: ``400`` — the role has direct reports. Reassign or
                 remove them first; the platform will not re-parent them for you.
             NotFoundError: ``404`` — no such role in this organization.
-            AgenticOSError: ``409`` — either the delegate agent's trust chain
+            ConflictError: ``409`` — either the delegate agent's trust chain
                 could not be revoked, or the role is the head of a still-active
-                unit. Both surface as the base error; read
+                unit. Both arrive as one class; read
                 ``.details["message"]`` to tell them apart.
 
         Example:
