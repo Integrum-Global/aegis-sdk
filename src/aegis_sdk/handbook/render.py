@@ -1,4 +1,4 @@
-"""Render the handbook as one self-contained HTML file and one PDF — ON DEMAND.
+"""Render the shipped handbook as one self-contained HTML file and one PDF.
 
 WHY THIS EXISTS
 ---------------
@@ -8,24 +8,29 @@ two audiences this SDK actually has: someone reviewing the governance model end
 to end, and someone who has to hand a bound document to a person who will never
 open a terminal.
 
-So this module produces the reading forms, and **its output is NOT committed**.
-That is the point rather than an omission. A PDF built somewhere else and mailed
-over is a claim about a tree the reader cannot see, and a PDF committed beside
-the chapters is the same thing with the same defect: it goes stale the moment a
-chapter changes and the reader cannot tell by looking. A PDF the reader
-regenerates from the handbook in their own clone IS the handbook.
-
-The bundled ``handbook.pdf`` was removed on 2026-10-08 for exactly that reason.
-It had gone stale three times, because re-rendering was impossible on the
-machine doing the work, and it cost every consumer 4.8 MiB of wheel. Write to
-``build/`` or any path outside the package; the module is a TOOL, and the
-markdown chapters are the single source of truth.
-
-:mod:`aegis_sdk.handbook.check` is the one that ships with the book, because its
-RESULT is a property of the tree rather than an artifact that ages::
+So this module produces the reading forms — and it **ships with the book**, for
+the same reason :mod:`aegis_sdk.handbook.check` does. A PDF built somewhere else
+and mailed over is a claim about a tree the reader cannot see; a PDF the reader
+regenerates from the handbook in their own clone is the handbook. Both commands
+are on the same footing::
 
     python -m aegis_sdk.handbook.check            # are the claims still anchored?
-    python -m aegis_sdk.handbook.render --all -o build/   # give me the book, locally
+    python -m aegis_sdk.handbook.render --all -o build/   # give me the book
+
+WHAT SHIPS IS NOT TAGGED
+------------------------
+Every PDF this module writes has its structure tree stripped, including the one
+committed beside the chapters. Chrome emits a TAGGED PDF by default, and for
+this book that is 56,067 ``StructElem`` objects — roughly 9 MB of a 16.1 MB
+file, for a document whose readers are people reading it. Stripping takes it to
+9.0 MB and brings it under the repository's "no file over 10 MB" binary rule.
+
+The cost is real and is not a technicality: tagging is what a screen reader
+consumes, so the shipped PDF is **not accessible**. That was the operator's
+decision of 2026-10-08, taken with the loss named and accepted against a file
+that breaches the rule. It is applied here rather than as a separate command so
+the committed PDF stays reproducible from the chapters beside it. See
+:func:`strip_tagged_structure`, and do not re-enable tagging without them.
 
 TWO DOCUMENTS, ONE RENDERER
 ---------------------------
@@ -866,7 +871,11 @@ def _pdf_via_chrome(program: str, source: Path, out: Path) -> None:
             source.as_uri(),
         ]
     )
-    if result.returncode != 0:
+    # A nonzero exit is only a failure if the ARTIFACT is missing or truncated —
+    # see `_pdf_is_complete` for the measurement behind that. Raising on the
+    # status alone refuses a render that succeeded, which is what this machine
+    # does every time.
+    if result.returncode != 0 and not _pdf_is_complete(out):
         raise RenderError(f"chrome failed (exit {result.returncode}): {result.stderr.strip()}")
 
 
@@ -898,6 +907,32 @@ _PDF_STRUCTURE_KEYS = re.compile(
     rb"|\s*/StructParents?\s+\d+"
     rb"|\s*/Tabs\s*/\w+"
 )
+
+
+def _pdf_is_complete(path: Path) -> bool:
+    """Whether ``path`` holds a WHOLE PDF, judged from the artifact itself.
+
+    THE EXIT CODE IS NOT THIS QUESTION. Measured here on 2026-10-08 with Chrome
+    154: ``--headless`` writes a complete, correct 16,130,626-byte PDF and then
+    exits **2** during teardown (``CVDisplayLinkCreateWithCGDisplay failed``),
+    while the same binary with ``--disable-software-rasterizer`` added exits
+    **0** and writes **nothing at all**. The exit status is uncorrelated with the
+    artifact in BOTH directions, so the render path asks the artifact.
+
+    This is a narrower question than "did chrome succeed", and a stricter one:
+    an exit code of 0 with no file, and a nonzero exit with a truncated file, are
+    both failures here, and neither is caught by trusting the status alone.
+    """
+    try:
+        data = path.read_bytes()
+    except OSError:
+        return False
+    return (
+        len(data) > 0
+        and data.startswith(b"%PDF-")
+        and data.rstrip().endswith(b"%%EOF")
+        and b"startxref" in data
+    )
 
 
 def _pdf_dict(body: bytes) -> bytes:
@@ -1131,8 +1166,11 @@ def write_pdf(out: Path, root: Path = HANDBOOK, **kwargs: object) -> Path:
             assert chrome is not None
             _pdf_via_chrome(chrome, source, out)
 
-    if not out.is_file() or out.stat().st_size == 0:
-        raise RenderError(f"the renderer reported success but produced no PDF at {out}")
+    if not _pdf_is_complete(out):
+        raise RenderError(
+            f"no complete PDF at {out}. A truncated file is the dangerous shape "
+            f"here: it opens, and it reads as a book that is merely short."
+        )
 
     rendered = out.read_bytes()
     stripped = strip_tagged_structure(rendered)
