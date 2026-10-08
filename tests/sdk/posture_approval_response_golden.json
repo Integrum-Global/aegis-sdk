@@ -4,7 +4,8 @@
     "path": "tests/deployment/posture_approval_response_golden.json",
     "commit": "282d99b64da32b0903e9b46bccbbe9fe38453a28",
     "why": "Vendored, not referenced. aegis-sdk is a SEPARATE repository and cannot read the server repo's test tree at test time, so the contract has to travel with the SDK. This is a faithful copy: `fields` is the server's recorded set, on NAMES AND TYPES, unmodified. `_meta` below is the server-side file's own, kept so the contract's rationale travels with it. RE-SYNC MANUALLY when the server model changes; nothing detects drift across the two repositories.",
-    "resync": "cp <aegis>/tests/deployment/posture_approval_response_golden.json tests/sdk/posture_approval_response_golden.json, then re-run this file's tests"
+    "resync": "cp <aegis>/tests/deployment/posture_approval_response_golden.json tests/sdk/posture_approval_response_golden.json, then re-run this file's tests",
+    "status": "The SDK-side half this copy exists for is implemented alongside it, in this same branch: the four withdrawn fields are declared on both PostureApprovalRecord and PostureApproval, and tests/sdk/test_sdk_declares_the_withdrawn_fields.py asserts both cover every field below. So the note in _meta.sdk_side_is_later -- 'is a separate item' -- describes why it could not be done in the SERVER repo; it is not outstanding. It is left verbatim because this file is a faithful copy of the server's, not an edited one."
   },
   "_meta": {
     "what": "GOLDEN field set of the SERVER model PostureApprovalResponse (src/aegis/api/posture.py) \u2014 NAMES and TYPES.",
