@@ -110,6 +110,14 @@ class PostureApprovalRecord(_WireModel):
     reviewed_by_name: str | None = Field(default=None, alias="reviewedByName")
     reviewed_at: datetime | None = Field(default=None, alias="reviewedAt")
     review_notes: str | None = Field(default=None, alias="reviewNotes")
+    # The RETRACTION writer, the disjunction partner of the ``reviewed*`` group
+    # above: a row is closed by a DECISION (approve/reject) or by a RETRACTION
+    # (withdraw), never both. A withdrawn row carries all four ``reviewed*``
+    # fields as None, which is what makes the two decidable apart.
+    withdrawn_by: str | None = Field(default=None, alias="withdrawnBy")
+    withdrawn_by_name: str | None = Field(default=None, alias="withdrawnByName")
+    withdrawn_at: datetime | None = Field(default=None, alias="withdrawnAt")
+    withdrawal_notes: str | None = Field(default=None, alias="withdrawalNotes")
     expires_at: datetime | None = Field(default=None, alias="expiresAt")
     config: dict[str, Any] = Field(default_factory=dict)
 
@@ -838,14 +846,20 @@ class PosturesModule:
         parameter is named ``approval_id`` for consistency with the sibling
         decision methods.
 
-        WARNING -- the withdrawal's own metadata is NOT on this record. The
-        response carries the fields :class:`PostureApprovalRecord` models, so
-        ``status`` reads ``"withdrawn"`` and the reviewer fields stay null,
-        but the ``withdrawn_by`` / ``withdrawn_at`` / withdrawal-notes it
-        records are not among them. They are deliberately not declared on the
-        model: a field declared for a key the route does not send reads as
-        ``None`` for every call, which is indistinguishable from the server
-        having sent null.
+        THE WITHDRAWAL'S OWN METADATA IS ON THIS RECORD. ``withdrawnBy``,
+        ``withdrawnByName``, ``withdrawnAt`` and ``withdrawalNotes`` are
+        declared on :class:`PostureApprovalRecord`, so a withdrawn row reads as
+        a RETRACTION rather than as an absence: ``status`` is ``"withdrawn"``,
+        the four ``reviewed*`` fields stay null, and the ``withdrawn*`` group
+        carries the actor, the time and the reason.
+
+        They were previously NOT declared, on the argument that a field
+        declared for a key the route does not send reads as ``None`` on every
+        call. That was right while the server did not send them. It stopped
+        being right when the platform's ``#1349`` landed the writer, and the
+        cost of leaving them undeclared is the OPPOSITE error and the worse
+        one: pydantic DROPS an undeclared key silently, so a caller could not
+        distinguish a retraction from a row nobody had decided.
 
         Args:
             agent_id: Agent ID with a pending transition
