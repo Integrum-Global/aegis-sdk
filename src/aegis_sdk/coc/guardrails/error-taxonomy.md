@@ -1,11 +1,11 @@
-# Error taxonomy — the exception class does not identify the status
+# Error taxonomy — the exception class does not identify every status
 
 **Scope:** every `except` clause you write against this client.
 
 Every failure raised by this client is an `sdk:aegis_sdk.AgenticOSError` or a
 subclass of one. The mapping from HTTP status to subclass is **partial**, and
-the gaps are not at the edges — they include two statuses an integrator meets
-routinely.
+the gaps are not at the edges — statuses an integrator meets routinely are still
+unmapped, `410` among them.
 
 ## MUST 1 — Discriminate on the status code, not on the subclass alone
 
@@ -23,13 +23,18 @@ except AgenticOSError as exc:
 
 # DO NOT
 except AgenticOSError:
-    ...          # 409, 410, 418 and a JSON decode failure all land here
+    ...          # 405, 410, 413, 418 and a JSON decode failure all land here
 ```
 
-**Why:** **no subclass is mapped to 409 or 410.** Both fall through to the base
-class with the message `"Unexpected status code: <n>"`. A handler that branches
-on subclass treats a conflict and a permanent deletion identically, and the most
-common default — retry — is wrong for both.
+**Why:** **`410` has no subclass, and neither do `405` or `413`.** They fall
+through to the base class with the message `"Unexpected status code: <n>"`. A
+handler that branches on subclass alone treats a permanent deletion as an
+unknown failure, and the most common default — retry — is wrong for it.
+
+`409` used to be in that list and is **no longer**: it now arrives as
+`sdk:aegis_sdk.ConflictError`, a subclass of `AgenticOSError`. So the status-code
+read above still works unchanged, and `except ConflictError` now works by type as
+well — which is the point of the MUST, not an exception to it.
 
 The same fall-through catches any 2xx that is not 200, 201, 202 or 204. A 206 or
 a 207 is **raised as an error**, not returned.

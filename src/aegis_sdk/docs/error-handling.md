@@ -9,6 +9,7 @@ AgenticOSError (base)
 |-- AuthenticationError        # 401 - Invalid API key or expired token
 |-- AuthorizationError         # 403 - Insufficient permissions
 |-- NotFoundError              # 404 - Resource not found
+|-- ConflictError              # 409 - Server state made the request undecidable
 |-- ValidationError            # 400/422 - Invalid request data
 |-- RateLimitError             # 429 - Rate limit exceeded (has retry_after)
 |-- GovernanceViolationError   # 423 - Governance policy violation

@@ -373,10 +373,11 @@ information about your clearance, not a fault.
 _Symptom:_ a write that reports success and did not happen; or the opposite —
 you handle exceptions and miss the refusals that arrive inside `200` bodies.
 _Diagnosis:_ several operations here report a refusal in the body rather than by
-raising, and the platform's conflict status has no dedicated exception class, so
-a `409` arrives as the base error you would need to discriminate by status code.
-`sdk:aegis_sdk.AgenticOSError` and its subclasses carry the status; read the
+raising, so a successful transport is not a successful operation. Read the
 documented return shape of each write, not only its raise list.
+`sdk:aegis_sdk.AgenticOSError` and its subclasses carry the status when one IS
+raised — `409` now arrives as `sdk:aegis_sdk.ConflictError` — but the refusals
+this entry is about never reach your `except` clauses at all.
 
 **14. Depending on a guard this client holds.**
 _Symptom:_ a check that works from your code and not from a direct HTTP call —
