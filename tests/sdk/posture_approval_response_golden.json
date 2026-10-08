@@ -1,0 +1,40 @@
+{
+  "_vendored_from": {
+    "repo": "Integrum-Global/aegis",
+    "path": "tests/deployment/posture_approval_response_golden.json",
+    "commit": "282d99b64da32b0903e9b46bccbbe9fe38453a28",
+    "why": "Vendored, not referenced. aegis-sdk is a SEPARATE repository and cannot read the server repo's test tree at test time, so the contract has to travel with the SDK. This is a faithful copy: `fields` is the server's recorded set, on NAMES AND TYPES, unmodified. `_meta` below is the server-side file's own, kept so the contract's rationale travels with it. RE-SYNC MANUALLY when the server model changes; nothing detects drift across the two repositories.",
+    "resync": "cp <aegis>/tests/deployment/posture_approval_response_golden.json tests/sdk/posture_approval_response_golden.json, then re-run this file's tests"
+  },
+  "_meta": {
+    "what": "GOLDEN field set of the SERVER model PostureApprovalResponse (src/aegis/api/posture.py) \u2014 NAMES and TYPES.",
+    "why": "This is the named successor to the removed (PostureApprovalResponse, PostureApprovalRequestRecord) pair in this test file's _POSTURE_MODEL_PAIRS. That pair compared the server model against the DEPRECATED in-repo copy at src/aegis_sdk/types.py -- deprecated because the released SDK lives in Integrum-Global/aegis-sdk, and because PostureApprovalRequestRecord has no consumer outside src/aegis_sdk -- so it guarded no real class while still reddening on every legitimate server field addition. Removing it without a successor would have dropped the only signal pinning this server model's shape, so the signal is kept here instead, on the server side where the model actually lives.",
+    "contract": "EQUALS, not a superset, and on NAMES *AND* TYPES. Any change to the server model's field set -- an addition, a removal, a rename, or a RETYPE -- reddens test_the_server_posture_approval_field_set_matches_its_golden. Types are half the wire contract and are included for a concrete reason: `withdrawnAt: str | None` becoming `str` would turn a decided row's null into a validation error at every consumer, and a name-only golden cannot see that. A golden that tolerated additions could not catch the drift it exists for either: the original 2026-09-11 defect was the server emitting fields the client silently dropped.",
+    "types_are_source_text": "Each value is the ANNOTATION AS WRITTEN, via `ast.unparse` -- `str | None`, `dict[str, Any]`. Deliberate: it pins the DECLARATION in the source rather than a resolved runtime type, so it needs no import (this tree runs with --noconftest) and a rewrite of the written form is surfaced rather than absorbed.",
+    "authority": "The operator's 2026-10-01 ruling that src/aegis_sdk is DEPRECATED. The ruling does NOT make that copy dead code: pyproject.toml packages it into the agentic-os wheel and the server imports it, so deleting the directory would break the server. Retiring a check that guards a CLASS NOTHING READS is root-cause-fix.md MUST-2 exit (b), not a convenience weakening; this golden is the named-successor half of the same clause.",
+    "sdk_side_is_later": "The corresponding SDK-side contract test -- released aegis-sdk pinning its own PostureApprovalRecord against this shape, together with declaring the four withdrawn fields on that model -- is a separate item. It cannot be done here: src/aegis_sdk must not be edited (same deprecation ruling).",
+    "refresh": "When the server model changes ON PURPOSE, update this file in the SAME commit and say why in the commit body. The test failing is the point; it is not noise to be silenced, and re-recording the golden without a reason is how this check would stop meaning anything.",
+    "recorded_at": "2026-10-08"
+  },
+  "fields": {
+    "agentId": "str",
+    "config": "dict[str, Any]",
+    "currentPosture": "str",
+    "expiresAt": "str | None",
+    "id": "str",
+    "reason": "str",
+    "requestedAt": "str",
+    "requestedBy": "str",
+    "requestedByName": "str",
+    "requestedPosture": "str",
+    "reviewNotes": "str | None",
+    "reviewedAt": "str | None",
+    "reviewedBy": "str | None",
+    "reviewedByName": "str | None",
+    "status": "str",
+    "withdrawalNotes": "str | None",
+    "withdrawnAt": "str | None",
+    "withdrawnBy": "str | None",
+    "withdrawnByName": "str | None"
+  }
+}

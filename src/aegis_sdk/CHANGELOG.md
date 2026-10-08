@@ -90,13 +90,27 @@ request stopped being pending between resolution and the write — it was
 decided or withdrawn concurrently. Re-read the pending request and decide
 whether there is still anything to withdraw.
 
-⚠ **The withdrawal's own metadata is not on the response.** The record comes
-back with `status` reading `"withdrawn"` and the reviewer fields null; the
-`withdrawn_by` / `withdrawn_at` / withdrawal-notes the operation records are
-not among the fields this client models. They are deliberately not declared:
-a field declared for a key a route does not send reads as `None` for every
-call, which is indistinguishable from the server having sent null. The
-withdrawal's reason is on the platform's audit trail for it.
+✅ **The withdrawal's own metadata IS on the response — declared in this
+release.** The record comes back with `status` reading `"withdrawn"`, the four
+reviewer fields null, and `withdrawnBy` / `withdrawnByName` / `withdrawnAt` /
+`withdrawalNotes` carrying the retraction's actor, time and reason — on **both**
+`PostureApprovalRecord` and the module surface's `PostureApproval`.
+
+They were previously **not** declared, and the reasoning was sound at the time:
+a field declared for a key a route does not send reads as `None` for every call,
+indistinguishable from the server having sent null. That stopped being true when
+the platform landed the writer, and the cost of leaving them undeclared is the
+**opposite error and the worse one** — pydantic DROPS an undeclared key
+silently, so a withdrawn row could not be told from one nobody had decided.
+
+**The contract is now pinned against the SERVER's recorded field set**, not
+against this client's idea of it: `tests/sdk/posture_approval_response_golden.json`
+is a copy of the server's golden, vendored with its source commit, and
+`tests/sdk/test_sdk_declares_the_withdrawn_fields.py` asserts both models cover
+every field in it — on names, with a behavioural round-trip and a bipolar
+control. aegis-sdk is a separate repository and cannot read the server's test
+tree at test time, so **that copy must be re-synced by hand when the server
+model changes; nothing detects drift across the two repositories.**
 
 **On availability.** The platform implements this route; a deployment running
 a platform build that predates it answers `404`. This client declares the
