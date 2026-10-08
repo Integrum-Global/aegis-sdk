@@ -50,8 +50,9 @@ inside the withdraw note:
 
 - **The type.** A `409` is now `aegis_sdk.ConflictError`. It subclasses
   `AgenticOSError`, so an existing `except AgenticOSError` keeps catching it
-  untouched, and `exc.status_code == 409` still carries the wire value. Only code
-  that was string-matching `str(exc)` sees a new value.
+  untouched, and `exc.status_code == 409` still carries the wire value. Two
+  narrower kinds of code see a change: anything string-matching `str(exc)`, and
+  an exact-type check — `type(exc) is AgenticOSError` is now `False` for a `409`.
 - **`str(exc)`.** It is now the server's own message — which request was no
   longer pending, and why — instead of `"Unexpected status code: 409"`.
 
@@ -59,11 +60,12 @@ If you were branching on `exc.status_code == 409`, nothing changes. If you were
 branching on the message text, that was never a contract: use the status, or
 `except ConflictError`.
 
-The same commit corrects the shipped documentation that described the old
+This release also corrects the shipped documentation that described the old
 behaviour as a decision — the `error-taxonomy` and `diagnosing-a-refusal`
 guardrails (in all three CLI projections), the handbook's error chapter, and the
-`artifacts` module reference. `409` was documented as unclassifiable in seven
-places; it is documented as refusable in all of them now.
+`artifacts` module reference. `409` was documented as unclassifiable across that
+prose, including two chapter files that named the status without ever quoting
+it; every one of those sites now documents it as refusable.
 
 ### Added — `withdraw_transition`, so a requester can retract their own pending request
 

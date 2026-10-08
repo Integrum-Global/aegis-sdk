@@ -325,7 +325,7 @@ class PipelinesModule:
         ``"output"``) / ``target_handle`` (default ``"input"``) / ``condition``.
         The backend wraps the saved graph as ``{"data": result}``; this method
         unwraps ``data``. A cross-pipeline id collision surfaces as HTTP 409
-        (``ValidationError``), not an opaque 500.
+        (``ConflictError``), not an opaque 500.
 
         Args:
             pipeline_id: Pipeline whose graph to replace
@@ -338,7 +338,7 @@ class PipelinesModule:
 
         Raises:
             NotFoundError: If the pipeline doesn't exist or is out of tenant scope
-            ValidationError: On a cross-pipeline node/connection id collision (409)
+            ConflictError: On a cross-pipeline node/connection id collision (409)
 
         Example:
             >>> await client.pipelines.save_graph(

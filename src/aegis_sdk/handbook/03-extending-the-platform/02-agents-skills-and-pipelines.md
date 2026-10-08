@@ -326,7 +326,7 @@ single field name. Build the graph one way and stay with it.
 `save_graph` **replaces the whole graph wholesale** rather than merging, so read
 before you write if anything else might have edited it. A cross-pipeline id
 collision surfaces as a 409, which the SDK raises as
-`sdk:aegis_sdk.ValidationError` rather than an opaque 500 — a useful, specific
+`sdk:aegis_sdk.ConflictError` rather than an opaque 500 — a useful, specific
 error, and worth recognising.
 
 Connections take `source_node_id` and `target_node_id`, with optional

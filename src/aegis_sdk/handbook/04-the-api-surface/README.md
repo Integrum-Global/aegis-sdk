@@ -24,7 +24,7 @@ the client does under load.
 | 04.6 | [Reading a response honestly](06-reading-a-response-honestly.md)   | A field is `None` and you are about to conclude something from it       |
 
 **Read 04.2 first if something has already gone wrong.** It carries the
-status-to-exception table, the seven statuses with no branch at all, the five
+status-to-exception table, the six statuses with no branch at all, the five
 failures that are not in this client's exception hierarchy, and the four-way
 split — not reached, not known, refused, fault — that decides what you change
 next. A `try/except` written from the documentation alone lets all five past, and

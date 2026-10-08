@@ -58,13 +58,15 @@ second.
 Four of those are refusals and each says something different. `403` is an
 authorization decision — a principal was judged and found wanting. `409` is a
 **state** refusal: the request was well-formed and permitted, and the server
-declined to guess because the row moved, or because several eligible rows exist
-and none was named. `423` is a **governance** refusal: a policy, a budget, an
-approval requirement. `451` is a **trust** refusal: the delegated authority for
-this action does not hold. If you collapse all four into "permission denied" you
-lose the distinction your own evidence export depends on, because they are
-answered by four different people — and `409` by a different ACTION (re-read the
-row) rather than by a different person at all.
+declined because the state it would act on is not the state the request assumed
+— the row moved, several eligible rows exist and none was named, or a
+precondition the operation needs is absent. `423` is a **governance** refusal: a
+policy, a budget, an approval requirement. `451` is a **trust** refusal: the
+delegated authority for this action does not hold. If you collapse all four into
+"permission denied" you lose the distinction your own evidence export depends
+on, because they point at different remedies — three of them at a different
+person, and `409` at a different **action** (re-read the row) rather than at a
+different person at all.
 
 **To explain one rather than infer it, use `client.governance_explain`.** It
 walks the access chain and returns the step the decision stopped at:
