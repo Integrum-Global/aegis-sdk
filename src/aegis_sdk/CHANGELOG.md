@@ -5,6 +5,37 @@ version here is the SDK's own; it is not the server's.
 
 ## Unreleased
 
+### Removed — the bundled `handbook.pdf`; the Markdown chapters are the handbook
+
+**If you were reading `aegis_sdk/handbook/handbook.pdf` from an installed
+package, it is gone.** Read the chapters instead — `aegis_sdk/handbook/` ships
+as Markdown, and it always did; the PDF was a derived copy of it.
+
+Nothing was lost: the Markdown is the source, it is what the PDF was built
+from, and it is the copy that can be read, diffed, grepped and linked. The PDF
+was the copy that could not be kept honest — it had gone stale three times
+because re-rendering was not possible on the machine doing the work, so it was
+telling readers things the current chapters no longer said.
+
+**This makes the wheel about 4.6 MiB smaller** — measured by building it at both
+states, not estimated from the PDF's size: 7,651,699 bytes with the file,
+2,810,498 without. That is what a derived artifact costs every consumer when it
+is bundled rather than generated.
+
+**Want a PDF anyway?** You always could, from your own clone, and that is the
+form worth trusting — one you generated from the tree in front of you rather
+than one built somewhere else:
+
+```bash
+PYTHONPATH=src python -m aegis_sdk.handbook.render --pdf build/handbook.pdf
+```
+
+That needs `pandoc` (Markdown → HTML) and `weasyprint` or headless Chrome (HTML
+→ PDF); the renderer names whichever is missing, with how to install it, rather
+than producing a document with quiet gaps. Render into `build/` or anywhere
+outside the package — **do not commit the output.** An artifact committed beside
+its own source is the thing this entry is removing.
+
 ### Changed — every `409`, on every route, is now `ConflictError` and says what the server said
 
 **This one reaches every caller, not only the ones using the new withdraw

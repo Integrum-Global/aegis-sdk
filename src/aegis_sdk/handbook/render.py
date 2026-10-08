@@ -1,4 +1,4 @@
-"""Render the shipped handbook as one self-contained HTML file and one PDF.
+"""Render the handbook as one self-contained HTML file and one PDF — ON DEMAND.
 
 WHY THIS EXISTS
 ---------------
@@ -8,14 +8,24 @@ two audiences this SDK actually has: someone reviewing the governance model end
 to end, and someone who has to hand a bound document to a person who will never
 open a terminal.
 
-So this module produces the reading forms — and it **ships with the book**, for
-the same reason :mod:`aegis_sdk.handbook.check` does. A PDF built somewhere else
-and mailed over is a claim about a tree the reader cannot see; a PDF the reader
-regenerates from the handbook in their own clone is the handbook. Both commands
-are on the same footing::
+So this module produces the reading forms, and **its output is NOT committed**.
+That is the point rather than an omission. A PDF built somewhere else and mailed
+over is a claim about a tree the reader cannot see, and a PDF committed beside
+the chapters is the same thing with the same defect: it goes stale the moment a
+chapter changes and the reader cannot tell by looking. A PDF the reader
+regenerates from the handbook in their own clone IS the handbook.
+
+The bundled ``handbook.pdf`` was removed on 2026-10-08 for exactly that reason.
+It had gone stale three times, because re-rendering was impossible on the
+machine doing the work, and it cost every consumer 4.8 MiB of wheel. Write to
+``build/`` or any path outside the package; the module is a TOOL, and the
+markdown chapters are the single source of truth.
+
+:mod:`aegis_sdk.handbook.check` is the one that ships with the book, because its
+RESULT is a property of the tree rather than an artifact that ages::
 
     python -m aegis_sdk.handbook.check            # are the claims still anchored?
-    python -m aegis_sdk.handbook.render --all -o build/   # give me the book
+    python -m aegis_sdk.handbook.render --all -o build/   # give me the book, locally
 
 TWO DOCUMENTS, ONE RENDERER
 ---------------------------
