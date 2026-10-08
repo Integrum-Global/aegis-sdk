@@ -211,10 +211,10 @@ class AuthoritiesModule:
         Returns:
             The deactivated authority.
         Raises:
-            AgenticOSError: On a 409 conflict -- the authority is already inactive. The SDK maps NO
-                exception subclass to 409, so this arrives as the BASE error
-                rather than a conflict-specific type; discriminate on
-                ``exc.details["status_code"] == 409``.
+            ConflictError: On a 409 conflict -- the authority is already
+                inactive. Subclasses ``AgenticOSError``, so an existing
+                ``except AgenticOSError`` still catches it;
+                ``exc.status_code == 409`` carries the wire value.
 
         Example:
             >>> await client.trust.authorities.deactivate(

@@ -292,7 +292,7 @@ class EmergencyBypassModule:
                 a bypass whose captured requester identity is missing, an
                 API-key credential, or a missing persona.
             NotFoundError: ``404`` — no such bypass in this organization.
-            AgenticOSError: ``409`` — the bypass is not ``pending``.
+            ConflictError: ``409`` — the bypass is not ``pending``.
 
         Example:
             >>> record = await client.emergency_bypass.approve(
@@ -329,7 +329,7 @@ class EmergencyBypassModule:
             AuthorizationError: ``403`` — a role the caller does not occupy, an
                 API-key credential, or a missing persona.
             NotFoundError: ``404`` — no such bypass in this organization.
-            AgenticOSError: ``409`` — the bypass is not ``pending``.
+            ConflictError: ``409`` — the bypass is not ``pending``.
 
         Example:
             >>> await client.emergency_bypass.reject(
@@ -364,7 +364,7 @@ class EmergencyBypassModule:
             AuthorizationError: ``403`` — a role the caller does not occupy, an
                 API-key credential, or a missing persona.
             NotFoundError: ``404`` — no such bypass in this organization.
-            AgenticOSError: ``409`` — the bypass is not ``active``.
+            ConflictError: ``409`` — the bypass is not ``active``.
 
         Example:
             >>> await client.emergency_bypass.revoke("bypass-1", "role-director")
@@ -564,7 +564,7 @@ class KillSwitchModule:
                 under 40 characters, a selector that is present when it must be
                 absent (or absent when required), an out-of-range compensation
                 window, or a selector that resolves to no target.
-            AgenticOSError: ``409`` — an overlapping activation already covers
+            ConflictError: ``409`` — an overlapping activation already covers
                 this scope.
 
         Example:
@@ -659,7 +659,7 @@ class KillSwitchModule:
             AuthorizationError: ``403`` — missing persona, or authority below
                 what this activation's scope requires.
             NotFoundError: ``404`` — no such activation in this organization.
-            AgenticOSError: ``409`` — the activation is not in a clearable
+            ConflictError: ``409`` — the activation is not in a clearable
                 state.
             ValidationError: ``400`` — reason under 40 characters.
 

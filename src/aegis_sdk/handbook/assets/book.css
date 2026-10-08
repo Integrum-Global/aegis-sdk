@@ -23,10 +23,8 @@
   --page: #ffffff;
   --warn: #8a5b00;
 
-  --font-text: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-    "Helvetica Neue", Arial, "Noto Sans", sans-serif;
-  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
-    "Liberation Mono", monospace;
+  --font-text: "Times New Roman", Times, serif;
+  --font-mono: "Courier New", Courier, monospace;
 }
 
 * {
@@ -475,13 +473,13 @@ body.nav-open #nav {
   size: A4;
   margin: 22mm 19mm 20mm 19mm;
 
-  /* The font stack is spelled out rather than referenced through a custom
-   * property: page margin boxes do not inherit from :root in every paged
-   * formatter, and a silently-unresolved var() there falls back to a serif
-   * running head that does not match the page. */
+  /* Spelled out rather than referenced through a custom property: page margin
+   * boxes do not inherit from :root in every paged formatter, so a
+   * silently-unresolved var() there would set its own type and the running
+   * heads would not match the page. */
   @top-left {
     content: string(running-part);
-    font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-family: "Times New Roman", Times, serif;
     font-size: 8pt;
     color: #5f6975;
     vertical-align: bottom;
@@ -490,7 +488,7 @@ body.nav-open #nav {
 
   @top-right {
     content: string(running-chapter);
-    font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-family: "Times New Roman", Times, serif;
     font-size: 8pt;
     color: #5f6975;
     vertical-align: bottom;
@@ -499,7 +497,7 @@ body.nav-open #nav {
 
   @bottom-center {
     content: counter(page);
-    font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-family: "Times New Roman", Times, serif;
     font-size: 9pt;
     color: #5f6975;
     vertical-align: top;

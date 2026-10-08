@@ -723,12 +723,21 @@ class TrustPostureModule:
         ``aegis_sdk.trust.postures.PosturesModule.approve_transition`` — this
         can name WHICH pending request it decides.
 
-        The identifier is sent as ``request_id``. It is NOT the camelCase
-        ``approvalId``: the route declares ``request_id`` with no alias, so a
-        camelCase key is dropped on arrival and the caller's named target
-        disappears — the decision then fails as ambiguous even though the
-        caller supplied one. The parameter is named ``approval_id`` for
-        backward compatibility; the wire key is the server's own spelling.
+        The identifier is sent as ``request_id``, the route's canonical
+        spelling. ``approvalId`` ALSO BINDS — the route accepts it as a
+        compatibility alias — so a caller still sending it works. ``requestId``
+        does not: that spelling is dropped on arrival, and the caller's named
+        target then disappears, so the decision fails as ambiguous even though
+        the caller supplied one. ``request_id`` is sent because it is
+        canonical, not because it is the only spelling that binds. The
+        parameter is named ``approval_id`` for backward compatibility; the
+        wire key is the server's own spelling.
+
+        ⚠ **``expires_at`` is recorded but NOT enforced.** The server stamps
+        it seven days out when a request is filed and returns it on the
+        record, but no decision path reads it — a request past its expiry is
+        STILL approvable. Do not treat the field as a gate; check it
+        yourself if you need one.
 
         Args:
             agent_id: Agent ID with a pending transition
@@ -742,11 +751,18 @@ class TrustPostureModule:
             PostureTransition: The completed transition record
 
         Raises:
-            NotFoundError: If no pending approval matches (none pending, or
-                ``approval_id`` does not name a pending request for this agent)
-            ValidationError: If ``approval_id`` was omitted while more than one
-                request is pending, or the request passed its ``expires_at``
-                before a decision (it is not approvable; file a new request)
+            NotFoundError: If the agent has NO pending approval at all. A
+                named ``approval_id`` that does not match is NOT a 404 — see
+                ``ValidationError`` below.
+            ValidationError: If ``approval_id`` names no pending request for
+                this agent (it belongs to another agent, or was already
+                decided).
+            ConflictError: On a 409 conflict -- ``approval_id`` was omitted
+                while more than one request is pending, so the target is
+                ambiguous and the server refuses rather than choosing one.
+                Subclasses ``AgenticOSError``, so an ``except AgenticOSError``
+                written before the class existed still catches it;
+                ``exc.status_code == 409`` carries the wire value.
         """
         data: dict[str, Any] = {}
         if notes is not None:
@@ -773,12 +789,21 @@ class TrustPostureModule:
         ``approval_id``, two pending requests made every rejection a
         ``ValidationError`` no caller could resolve.
 
-        The identifier is sent as ``request_id``. It is NOT the camelCase
-        ``approvalId``: the route declares ``request_id`` with no alias, so a
-        camelCase key is dropped on arrival and the caller's named target
-        disappears — the decision then fails as ambiguous even though the
-        caller supplied one. The parameter is named ``approval_id`` for
-        backward compatibility; the wire key is the server's own spelling.
+        The identifier is sent as ``request_id``, the route's canonical
+        spelling. ``approvalId`` ALSO BINDS — the route accepts it as a
+        compatibility alias — so a caller still sending it works. ``requestId``
+        does not: that spelling is dropped on arrival, and the caller's named
+        target then disappears, so the decision fails as ambiguous even though
+        the caller supplied one. ``request_id`` is sent because it is
+        canonical, not because it is the only spelling that binds. The
+        parameter is named ``approval_id`` for backward compatibility; the
+        wire key is the server's own spelling.
+
+        ⚠ **``expires_at`` is recorded but NOT enforced.** The server stamps
+        it seven days out when a request is filed and returns it on the
+        record, but no decision path reads it — a request past its expiry is
+        STILL approvable. Do not treat the field as a gate; check it
+        yourself if you need one.
 
         Args:
             agent_id: Agent ID with a pending transition
@@ -791,11 +816,18 @@ class TrustPostureModule:
             PostureApproval: The now-rejected approval record
 
         Raises:
-            NotFoundError: If no pending approval matches (none pending, or
-                ``approval_id`` does not name a pending request for this agent)
-            ValidationError: If notes is too short, ``approval_id`` was omitted
-                while more than one request is pending, or the request passed
-                its ``expires_at`` before a decision
+            NotFoundError: If the agent has NO pending approval at all. A
+                named ``approval_id`` that does not match is NOT a 404 — see
+                ``ValidationError`` below.
+            ValidationError: If notes is too short, or ``approval_id`` names
+                no pending request for this agent (it belongs to another
+                agent, or was already decided).
+            ConflictError: On a 409 conflict -- ``approval_id`` was omitted
+                while more than one request is pending, so the target is
+                ambiguous and the server refuses rather than choosing one.
+                Subclasses ``AgenticOSError``, so an ``except AgenticOSError``
+                written before the class existed still catches it;
+                ``exc.status_code == 409`` carries the wire value.
         """
         json_body: dict[str, Any] = {"notes": notes}
         if approval_id is not None:
@@ -803,6 +835,96 @@ class TrustPostureModule:
         response = await self._http.request(
             "POST",
             f"/api/v1/agents/{encode_path_param(agent_id)}/trust-posture/reject",
+            json_data=json_body,
+        )
+        return PostureApproval(**response)
+
+    async def withdraw_posture_transition(
+        self, agent_id: str, notes: str, approval_id: str | None = None
+    ) -> PostureApproval:
+        """
+        Withdraw a pending posture-transition request.
+
+        Parity with
+        ``aegis_sdk.trust.postures.PosturesModule.withdraw_transition``.
+
+        **This is the requester's own exit, and it is not a rejection.**
+        Withdrawing RETRACTS a request the caller filed; rejecting DECIDES one
+        somebody else filed. Until this operation existed the only way to
+        close a pending request was to reject it, which closed the row as
+        ``rejected`` and recorded ``reviewed_by`` for a decision nobody made --
+        a governance record asserting something false. A withdrawn request
+        closes as ``withdrawn`` and records the withdrawer instead.
+
+        Nothing about the agent changes. A pending request was never in
+        force, so withdrawing one leaves the posture where it was, and the
+        evidence counters are not reset -- they reset only when a posture
+        actually changes.
+
+        The identifier is sent as ``request_id``, the route's canonical
+        spelling. ``approvalId`` ALSO BINDS here — the route accepts it as a
+        compatibility alias, so a caller still sending it works. ``requestId``
+        does not: that spelling is dropped on arrival, and the caller's named
+        target then disappears, so the operation fails as ambiguous even
+        though the caller supplied one. ``request_id`` is sent because it is
+        canonical, not because it is the only spelling that binds. The
+        parameter is named ``approval_id`` for consistency with the sibling
+        decision methods.
+
+        WARNING -- the withdrawal's own metadata is NOT on this return value.
+        The response carries the same fields the approval record has always
+        had, so ``status`` reads ``"withdrawn"`` and the reviewer fields stay
+        null, but the ``withdrawn_by`` / ``withdrawn_at`` / withdrawal-notes
+        the operation records are not among them. They are deliberately not
+        declared here: a field declared for a key the route does not send
+        reads as ``None`` for every call, which is indistinguishable from the
+        server having sent null.
+
+        Args:
+            agent_id: Agent ID with a pending transition
+            notes: Why the request is being withdrawn (min length 10 --
+                server-enforced)
+            approval_id: Which pending request to withdraw. Optional while
+                the agent has exactly one pending request; REQUIRED in effect
+                once it has more than one -- the server refuses rather than
+                choosing one.
+
+        Returns:
+            PostureApproval: The now-withdrawn approval record. ``status``
+            reads ``"withdrawn"``.
+
+        Raises:
+            NotFoundError: If the agent has NO pending approval at all. A
+                named ``approval_id`` that does not match is NOT a 404 — see
+                ``ValidationError`` below.
+            ValidationError: If ``notes`` is too short, or ``approval_id``
+                names no pending request for this agent (it belongs to
+                another agent, or was already decided).
+            AuthorizationError: If the caller is neither the request's own
+                requester nor a ``trust:delegate`` holder for this agent;
+                or the caller is refused at the adapter's admission gate,
+                which requires an architect / executive / admin persona,
+                or a ``trust`` scope for an API key, BEFORE the per-request
+                decision is reached; or the caller holds ``trust:delegate``
+                but is not the recorded custodian of a
+                custodially-supervised agent (one whose linked role is
+                vacant) — the delegate arm is narrowed to the custodian,
+                while the requester arm is not.
+            ConflictError: On a 409 conflict. Subclasses ``AgenticOSError``,
+                so an ``except AgenticOSError`` written before the class
+                existed still catches it; ``exc.status_code == 409`` still
+                carries the wire value. Two server states produce it: the
+                target could not be decided because several requests are
+                pending and none was named, or the row stopped being pending
+                between resolution and the write (it was decided or withdrawn
+                concurrently). Both mean the caller's view was stale.
+        """
+        json_body: dict[str, Any] = {"notes": notes}
+        if approval_id is not None:
+            json_body["request_id"] = approval_id
+        response = await self._http.request(
+            "POST",
+            f"/api/v1/trust-posture/{encode_path_param(agent_id)}/withdraw",
             json_data=json_body,
         )
         return PostureApproval(**response)

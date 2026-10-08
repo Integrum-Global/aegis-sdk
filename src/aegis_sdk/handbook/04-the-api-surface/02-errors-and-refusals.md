@@ -47,6 +47,7 @@ second.
 | `401`             | `sdk:aegis_sdk.AuthenticationError`                                   | fault (your credential) |
 | `403`             | `sdk:aegis_sdk.AuthorizationError`                                    | **refusal**             |
 | `404`             | `sdk:aegis_sdk.NotFoundError`                                         | either — see below      |
+| `409`             | `sdk:aegis_sdk.ConflictError`                                         | **refusal**             |
 | `422`             | `sdk:aegis_sdk.ValidationError`                                       | fault (your request)    |
 | `423`             | `sdk:aegis_sdk.GovernanceViolationError`                              | **refusal**             |
 | `429`             | `sdk:aegis_sdk.RateLimitError`                                        | not reached, yet        |
@@ -54,12 +55,18 @@ second.
 | `5xx`             | `sdk:aegis_sdk.ServiceError`                                          | fault (theirs)          |
 | **anything else** | `sdk:aegis_sdk.AgenticOSError`, message `Unexpected status code: <n>` | unclassified            |
 
-Three of those are refusals and each says something different. `403` is an
-authorization decision — a principal was judged and found wanting. `423` is a
-**governance** refusal: a policy, a budget, an approval requirement. `451` is a
-**trust** refusal: the delegated authority for this action does not hold. If you
-collapse all three into "permission denied" you lose the distinction your own
-evidence export depends on, because they are answered by three different people.
+Four of those are refusals and each says something different. `403` is an
+authorization decision — a principal was judged and found wanting. `409` is a
+**state** refusal: the request was well-formed and permitted, and the server
+declined because the state it would act on is not the state the request assumed
+— the row moved, several eligible rows exist and none was named, or a
+precondition the operation needs is absent. `423` is a **governance** refusal: a
+policy, a budget, an approval requirement. `451` is a **trust** refusal: the
+delegated authority for this action does not hold. If you collapse all four into
+"permission denied" you lose the distinction your own evidence export depends
+on, because they point at different remedies — three of them at a different
+person, and `409` at a different **action** (re-read the row) rather than at a
+different person at all.
 
 **To explain one rather than infer it, use `client.governance_explain`.** It
 walks the access chain and returns the step the decision stopped at:
@@ -164,7 +171,7 @@ and the rules; you cannot.
 
 ## The gaps, named — because the table above has a bottom row for a reason
 
-**Seven statuses an integrator meets routinely have no branch at all.** They fall
+**Six statuses an integrator meets routinely have no branch at all.** They fall
 to the base class carrying `Unexpected status code: <n>`, which reads like a
 platform malfunction and is nothing of the sort:
 
@@ -172,22 +179,28 @@ platform malfunction and is nothing of the sort:
 | ----------------- | ------------------------------------------------------ | ------------------------- |
 | `402`             | payment required                                       | retries                   |
 | `405`             | wrong method for this path                             | retries                   |
-| `409`             | conflict — the state moved under you                   | **retries, and re-loses** |
 | `410`             | gone — permanently, not temporarily                    | **polls forever**         |
 | `413` `415` `428` | too large / wrong content type / precondition required | retries                   |
 
-`409` and `410` are the expensive two. A conflict means your precondition has
-already failed, so re-asserting it fails again; a `410` means the id will never
-come back, so a poll loop on it never terminates. Both are the shape a
-retry-by-default handler gets exactly wrong.
+`410` is the expensive one. It means the id will never come back, so a poll loop
+on it never terminates — precisely the shape a retry-by-default handler gets
+exactly wrong.
+
+⚠ **`409` WAS IN THIS TABLE AND IS NOT ANY MORE, which changes what you CATCH
+and not what you DO.** It now arrives as `sdk:aegis_sdk.ConflictError` and sits
+in the table at the top of this chapter. The handling is unchanged: a conflict
+means your precondition has already failed, so re-asserting it fails again.
+Catch it by type if that reads better; branch on `status_code` if you already do
+that everywhere else. Both work, and the second keeps working for every status
+that is still in the table above.
 
 **And the boundary is wide, not a corner case.** That the client has no branch
-for either is checkable by you, in seconds, and is the fact this book anchors on.
-Both statuses are ordinary answers rather than exotic ones — a `409` on any
-contended write, a `410` on anything deliberately retired — so a retry-by-default
-handler meets them on normal paths, not at the edges. What follows is concrete:
-**write the `409` and `410` branches**, because the client will not, and the base
-class will not tell you which one you have without reading the status.
+for these is checkable by you, in seconds, and is the fact this book anchors on.
+They are ordinary answers rather than exotic ones — a `410` on anything
+deliberately retired, a `405` from a route you assembled by hand — so a
+retry-by-default handler meets them on normal paths, not at the edges. What
+follows is concrete: **write the `410` branch**, because the client will not, and
+the base class will not tell you which one you have without reading the status.
 
 ⚠ **`sdk:aegis_sdk.PaymentError` exists, is exported, and is never raised.** The
 transport has no `402` branch, and the whole package contains no site that
@@ -374,7 +387,8 @@ except AgenticOSError as exc:
 
 **The status code is on every raised error**, at `exc.details["status_code"]`,
 including the unclassified ones. That is the field to branch on — not the
-subclass, which cannot distinguish `409` from `410` from `418`.
+subclass, which cannot distinguish `410` from `418` from `405`, and which does
+not even exist for them.
 `exc.status_code` is the same value without the `KeyError` risk on an error the
 client raised locally, where there was no response to carry one.
 

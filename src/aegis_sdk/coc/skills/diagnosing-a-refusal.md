@@ -23,10 +23,12 @@ except AgenticOSError as exc:
 
 Every failure here is an `sdk:aegis_sdk.AgenticOSError` or a subclass.
 
-Two reasons this is rung zero. The exception **subclass does not identify the
-status** — 409 and 410 both arrive as the bare base class. And the rendered
-message can be the literal string `"None"` when the error body carries none of
-the keys the extractor looks for. Read `details`, not `str(exc)`.
+Two reasons this is rung zero. The exception **subclass does not identify every
+status** — `410` arrives as the bare base class, and so do `405` and `413`.
+(`409` used to be in that group; it is now `sdk:aegis_sdk.ConflictError`, so it
+identifies itself.) And the rendered message can be the literal string `"None"`
+when the error body carries none of the keys the extractor looks for. Read
+`details`, not `str(exc)`.
 [The error taxonomy guardrail](../guardrails/error-taxonomy.md) has both
 mechanisms.
 

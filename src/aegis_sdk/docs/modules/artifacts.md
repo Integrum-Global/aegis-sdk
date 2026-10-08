@@ -66,7 +66,7 @@ The upload is `multipart/form-data`. `name` defaults to the filename and `artifa
 |---------|--------|---------------|
 | Created | `201` | -- |
 | Request not in your organization | `404` | `NotFoundError` |
-| Request has no workspace | `409` | `AgenticOSError`, `status_code == 409` |
+| Request has no workspace | `409` | `ConflictError` (a subclass of `AgenticOSError`), `status_code == 409` |
 | Invalid upload, or a classification the workspace cannot hold | `400` | `ValidationError` |
 | A backing store (file storage or database) was unreachable | `500` | `ServiceError`, `error_code == "ARTIFACT_STORAGE_UNAVAILABLE"` |
 | Any other handled failure | `500` | `ServiceError`, `error_code == "ARTIFACT_CREATE_FAILED"` |

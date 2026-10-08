@@ -390,10 +390,9 @@ class AgenticDashboardModule:
 
         Uses an atomic conditional update server-side to prevent race
         conditions. If the task was already claimed by another user the
-        platform answers 409, which reaches you as the BASE ``AgenticOSError``
-        -- the SDK defines no conflict-specific subclass and 409 falls through
-        the status mapping unmapped. Discriminate on
-        ``exc.details["status_code"] == 409``.
+        platform answers 409, which reaches you as ``ConflictError``. It
+        subclasses ``AgenticOSError``, so an existing handler still catches it,
+        and ``exc.status_code == 409`` carries the wire value.
 
         Args:
             request_id: The AgenticRequest id to claim

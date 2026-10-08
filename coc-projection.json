@@ -10,7 +10,7 @@
     "`source_sha256_16` is the digest of the SOURCE at projection time, so a source",
     "edit that was never re-projected is visible here rather than only in a diff."
   ],
-  "projected_on": "2026-09-20",
+  "projected_on": "2026-10-08",
   "counts": {
     "agents": 2,
     "skills": 6,
@@ -231,7 +231,7 @@
     {
       "dest": ".claude/skills/diagnosing-a-refusal/SKILL.md",
       "source": "src/aegis_sdk/coc/skills/diagnosing-a-refusal.md",
-      "source_sha256_16": "586c7828149972a7"
+      "source_sha256_16": "39bc5c543aa15bf5"
     },
     {
       "dest": ".claude/skills/domain-surfaces/SKILL.md",
@@ -241,7 +241,7 @@
     {
       "dest": ".claude/skills/error-taxonomy/SKILL.md",
       "source": "src/aegis_sdk/coc/guardrails/error-taxonomy.md",
-      "source_sha256_16": "31a9addbbed5841f"
+      "source_sha256_16": "9abf63147d99ce18"
     },
     {
       "dest": ".claude/skills/reading-a-measurement/SKILL.md",
@@ -351,7 +351,7 @@
     {
       "dest": ".codex/skills/diagnosing-a-refusal/SKILL.md",
       "source": "src/aegis_sdk/coc/skills/diagnosing-a-refusal.md",
-      "source_sha256_16": "586c7828149972a7"
+      "source_sha256_16": "39bc5c543aa15bf5"
     },
     {
       "dest": ".codex/skills/domain-surfaces/SKILL.md",
@@ -361,7 +361,7 @@
     {
       "dest": ".codex/skills/error-taxonomy/SKILL.md",
       "source": "src/aegis_sdk/coc/guardrails/error-taxonomy.md",
-      "source_sha256_16": "31a9addbbed5841f"
+      "source_sha256_16": "9abf63147d99ce18"
     },
     {
       "dest": ".codex/skills/reading-a-measurement/SKILL.md",
@@ -471,7 +471,7 @@
     {
       "dest": ".gemini/skills/diagnosing-a-refusal/SKILL.md",
       "source": "src/aegis_sdk/coc/skills/diagnosing-a-refusal.md",
-      "source_sha256_16": "586c7828149972a7"
+      "source_sha256_16": "39bc5c543aa15bf5"
     },
     {
       "dest": ".gemini/skills/domain-surfaces/SKILL.md",
@@ -481,7 +481,7 @@
     {
       "dest": ".gemini/skills/error-taxonomy/SKILL.md",
       "source": "src/aegis_sdk/coc/guardrails/error-taxonomy.md",
-      "source_sha256_16": "31a9addbbed5841f"
+      "source_sha256_16": "9abf63147d99ce18"
     },
     {
       "dest": ".gemini/skills/reading-a-measurement/SKILL.md",

@@ -5,14 +5,145 @@ version here is the SDK's own; it is not the server's.
 
 ## Unreleased
 
+### Changed — every `409`, on every route, is now `ConflictError` and says what the server said
+
+**This one reaches every caller, not only the ones using the new withdraw
+method.** Until now the transport had no `409` branch at all, so a conflict fell
+through the status mapping to the base class and arrived as
+`AgenticOSError("Unexpected status code: 409")` — a deliberate, documented
+refusal reported as a platform malfunction, with the server's own explanation
+buried in `exc.details` where no `str(exc)` would show it.
+
+Two things change, and both are why this has its own entry rather than living
+inside the withdraw note:
+
+- **The type.** A `409` is now `aegis_sdk.ConflictError`. It subclasses
+  `AgenticOSError`, so an existing `except AgenticOSError` keeps catching it
+  untouched, and `exc.status_code == 409` still carries the wire value. Two
+  narrower kinds of code see a change: anything string-matching `str(exc)`, and
+  an exact-type check — `type(exc) is AgenticOSError` is now `False` for a `409`.
+- **`str(exc)`.** It is now the server's own message — which request was no
+  longer pending, and why — instead of `"Unexpected status code: 409"`.
+
+If you were branching on `exc.status_code == 409`, nothing changes. If you were
+branching on the message text, that was never a contract: use the status, or
+`except ConflictError`.
+
+This release also corrects the shipped documentation that described the old
+behaviour as a decision — the `error-taxonomy` and `diagnosing-a-refusal`
+guardrails (in all three CLI projections), the handbook's error chapter, and the
+`artifacts` module reference. `409` was documented as unclassifiable across that
+prose, including two chapter files that named the status without ever quoting
+it; every one of those sites now documents it as refusable.
+
+### Added — `withdraw_transition`, so a requester can retract their own pending request
+
+Until now a pending posture request had exactly two exits — approve and
+reject — and both of them are _somebody else's_ decision. A requester who
+filed a request and then changed their mind had no way to take it back. The
+only available workaround was to reject their own request, which closes the
+row as `rejected`: a decision nobody made, sitting in the audit trail under
+`reviewed_by`. That is a governance record asserting something false, and it
+is what callers had to do.
+
+`client.trust.postures.withdraw_transition(...)` and
+`client.trust_posture.withdraw_posture_transition(...)` send
+`POST /api/v1/trust-posture/{agent_id}/withdraw`. The request closes as
+`withdrawn`, and records the withdrawer rather than a reviewer — because
+nobody reviewed it.
+
+Nothing about the agent changes. A pending request was never in force, so
+withdrawing one leaves the posture where it was; the evidence counters are
+not reset, because they reset only when a posture actually changes.
+
+⛔ **The path is not the shape its siblings have.** `approve` and `reject` are
+addressed by agent (`/agents/{agent_id}/trust-posture/...`); this route is
+served under its own `/trust-posture` prefix. That is deliberate on both
+sides, and it is not a typo. If you have a sibling-shaped URL in your own
+code, it is a 404 that reads like a missing deployment rather than a wrong
+URL.
+
+⚠ **`notes` is required and must be at least 10 characters**, the same floor
+the reject route applies. It is the record of why the request was withdrawn,
+and a withdrawal with no stated reason is not auditable.
+
+**`request_id` is the CANONICAL wire key, and `approvalId` also binds.** It
+addresses one specific pending request, for the case where the agent has
+several; it is optional while the agent has exactly one and required in
+effect once it has more than one. The parameter keeps the name `approval_id`
+for consistency with the four sibling decision methods.
+
+⚠ The distinction is not cosmetic. The route's shared identifier field
+declares `request_id` and carries `approvalId` as a **compatibility alias**,
+so both spellings bind — but `requestId` does not, and pydantic's default
+`extra='ignore'` drops it on arrival, leaving the identifier `None`. That is
+not a visible error: with more than one request pending the server then
+refuses as AMBIGUOUS, so a caller who named their target is told they did not.
+
+**A `409` from this route arrives as `ConflictError`.** The SDK maps `409` to
+a dedicated subclass, so catch it by type. It subclasses `AgenticOSError`, so
+an `except AgenticOSError` written before the class existed keeps working, and
+`exc.status_code == 409` still carries the wire value. Two server states
+produce it, and both mean your view of the request was stale: the target could
+not be decided because several requests are pending and none was named, or the
+request stopped being pending between resolution and the write — it was
+decided or withdrawn concurrently. Re-read the pending request and decide
+whether there is still anything to withdraw.
+
+⚠ **The withdrawal's own metadata is not on the response.** The record comes
+back with `status` reading `"withdrawn"` and the reviewer fields null; the
+`withdrawn_by` / `withdrawn_at` / withdrawal-notes the operation records are
+not among the fields this client models. They are deliberately not declared:
+a field declared for a key a route does not send reads as `None` for every
+call, which is indistinguishable from the server having sent null. The
+withdrawal's reason is on the platform's audit trail for it.
+
+**On availability.** The platform implements this route; a deployment running
+a platform build that predates it answers `404`. This client declares the
+operation, which is a different claim from any particular deployment serving
+it — the only way to check yours is to call it.
+
+⚠ **A `404` here is ambiguous, and no probe in this package resolves it.**
+This route itself answers `404` when the agent has no pending request, so a
+`404` does not by itself tell you whether your deployment serves the route at
+all. `python -m aegis_sdk.coc.probe` cannot answer it either: it enumerates
+only **parameter-free `GET`s**, and this is a `POST` carrying an
+`{agent_id}`.
+
+⛔ **Do NOT probe this route by naming an agent that has a pending request.**
+That is not a test. On a serving build it does exactly what the method says:
+it WITHDRAWS the request, and the withdrawal is real -- a signed audit anchor,
+a closed request, and someone's pending posture change gone. An instruction to
+"reproduce it" must not have a side effect, and this one would.
+
+Use either of these instead. Neither changes anything on any build:
+
+* **Call it for an agent that has NO pending request.** A serving build
+  answers `404` with `No pending approval found for agent ...`; a build that
+  predates the route answers the application's generic `404`. Same status,
+  different body -- so read the body.
+* **Send `notes` shorter than 10 characters.** The body is validated BEFORE
+  the request is resolved or the agent is even looked up, so a serving build
+  answers `422` and an old build answers the generic `404`. Different status,
+  and no request of anyone's is touched either way.
+
 ### Fixed — every posture decision call sent an identifier the server dropped
 
 `postures.approve_transition`, `postures.reject_transition`,
 `trust_posture.approve_posture_transition` and
 `trust_posture.reject_posture_transition` all sent their request identifier
-under the key `approvalId`. **The routes do not read that key.** They declare
-`request_id`, with no camelCase alias, so pydantic's default `extra='ignore'`
-dropped it on arrival and `request_id` was left `None` on every call.
+under the key `approvalId`. **At the time this shipped, the routes did not
+read that key.** They declared `request_id` alone, so pydantic's default
+`extra='ignore'` dropped it on arrival and `request_id` was left `None` on
+every call.
+
+⚠ **Read that in the past tense, because it no longer holds.** The platform
+has since added `approvalId` as a **compatibility alias** on the shared
+identifier field, so today BOTH `request_id` and `approvalId` bind on these
+routes; only `requestId` is dropped. That alias exists so deployed v2.0.0
+clients keep working, not because it is the canonical spelling. Send
+`request_id` — it is what the route declares, what the frontend sends, and
+the only spelling that survives the alias being withdrawn.
 
 The effect was not a visible error. An agent with more than one pending
 posture request is refused as *ambiguous* unless the caller names which one —

@@ -176,8 +176,8 @@ Invoking one can raise:
   `sdk:aegis_sdk.AuthorizationError` — the ordinary shapes.
 
 Every one of these carries the HTTP status in `details["status_code"]`, and the
-status is the discriminator rather than the class — two statuses in common use map
-to no subclass at all and land on the base
+status is the discriminator rather than the class — `410`, `405` and `413` map to
+no subclass at all and land on the base
 `sdk:aegis_sdk.AgenticOSError`.
 [`coc/guardrails/error-taxonomy.md`](../../coc/guardrails/error-taxonomy.md) has
 the full table; read it before you write an `except` clause.
