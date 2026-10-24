@@ -90,7 +90,8 @@ async def test_pipeline_default_reads_camel_case_run_from_public_route(http):
 
 async def test_pipeline_no_read_reports_unknown_without_fabricated_status(http):
     http.request.return_value = {"executionId": "run-1"}
-    result = await PipelinesModule(http).execute("pipe-1", wait=False)
+    with pytest.warns(DeprecationWarning, match="deprecated"):
+        result = await PipelinesModule(http).execute("pipe-1", wait=False)
     assert result.status == ExecutionStatus.UNKNOWN
     assert result.id == "run-1"
     assert http.request.await_count == 1
@@ -203,3 +204,56 @@ async def test_successful_http_reply_without_an_agent_answer_reports_failure(htt
     result = await AgentsModule(http).execute("agent-1", "summarize")
     assert result.status == ExecutionStatus.FAILED
     assert result.error
+
+
+async def test_idle_is_a_reported_execution_state(http):
+    http.request.return_value = run(status="idle")
+    result = await PipelinesModule(http).get_execution("pipe-1", "run-1")
+    assert result.status == ExecutionStatus.IDLE
+
+
+@pytest.mark.parametrize("size", [0, 101])
+async def test_history_rejects_unsupported_page_size_before_transport(http, size):
+    with pytest.raises(ValueError, match="page_size"):
+        await PipelinesModule(http).list_executions("pipe-1", page_size=size)
+    http.request.assert_not_awaited()
+
+
+async def test_explicit_wait_keeps_its_deprecation_warning(http):
+    http.request.side_effect = [{"executionId": "run-1"}, run()]
+    with pytest.warns(DeprecationWarning, match="deprecated"):
+        result = await PipelinesModule(http).execute("pipe-1", wait=True)
+    assert result.status == ExecutionStatus.COMPLETED
+
+
+def scoped_bridge():
+    return {
+        "id": "bridge-1", "organization_id": "org-1", "workspace_id": "ws-1",
+        "name": "Review", "objective": "Review", "participants_json": "[]",
+        "owner_unit_id": "unit-1", "purpose": "Review", "scope_description": "Review",
+        "active_from": "2026-10-24T00:00:00Z", "active_until": "2026-10-25T00:00:00Z",
+        "starts_at": "2026-10-24T00:00:00Z", "auto_expire_on_objective_completion": True,
+        "status": "active", "created_at": "2026-10-24T00:00:00Z",
+        "updated_at": "2026-10-24T00:00:00Z",
+    }
+
+
+@pytest.mark.parametrize("method", ["approve", "extend", "renew"])
+@pytest.mark.parametrize("digest", [None, "reviewed-state"])
+async def test_scoped_bridge_digest_is_optional_and_only_sent_when_supplied(http, method, digest):
+    from aegis_sdk.modules.bridges import ScopedBridgesModule
+
+    http.request.return_value = scoped_bridge()
+    operation = getattr(ScopedBridgesModule(http), method)
+    args = ["bridge-1"] if method == "approve" else ["bridge-1", "2026-12-31"]
+    if digest is None:
+        result = await operation(*args)
+    else:
+        result = await operation(*args, reviewed_scope_digest=digest)
+    body = http.request.call_args.kwargs.get("json_data") or {}
+    assert ("reviewed_scope_digest" in body) is (digest is not None)
+    if digest is not None:
+        assert body["reviewed_scope_digest"] == digest
+    if method != "approve":
+        assert body["expires_at"] == "2026-12-31"
+    assert result.id == "bridge-1"

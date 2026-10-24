@@ -158,30 +158,12 @@ is refused (`409`), never silently overwritten with a stale value.
 `sdk:aegis_sdk.modules.ScopedBridgesModule.update`,
 `.add_unit`, and `.remove_unit` document the exact conditions.
 
-⛔ **`approve`, `renew`, and `extend` all require `reviewed_scope_digest`.**
-Every scoped-bridge state (a `get`, `list`, or the return of any mutation)
-carries a `scope_digest` — a stable hash over `status`,
-`allowed_interactions`, `shared_knowledge_paths`, the participant set, the
-auto-expire flag, and the access-bearing expiry window (`expires_at` /
-`active_until`). Passing that digest back as `reviewed_scope_digest` on
-`approve`/`renew`/`extend` binds the decision to the exact state reviewed:
-the server refuses (`409`) if the bridge's current `scope_digest` no longer
-matches, meaning it changed since the caller last looked. This closes a race
-where a bridge's creator widens a still-pending bridge between an approver's
-review and their click, so the approver ends up approving something wider
-than what they saw. `reviewed_scope_digest` is a required argument on
-`sdk:aegis_sdk.modules.ScopedBridgesModule.approve`, `.renew`, and `.extend`
-— fetch the bridge, read its `scope_digest`, and pass it back:
-
-```python
-bridge = await client.bridges.scoped.get("scoped-123")
-approved = await client.bridges.scoped.approve(
-    "scoped-123", reviewed_scope_digest=bridge.scope_digest
-)
-```
-
-A missing or empty digest is refused with `400`; a stale one is refused with
-`409` — re-fetch the bridge and retry with its current digest.
+`approve`, `renew`, and `extend` accept an optional keyword
+`reviewed_scope_digest` for deployments supporting the canonical API's
+reviewed-state check. The current platform does not emit `scope_digest` or
+enforce that check. The SDK omits the field unless supplied and provides no
+review-consistency guarantee of its own. Existing calls without the keyword
+remain valid; consult the deployment's documented capabilities before using it.
 
 Ad-hoc bridges are the urgent path — a request from one unit to another that the
 target approves and activates, bounded to a duration in minutes.

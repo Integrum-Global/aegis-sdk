@@ -504,86 +504,13 @@ class ObjectiveWorkspacesModule:
     async def get_audit_trail(
         self, workspace_id: str, include_descendants: bool | None = None
     ) -> WorkspaceAuditTrail:
-        """Read audit records for a workspace.
+        """Read the workspace audit records and server-reported total.
 
-        Requires ``admin``, but it is a READ: the rank answers what rank the act
-        needs, not whether the act mutates. It is therefore admitted on an
-        unsealed workspace, unlike every write on this surface.
-
-        ⛔ ``include_descendants`` DEFAULTS TO ``None`` — OMITTED FROM THE WIRE —
-        and that default is load-bearing for BUILD SKEW, not stylistic.
-
-        On builds before ``a660fd4ba`` this route's extractor declared
-        ``Query[bool]``, a SCALAR annotation, which made it reject the entire
-        query string on its mere PRESENCE — before coercing any value. Measured
-        on ``abb48bdce``, every spelling failed:
-
-            <omitted>                  200
-            include_descendants=false  400
-            include_descendants=true   400
-            0 / 1 / "" / camelCase     400
-            anything=1 (undeclared)    400   <- the tell: not about this param
-
-        That last line is the one that identifies the mechanism, and the control
-        beside it is that the same undeclared query on ``/progress`` and
-        ``/hierarchy`` returned 200 — those routes declare no ``Query`` at all.
-        Fixed in ``a660fd4ba`` by replacing the scalar with a model annotation
-        (``Query[<Model>]`` was functional throughout; only the scalar form was
-        broken), verified deployed on the live dev deployment at ``09f50ecb8``:
-
-            include_descendants=true   200   (was 400)
-            anything=1 (undeclared)    200   (was 400)
-
-        **The default stays ``None`` → omitted, and that is deliberate: it is the
-        only form that works on BOTH the pre-fix and post-fix builds.** An SDK
-        that can be pointed at any deployment version should not require the
-        server to have been patched. Pass the argument explicitly when you know
-        the server accepts it.
-
-            <omitted>                  200
-            include_descendants=false  400
-            include_descendants=true   400
-            0 / 1 / "" / camelCase     400
-
-        That is specific to this route, not to the bridge — the control on
-        ``/progress`` and ``/hierarchy`` is that an undeclared query parameter on
-        either returns **200** (accepted and ignored). So the parameter is
-        declared-by-the-handler and unusable-on-the-wire; defaulting it to
-        ``False`` would have failed every call. Pass it explicitly only against a
-        server you have confirmed accepts it.
-
-        Args:
-            workspace_id: Workspace to read
-            include_descendants: Omit (the default) to send no parameter. Pass
-                ``True``/``False`` only where the server accepts it.
-
-        Returns:
-            The audit records, in the platform's ``records``/``total`` envelope
-
-        ⚠ **``total`` IS BUILD-DEPENDENT, so do not pin it in a smoke assertion.**
-        The count can rise without a regression — a fix in ``052edf0b5`` admits a
-        third ``resource_type`` literal that earlier builds filtered out. Those
-        are the ``action="agent.execute"`` rows written by
-        ``WorkspaceObjectiveService._audit_agent_session_reply``, which are the
-        accountability record of each agent reply; a build without that fix is
-        hiding them from this trail, not omitting them from the platform.
-
-        The *endpoint* works on every build (this method omits the parameter by
-        default precisely so it does); it is only the record COUNT that moves.
-        Treat a changed ``total`` as a question about build, not about data.
-
-        ⚠ **Re-check a count against a PINNED workspace id, never a resolved
-        one.** :meth:`get_by_objective` resolves a given objective to a workspace
-        that can differ between calls (measured 2026-09-21: one objective
-        resolved to ``e1015fdc…`` at 04:39 and ``0209689e…`` at 05:03), so a
-        before/after comparison built on a resolved id can be measuring two
-        different workspaces and read the difference as noise — concluding a
-        landed fix did nothing. Pin the id whose rows you intend to compare.
-
-        Example:
-            >>> trail = await client.objective_workspaces.get_audit_trail("ws-1")
-            >>> trail.total
-            0
+        include_descendants is omitted by default for compatibility with
+        deployments that do not accept that query parameter. Pass True/False
+        only when the deployment documents support. Totals depend on the
+        deployment's filtering and visible records; compare the same explicit
+        workspace id when checking changes over time.
         """
         params: dict[str, Any] | None = None
         if include_descendants is not None:
@@ -718,7 +645,9 @@ class ObjectiveWorkspacesModule:
         """Post a message to a topic.
 
         This is also the route the W8 condensed summary posts through, carrying
-        ``origin="agent_condensed"``. There is deliberately no separate publish
+        ``origin="agent_condensed"``. The server enforces the closed set of
+        origin values; this SDK forwards the string without validating it.
+        There is deliberately no separate publish
         route — the thing published is a message in a topic, and a second write
         path would let attribution drift from this one.
 
@@ -816,7 +745,9 @@ class ObjectiveWorkspacesModule:
     ) -> WorkspaceAgentSession:
         """Append one turn to the caller's own private session.
 
-        ``role`` is accepted here because the caller is declaring a turn. That is
+        The server enforces the closed set of role values; the SDK forwards
+        the string without validating it. ``role`` is accepted here because
+        the caller is declaring a turn. That is
         exactly why the reply route does NOT accept one — see
         :meth:`reply_in_agent_session`.
 

@@ -137,6 +137,8 @@ class PipelinePattern(str, Enum):
 class ExecutionStatus(str, Enum):
     """Execution status."""
 
+    IDLE = "idle"
+
     PENDING = "pending"
     RUNNING = "running"
     COMPLETED = "completed"

@@ -499,7 +499,15 @@ class PipelinesModule:
         Omit ``wait`` (or pass True) to fetch status and outputs afterwards.
         False skips only that read: the returned status is UNKNOWN, because the
         start response reports no status. False does not make the server async.
+        Passing wait explicitly remains deprecated and emits DeprecationWarning.
         """
+        if wait is not None:
+            warnings.warn(
+                "PipelinesModule.execute(wait=...) is deprecated. The start is synchronous; "
+                "False only skips result retrieval. Omit wait to read the reported result.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
         started = await self._http.request(
             "POST", "/api/v1/executions/start",
             json_data={"pipelineId": pipeline_id, "inputs": inputs or {}},
@@ -533,8 +541,8 @@ class PipelinesModule:
         The server history endpoint accepts page/page_size. A status filter is
         applied across every page by the SDK, never sent as an ignored parameter.
         """
-        if page < 1 or page_size < 1:
-            raise ValueError(f"page and page_size must be >= 1; got {page}, {page_size}")
+        if page < 1 or not 1 <= page_size <= 100:
+            raise ValueError("page must be >= 1 and page_size must be between 1 and 100")
         if status is not None:
             return await self._list_executions_with_status(pipeline_id, status, page, page_size)
         response = await self._http.request(
@@ -565,7 +573,7 @@ class PipelinesModule:
             result = await self.list_executions(
                 pipeline_id, page=server_page, page_size=_EXECUTION_SCAN_PAGE_SIZE,
             )
-            matching.extend(item for item in result.items if item.status.value == wanted)
+            matching.extend(item for item in result.items if getattr(item.status, "value", item.status) == wanted)
             if not result.items or not result.has_next:
                 break
             server_page += 1

@@ -78,99 +78,9 @@ class StandingBridge(TolerantModel):
     created_at: str
     updated_at: str
     bridge_trust_chain_id: str | None = None
-    # COMPUTED SERVER-SIDE, never accepted from a caller. A bridge with
-    # status="active" and no trust delegations behind it reads False here
-    # instead of presenting as healthy — read it before treating an active
-    # bridge as one that actually carries trust.
-    trust_consistent: bool = True
-
-
-class StandingBridgeList(TolerantModel):
-    """A page of standing bridges."""
-
-    model_config = ConfigDict(populate_by_name=True)
-
-    records: list[StandingBridge] = Field(default_factory=list)
-    total: int = 0
-
-
-class OverdueBridge(TolerantModel):
-    """A standing bridge past its periodic-review date."""
-
-    model_config = ConfigDict(populate_by_name=True)
-
-    bridge_id: str
-    name: str
-    organization_id: str
-    last_reviewed_at: str | None = None
-    review_interval_days: int | None = None
-    days_overdue: int | None = None
-
-
-class InteractionCheck(TolerantModel):
-    """Whether one interaction type is permitted over a standing bridge."""
-
-    model_config = ConfigDict(populate_by_name=True)
-
-    allowed: bool
-    bridge_id: str
-    interaction_type: str
-    # A denial with no reason is unactionable; the server populates this.
-    reason: str | None = None
-
-
-class BridgeReview(TolerantModel):
-    """The recorded outcome of a periodic bridge review."""
-
-    model_config = ConfigDict(populate_by_name=True)
-
-    bridge_id: str
-    reviewer_role_id: str
-    approved: bool
-    notes: str
-    reviewed_at: str
-
-
-class ScopedBridge(TolerantModel):
-    """A temporary channel bounded by a workspace or an objective."""
-
-    model_config = ConfigDict(populate_by_name=True)
-
-    id: str
-    organization_id: str
-    # Response-side widening — see aegis_sdk.types.Agent.workspace_id.
-    workspace_id: str | None = None
-    name: str
-    objective_id: str | None = None
-    objective: str
-    participants_json: str
-    owner_unit_id: str
-    purpose: str
-    scope_description: str
-    active_from: str
-    active_until: str
-    starts_at: str
-    expires_at: str | None = None
-    created_by_user_id: str | None = None
-    allowed_interactions_json: str = "[]"
-    shared_knowledge_paths_json: str = "[]"
-    auto_expire_on_objective_completion: bool
-    status: str
-    metadata_json: str = "{}"
-    created_at: str
-    updated_at: str
-    # COMPUTED SERVER-SIDE, never accepted from a caller. This is the value
-    # `approve`/`renew`/`extend` require back as `reviewed_scope_digest`: a
-    # stable hash over `status`, `allowed_interactions_json`,
-    # `shared_knowledge_paths_json`, `participants_json`,
-    # `auto_expire_on_objective_completion`, `expires_at`, and `active_until`.
-    # Pass back the `scope_digest` of the bridge state you REVIEWED — not
-    # necessarily the one from the call that fetched it: fetching and then
-    # immediately approving in the same breath binds the decision to nothing
-    # beyond that fetch, not to whatever you actually read and evaluated. The
-    # server rejects a digest that no longer matches with a 409, meaning the
-    # bridge changed since the state you are binding to.
-    scope_digest: str = ""
+    # Optional field from the canonical API. The current platform does not
+    # emit or enforce it; its presence is not verification by this client.
+    scope_digest: str | None = None
 
 
 class Participant(TolerantModel):
@@ -987,45 +897,20 @@ class ScopedBridgesModule:
         )
         return DeleteResult(**response)
 
-    async def approve(self, bridge_id: str, reviewed_scope_digest: str) -> ScopedBridge:
+    async def approve(
+        self, bridge_id: str, *, reviewed_scope_digest: str | None = None,
+    ) -> ScopedBridge:
+        """Approve a pending scoped bridge.
+
+        reviewed_scope_digest is an optional keyword for the canonical API's
+        reviewed-state check. The current platform does not emit or enforce it;
+        no review-consistency guarantee is established by sending this field.
+        Omit it for deployments that do not document support.
         """
-        Approve a pending scoped bridge, promoting it to active.
-
-        The approver is the authenticated principal and must be DISTINCT from
-        the bridge's creator — the server refuses a self-approval, so a caller
-        holding both identities cannot satisfy the gate by calling twice.
-
-        ``reviewed_scope_digest`` is the ``scope_digest`` from the bridge state
-        you reviewed before approving (e.g. a :meth:`get` or :meth:`list`
-        response) — required, so a still-pending bridge cannot be widened by
-        its creator between your review and your approval without the server
-        noticing.
-
-        Args:
-            bridge_id: Bridge ID
-            reviewed_scope_digest: The ``scope_digest`` of the bridge state
-                you reviewed before approving
-
-        Returns:
-            The approved bridge
-
-        Raises:
-            ValidationError: ``400`` — ``reviewed_scope_digest`` was empty.
-            AgenticOSError: ``409`` — the bridge changed since you reviewed
-                it (its current ``scope_digest`` no longer matches), or a
-                concurrent write raced this one. Re-fetch the bridge, review
-                its current state, and retry with the fresh digest.
-
-        Example:
-            >>> bridge = await client.bridges.scoped.get("scoped-123")
-            >>> approved = await client.bridges.scoped.approve(
-            ...     "scoped-123", reviewed_scope_digest=bridge.scope_digest
-            ... )
-        """
+        body = {"reviewed_scope_digest": reviewed_scope_digest} if reviewed_scope_digest is not None else None
         response = await self._http.request(
-            "POST",
-            f"/api/v1/scoped-bridges/{encode_path_param(bridge_id)}/approve",
-            json_data={"reviewed_scope_digest": reviewed_scope_digest},
+            "POST", f"/api/v1/scoped-bridges/{encode_path_param(bridge_id)}/approve",
+            json_data=body,
         )
         return ScopedBridge(**response)
 
@@ -1233,93 +1118,38 @@ class ScopedBridgesModule:
         return ScopedBridge(**response)
 
     async def extend(
-        self, bridge_id: str, expires_at: str, reviewed_scope_digest: str
+        self, bridge_id: str, expires_at: str, *, reviewed_scope_digest: str | None = None,
     ) -> ScopedBridge:
+        """Extend a scoped bridge using its requested expiry.
+
+        reviewed_scope_digest is optional and forwarded only when supplied. Its
+        server-side reviewed-state check belongs to the canonical API and is not
+        implemented by the current platform; the SDK does not enforce it.
         """
-        Extend an active scoped bridge's expiry.
-
-        Use :meth:`renew` for a bridge that has already expired — extending is
-        for one still running.
-
-        Extension keeps a cross-unit grant in service, so it carries the same
-        separation-of-duties and reviewed-scope-digest gates as :meth:`approve`
-        — the creator cannot extend their own bridge, and
-        ``reviewed_scope_digest`` must match the bridge's current
-        ``scope_digest``.
-
-        Args:
-            bridge_id: Bridge ID
-            expires_at: New expiry (ISO 8601)
-            reviewed_scope_digest: The ``scope_digest`` of the bridge state
-                you reviewed before extending
-
-        Returns:
-            The extended bridge
-
-        Raises:
-            ValidationError: ``400`` — ``reviewed_scope_digest`` was empty.
-            AgenticOSError: ``409`` — the bridge changed since you reviewed
-                it (its current ``scope_digest`` no longer matches), or a
-                concurrent write raced this one. Re-fetch the bridge, review
-                its current state, and retry with the fresh digest.
-
-        Example:
-            >>> bridge = await client.bridges.scoped.get("s-1")
-            >>> await client.bridges.scoped.extend(
-            ...     "s-1", "2026-12-31", reviewed_scope_digest=bridge.scope_digest
-            ... )
-        """
+        body = {"expires_at": expires_at}
+        if reviewed_scope_digest is not None:
+            body["reviewed_scope_digest"] = reviewed_scope_digest
         response = await self._http.request(
-            "POST",
-            f"/api/v1/scoped-bridges/{encode_path_param(bridge_id)}/extend",
-            json_data={
-                "expires_at": expires_at,
-                "reviewed_scope_digest": reviewed_scope_digest,
-            },
+            "POST", f"/api/v1/scoped-bridges/{encode_path_param(bridge_id)}/extend",
+            json_data=body,
         )
         return ScopedBridge(**response)
 
     async def renew(
-        self, bridge_id: str, expires_at: str, reviewed_scope_digest: str
+        self, bridge_id: str, expires_at: str, *, reviewed_scope_digest: str | None = None,
     ) -> ScopedBridge:
+        """Renew a scoped bridge using its requested expiry.
+
+        reviewed_scope_digest is optional and forwarded only when supplied. Its
+        server-side reviewed-state check belongs to the canonical API and is not
+        implemented by the current platform; the SDK does not enforce it.
         """
-        Renew an EXPIRED scoped bridge, reactivating it with a new expiry.
-
-        Renewal returns the bridge to active, the same cross-unit grant
-        :meth:`approve` confers, so it carries the same separation-of-duties
-        and reviewed-scope-digest gates — the creator cannot renew their own
-        bridge, and ``reviewed_scope_digest`` must match the bridge's current
-        ``scope_digest``.
-
-        Args:
-            bridge_id: Bridge ID
-            expires_at: New expiry (ISO 8601)
-            reviewed_scope_digest: The ``scope_digest`` of the bridge state
-                you reviewed before renewing
-
-        Returns:
-            The reactivated bridge
-
-        Raises:
-            ValidationError: ``400`` — ``reviewed_scope_digest`` was empty.
-            AgenticOSError: ``409`` — the bridge changed since you reviewed
-                it (its current ``scope_digest`` no longer matches), or a
-                concurrent write raced this one. Re-fetch the bridge, review
-                its current state, and retry with the fresh digest.
-
-        Example:
-            >>> bridge = await client.bridges.scoped.get("s-1")
-            >>> await client.bridges.scoped.renew(
-            ...     "s-1", "2026-12-31", reviewed_scope_digest=bridge.scope_digest
-            ... )
-        """
+        body = {"expires_at": expires_at}
+        if reviewed_scope_digest is not None:
+            body["reviewed_scope_digest"] = reviewed_scope_digest
         response = await self._http.request(
-            "POST",
-            f"/api/v1/scoped-bridges/{encode_path_param(bridge_id)}/renew",
-            json_data={
-                "expires_at": expires_at,
-                "reviewed_scope_digest": reviewed_scope_digest,
-            },
+            "POST", f"/api/v1/scoped-bridges/{encode_path_param(bridge_id)}/renew",
+            json_data=body,
         )
         return ScopedBridge(**response)
 
