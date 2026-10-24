@@ -379,18 +379,24 @@ itself did nothing wrong.
 
 `execute` starts the run at `api:POST /api/v1/executions/start`, which answers only
 once the run has finished, then reads the run record back from
-`api:GET /api/v1/pipelines/{id}/executions/{eid}`. It returns
+`api:GET /api/v1/executions/{id}`. It returns
 `sdk:aegis_sdk.PipelineExecution`, carrying `status` (a
 `sdk:aegis_sdk.ExecutionStatus`), `outputs`, `error`, `node_results`,
 `duration_ms`. `node_results` is the field to read when a pipeline half-worked: it
 is per-node, so it tells you _where_ it stopped rather than only that it did.
 
 Unlike agent executions, **pipeline executions are individually addressable**:
-`api:GET /api/v1/pipelines/{id}/executions` lists them and
-`api:POST /api/v1/pipelines/{id}/executions/{eid}/cancel` cancels one. The
-listing's `status` filter is applied by the SDK across every page, because the
-route itself does not filter. `execute`'s `wait` argument is deprecated: the
-server has no asynchronous mode, so it changes nothing, and passing it warns.
+`api:GET /api/v1/executions/history/{id}` lists a pipeline's runs, and
+`api:POST /api/v1/executions/{id}/stop` stops one execution. The SDK's cancel
+method first reads the execution and checks its execution and pipeline IDs;
+a mismatch raises `ValueError` before any stop request. The listing's `status`
+filter is applied by the SDK across every page, because the route itself does
+not filter; `page` starts at 1 and `page_size` must be between 1 and 100.
+
+`execute` reads the result by default. Its explicit `wait` argument remains
+deprecated and emits `DeprecationWarning`: `wait=False` skips only that result
+read and returns `UNKNOWN` status, because the start response carries no status.
+It does not make the start request asynchronous.
 
 `api:POST /api/v1/pipelines/{id}/duplicate` forks a pipeline, which is how to try a
 change to a graph other work depends on.
