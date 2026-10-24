@@ -125,7 +125,7 @@ class WorkspaceThread(TolerantModel):
 
     id: str
     organization_id: str
-    workspace_id: str
+    workspace_id: str | None = None
     title: str
     status: str
     created_by_user_id: str
@@ -199,7 +199,7 @@ class WorkspaceAgentSession(TolerantModel):
 
     id: str
     organization_id: str
-    workspace_id: str
+    workspace_id: str | None = None
     user_id: str
     status: str
     created_at: str
