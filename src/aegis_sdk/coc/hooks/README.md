@@ -1,5 +1,7 @@
 # Enforcing hooks
 
+<!-- anchor-floor: ungrammatical (no anchor kind exists for a shipped .js guard or fixture case) -->
+
 Five guards. They run in the delivery partner's CLI session, on the tool call,
 before it happens. They are the half of this working material that does not
 depend on being read.

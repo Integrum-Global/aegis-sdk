@@ -8,8 +8,9 @@ Provides agent management operations including:
 """
 
 import builtins
+import json
 import warnings
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Mapping
 from typing import TYPE_CHECKING, Any, Literal
 
 from pydantic import ConfigDict, Field
@@ -386,6 +387,50 @@ class PipelineExecutionHistory(TolerantModel):
     total: int
     page: int
     page_size: int
+
+
+def _execution_error_from_body(response: Mapping[str, Any]) -> str | None:
+    """Return the failure an execute response body carries, or ``None``.
+
+    Aegis wraps every error it RAISES into a canonical ENVELOPE before it leaves
+    the server — ``{"error": {"code": ..., "message": ..., "details": {...}}}`` —
+    which ``_http._extract_error_detail`` recognises by an ``error`` key whose
+    value is a *dict*. Two other shapes reach a client just as easily: FastAPI's
+    flat default (``{"detail": "..."}``), and an ``error`` key holding a plain
+    **string**, which some servers use as the message itself and which is
+    therefore NOT an envelope. All three are read here, and the key precedence
+    and falsy-substitution below are that method's, so a body read here and the
+    same body read on a non-2xx do not disagree about the message.
+
+    ``AgentExecution.error`` is typed ``str | None``, so a message that is not a
+    string is rendered as JSON rather than with ``str()``. That is deliberate:
+    ``str()`` on the envelope dict is exactly the defect ``_extract_error_detail``
+    records having produced — a Python dict repr reaching user-facing output —
+    and a JSON rendering at least stays machine-readable and round-trippable.
+    """
+    envelope = response.get("error")
+    if isinstance(envelope, Mapping):
+        # Canonical envelope: every field lives one level in.
+        candidates: tuple[Any, ...] = (
+            envelope.get("message"),
+            envelope.get("detail"),
+            envelope.get("error"),
+        )
+    else:
+        # Flat shape. `envelope` here is either absent or a plain string, in
+        # which case it IS the message.
+        candidates = (response.get("detail"), response.get("message"), envelope)
+
+    for value in candidates:
+        if not value:
+            # Falsy reads as "no message", never as an empty one — the same
+            # substitution an `or` chain makes.
+            continue
+        if isinstance(value, str):
+            return value
+        return json.dumps(value, sort_keys=True, default=str)
+
+    return None
 
 
 class AgentVersionsModule:
@@ -1132,12 +1177,18 @@ class AgentsModule:
         Returns:
             AgentExecution — adapted from the server's flat
             ``{content, model, usage, finish_reason, thread_id, timestamp}``
-            response. Because the call is synchronous, ``status`` is always
-            ``ExecutionStatus.COMPLETED`` on success; ``id`` is populated
-            from the response ``thread_id``. Executions are not persisted as
-            separate, individually-addressable records, so there is nothing to
-            poll, list or cancel afterwards — see :meth:`get_execution`,
-            :meth:`list_executions` and :meth:`cancel_execution`.
+            response. ⛔ CHECK ``result.status`` — this call does NOT raise on a
+            refusal. ``status`` is DERIVED from the body, never from the call
+            having returned 2xx: a body that carries an ``error``, or that
+            carries no ``content`` at all, yields ``ExecutionStatus.FAILED``
+            rather than ``COMPLETED``, and ``error`` is populated so the refusal
+            is readable. A caller that only checks for a raised error, or that
+            assumes a 2xx body is an answer, will read a refusal as a success.
+            ``id`` is populated from the response ``thread_id``. Executions are
+            not persisted as separate, individually-addressable records, so
+            there is nothing to poll, list or cancel afterwards — see
+            :meth:`get_execution`, :meth:`list_executions` and
+            :meth:`cancel_execution`.
 
         Raises:
             NotFoundError: If agent doesn't exist
@@ -1149,8 +1200,10 @@ class AgentsModule:
             ...     message="Research quantum computing and summarize findings",
             ...     context={"focus_area": "algorithms"}
             ... )
-            >>> print(f"Status: {result.status}")
-            >>> print(f"Result: {result.result['content']}")
+            >>> if result.status == ExecutionStatus.FAILED:
+            ...     print(f"not executed: {result.error}")
+            ... else:
+            ...     print(f"Result: {result.result['content']}")
         """
         json_data: dict[str, Any] = {"message": message}
         if context is not None:
@@ -1165,18 +1218,45 @@ class AgentsModule:
             f"/api/v1/agents/{encode_path_param(agent_id)}/execute",
             json_data=json_data,
         )
+
+        # ⛔ `status` IS DERIVED FROM THE BODY, NEVER FROM THE CALL HAVING
+        # RETURNED. It was previously hardcoded `COMPLETED` on every 2xx, so an
+        # empty or refusal-shaped body produced a result reading
+        # `{"status": "completed", "content": None}` — a refusal and a real
+        # answer, indistinguishable to a caller.
+        #
+        # This is the exception `_tolerant` names: a field whose default GRANTS
+        # something reads "the server told us nothing" as "the server told us
+        # yes". `status` is that field, so the absent case resolves to FAILED,
+        # never COMPLETED. The payload fields in `result` below stay tolerant —
+        # a None `content` is information, and FAILED is what makes it readable.
+        error = _execution_error_from_body(response)
+        content = response.get("content")
+
+        if error is not None:
+            status = ExecutionStatus.FAILED
+        elif content is not None:
+            status = ExecutionStatus.COMPLETED
+        else:
+            status = ExecutionStatus.FAILED
+            error = (
+                "the execute endpoint returned no content and no error: the "
+                "response body cannot be read as a completed execution"
+            )
+
         return AgentExecution(
             id=response.get("thread_id", ""),
             agent_id=agent_id,
-            status=ExecutionStatus.COMPLETED,
+            status=status,
             objective=message,
             context=context or {},
             result={
-                "content": response.get("content"),
+                "content": content,
                 "model": response.get("model"),
                 "usage": response.get("usage", {}),
                 "finish_reason": response.get("finish_reason"),
             },
+            error=error,
             completed_at=response.get("timestamp"),
         )
 
@@ -1598,7 +1678,6 @@ class AgentsModule:
             "POST", f"/api/v1/delegate-agents/{encode_path_param(agent_id)}/deactivate"
         )
 
-
     async def list_delegate_agents_for_unit(
         self, unit_id: str, include_archived: bool = False
     ) -> dict[str, Any]:
@@ -1798,7 +1877,6 @@ class AgentsModule:
         )
         return payload
 
-
     async def analyze_objective(self, objective: str) -> ObjectiveAnalysis:
         """
         Analyze a stated objective and get a suggested agent shape for it.
@@ -1832,9 +1910,7 @@ class AgentsModule:
             no response schema, so it is returned unmodelled rather than typed
             against a guess.
         """
-        payload: dict[str, Any] = await self._http.request(
-            "GET", "/api/v1/agents/presets"
-        )
+        payload: dict[str, Any] = await self._http.request("GET", "/api/v1/agents/presets")
         return payload
 
     async def list_status(self) -> AgentStatusList:

@@ -171,6 +171,20 @@ Operations: `api:GET /api/v1/content-reviews` ·
 `api:PUT /api/v1/content-templates/{id}` ·
 `api:DELETE /api/v1/content-templates/{id}`
 
+⛔ **Approve and reject require a decider who is a different human from the
+submitter.** The server resolves both sides to the acting human — an API key
+resolves to its *owner*, so submitting a review and then approving or
+rejecting it through your own key is still a self-decision and is refused
+(`403`) unconditionally, with no role exception. A review whose submitter
+cannot be resolved at all — none recorded, or recorded only as an un-pinned
+`api_key:` principal from before the server started pinning the acting human
+at submit time — is refused for *every* decider, including one who never
+touched it, because distinctness cannot be verified either way. Recover by
+`/{id}/reopen`-ing the review and submitting it again so a resolvable human
+submitter is captured, then have someone else decide it.
+`sdk:aegis_sdk.modules.KnowledgeGovernModule.approve_content_review` and
+`.reject_content_review` document the exact conditions.
+
 ## Connectors — live links to external systems
 
 A connector is a configured, testable link to a system outside Aegis. Agents

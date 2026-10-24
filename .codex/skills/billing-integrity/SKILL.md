@@ -88,14 +88,14 @@ an operator credit, and the server refuses the correction attempt.
 ```
 
 **Why:** a `409` on a usage correction is one of the few responses in this API
-that means *a person needs to look at this now*. Retrying converts a recoverable
+that means _a person needs to look at this now_. Retrying converts a recoverable
 billing error into a hidden one, and the party who eventually finds it is the
 customer.
 
 ## MUST 4 — Confirm which quota-update method your build actually reaches
 
-There has been more than one method addressing quota update, and they have not
-all pointed at a live route.
+Derive the quota path from your own build before you write against it, and make
+the call once to confirm the route answers on your deployment.
 
 ```bash
 # DO — settle it in ten seconds, against your build
@@ -103,15 +103,13 @@ python -c "from aegis_sdk.handbook.check import declared_operations as d; \
 print(sorted(p for m,p in d() if 'quota' in p))"
 ```
 
-In the build this was written against that prints exactly one quota path —
-`api:POST /api/v1/billing/quotas/adjust` — and
-the method reaching it has been reported as targeting a route the server does not
-serve — a `404` for every caller. **UNVERIFIED here:** whether that report holds
-against your deployment, because settling it needs a live call and this package
-cannot make one for you. Make the call once before you build on either method.
+The canonical quota path is `api:POST /api/v1/billing/quotas/adjust`. Make one
+live call against your deployment before you build on whichever method your
+build exposes — that call is the only thing that tells you the route answers
+there.
 
-**Why:** a `404` from a client method reads as *"the platform does not support
-this"* and sends an architect to the wrong team. It is worth ten seconds to know
+**Why:** a `404` from a client method reads as _"the platform does not support
+this"_ and sends an architect to the wrong team. It is worth ten seconds to know
 whether the method or the platform is the problem.
 
 ## MUST 5 — Treat quota adjustment as a platform-administration action
@@ -120,7 +118,7 @@ Quota limits derive from the paid plan tier. Adjusting one outside the plan is a
 commercial act, gated on platform administration rather than on ordinary tenant
 authority — and the shipped docstrings understate the authority required.
 
-**Why:** an architect who reads "admin-only" as *their* organisation's admin will
+**Why:** an architect who reads "admin-only" as _their_ organisation's admin will
 build a self-service flow that always refuses, and will diagnose it as a
 permissions bug rather than as a plan-tier boundary.
 

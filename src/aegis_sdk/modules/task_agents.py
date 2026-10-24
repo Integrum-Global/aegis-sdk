@@ -47,6 +47,13 @@ PostureCeiling = Literal[
     "pseudo", "supervised", "shared_planning", "continuous_insight", "delegated"
 ]
 
+# The ceiling sent when the caller expresses none. Mirrors the server DTO's
+# the deployment's default posture ceiling, which NAMES the
+# value without changing it (#486 is open and is a product call). See that constant for
+# why the obvious fix -- defaulting to `pseudo` -- silently changes trust-chain
+# provisioning rather than just a stored label.
+DEFAULT_POSTURE_CEILING: PostureCeiling = "delegated"
+
 
 class TaskAgent(TolerantModel):
     """
@@ -191,7 +198,7 @@ class TaskAgentsModule:
         max_tokens: int = 0,
         authority_level: int = 3,
         organization_unit_id: str = "",
-        posture_ceiling: PostureCeiling = "delegated",
+        posture_ceiling: PostureCeiling = DEFAULT_POSTURE_CEILING,
     ) -> TaskAgent:
         """
         Create a task agent for agent-to-agent delegation.

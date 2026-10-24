@@ -2,7 +2,7 @@
 
 [02.4](../02-working-through-the-harness/04-trust-chains-and-postures.md) showed
 you how to establish a chain, move a posture and revoke one.
-This chapter is about the shape underneath those calls: what trust *is* as an
+This chapter is about the shape underneath those calls: what trust _is_ as an
 object here, how a decision to permit or refuse is actually reached, how standing
 can be withdrawn, and what survives an action so that somebody who was not there
 can reconstruct it later.
@@ -16,12 +16,12 @@ seriously.
 
 ## Four objects that people collapse into one
 
-| object | answers | mutable? | read it at |
-| --- | --- | --- | --- |
-| **Authority** | who attested this agent? | created, deactivated | `sdk:aegis_sdk.trust.AuthoritiesModule` |
-| **Chain** | where did its authority come from? | established, revoked | `sdk:aegis_sdk.trust.ChainsModule` |
-| **Posture** | how much may it do unaided, now? | moves both ways | `sdk:aegis_sdk.trust.PosturesModule` |
-| **Decision** | was *this* action permitted? | — it is a record | `api:POST /api/v1/trust/verify` |
+| object        | answers                            | mutable?             | read it at                              |
+| ------------- | ---------------------------------- | -------------------- | --------------------------------------- |
+| **Authority** | who attested this agent?           | created, deactivated | `sdk:aegis_sdk.trust.AuthoritiesModule` |
+| **Chain**     | where did its authority come from? | established, revoked | `sdk:aegis_sdk.trust.ChainsModule`      |
+| **Posture**   | how much may it do unaided, now?   | moves both ways      | `sdk:aegis_sdk.trust.PosturesModule`    |
+| **Decision**  | was _this_ action permitted?       | — it is a record     | `api:POST /api/v1/trust/verify`         |
 
 They are separable in practice, not just in principle. An agent can hold a valid
 chain and a restrictive posture — that is the normal state of anything newly
@@ -32,7 +32,7 @@ because the decision consults the envelope and the posture as well.
 ## The authority — the signing root
 
 A chain is not self-originating. An **organisational authority** is the signing
-root a chain is established under: agents are attested *by* an authority, and
+root a chain is established under: agents are attested _by_ an authority, and
 that relationship is recorded in the chain's genesis. Enumerate them at
 `api:GET /api/v1/trust/authorities`, create one with
 `api:POST /api/v1/trust/authorities`, and read the agents established under one
@@ -62,9 +62,9 @@ Expiry defaults to 365 days, and chains genuinely expire.
 Two properties of this call are worth restating because they constrain what you
 can build rather than merely how you call it. **Human origin is derived
 server-side from the authenticated caller** and cannot be supplied — the
-parameter is accepted and ignored. *Design intent, not observable:* an identity a
-client can assert is an identity a client can forge, so the one fact the lineage
-must not be able to lie about is taken from the session. The practical
+parameter is accepted and ignored. An identity a client can assert is an
+identity a client can forge, so the one fact the lineage must not be able to lie
+about is taken from the session. The practical
 consequence is that **the human on the record is whoever's credentials ran the
 script**, which is why provisioning under a shared machine key produces a tenant
 whose entire authority structure descends from a service account.
@@ -84,12 +84,12 @@ The delegation path is `api:GET /api/v1/trust/chains/{id}/delegation-path`,
 returning `sdk:aegis_sdk.DelegationPath` — the ordered walk from the human root
 down to this agent, its depth, and the ceiling in force. Note the two addressings
 in play: **chains are keyed by agent**, so what looks like a chain id in these
-routes is an agent id, and an agent with no chain returns an *empty path rather
-than an error*. `None` there means "no chain", never "failed to load".
+routes is an agent id, and an agent with no chain returns an _empty path rather
+than an error_. `None` there means "no chain", never "failed to load".
 
 One more read worth knowing about before you depend on it: the summary projection
 is **clearance-gated under selective disclosure**. Some fields — the two parties
-and the bridge origin — may be *absent* rather than null when your clearance does
+and the bridge origin — may be _absent_ rather than null when your clearance does
 not reach them, while `id`, `status` and `created_at` are always visible. That
 means a null on a gated field is ambiguous between "not disclosed to you" and
 "genuinely absent", and the response cannot tell you which. Do not build a
@@ -97,8 +97,8 @@ security decision on reading absence.
 
 ## Standing — posture as a moving object
 
-A posture is not a property of the chain; it is the current answer to *how much
-may this agent do without a human in the loop*, and it moves. Read it at
+A posture is not a property of the chain; it is the current answer to _how much
+may this agent do without a human in the loop_, and it moves. Read it at
 `api:GET /api/v1/agents/{id}/trust-posture`. The five levels are CARE-aligned and
 lowercase — `sdk:aegis_sdk.TrustPosture` — and
 [02.4](../02-working-through-the-harness/04-trust-chains-and-postures.md) has the
@@ -112,7 +112,7 @@ load-bearing:
 - **`base_posture` is what the agent reverts to** when the override lapses.
 
 So "what posture is this agent at" has two correct answers depending on whether
-you mean *now* or *by default*, and an emergency restriction implemented as an
+you mean _now_ or _by default_, and an emergency restriction implemented as an
 override is precisely the case where they differ. `sdk:aegis_sdk.PostureOverride`
 models the override row itself, including who initiated it, why, and when it
 expires.
@@ -120,7 +120,7 @@ expires.
 ### Changing it: one endpoint, two outcomes
 
 Both the governed progression request and the administrative override go through
-the *same* call — `api:PUT /api/v1/agents/{id}/trust-posture` — which decides
+the _same_ call — `api:PUT /api/v1/agents/{id}/trust-posture` — which decides
 internally whether the change applies immediately or is held for a human. There
 is no separate override endpoint, and the two are gated on the same permission.
 
@@ -161,11 +161,11 @@ and inferring them is what goes wrong:
 Branch on `approval_pending`. When it is `True`, `result.posture` is the posture
 the agent is **still running at** — reporting it as the new one is the single
 most common integration defect in this area, and it is a reporting defect that
-compounds: a caller that retries after a timeout files a *second* pending
+compounds: a caller that retries after a timeout files a _second_ pending
 request, because the endpoint has no idempotency key. Re-issuing the same
 transition while one is pending records nothing new and comes back flagged —
 check `api:GET /api/v1/agents/{id}/trust-posture/pending` before every request,
-and treat a non-null answer as *already asked* rather than as an obstacle.
+and treat a non-null answer as _already asked_ rather than as an obstacle.
 
 A pending change is decided at `api:POST /api/v1/agents/{id}/trust-posture/approve`
 or the matching `.../reject`. Both accept an explicit approval id, and past one
@@ -175,7 +175,7 @@ your code should never let a second request accumulate in the first place.
 
 ### Where the evidence lives
 
-There is a whole read surface for *why* an agent's standing is what it is, and it
+There is a whole read surface for _why_ an agent's standing is what it is, and it
 is worth more to an auditor than the posture value itself. The eligibility
 verdict is `api:GET /api/v1/agents/{id}/trust-posture/evaluate`, and it is the
 **only** call that answers "may this agent progress" — no posture read and no
@@ -198,8 +198,8 @@ agent's behalf. It takes an agent, an **action** (a string like `write` or
 `execute`), and a target addressed as a **kind plus an optional instance**:
 `resource_type` says what sort of thing is being acted on, `resource_id` says
 which one. The kind is required, and the client will refuse rather than invent
-one — *design intent, not observable:* the platform writes that value into its
-audit trail, so a fabricated placeholder would read as one the caller had named.
+one: the platform writes that value into its audit trail, so a fabricated
+placeholder would read as one the caller had named.
 
 The result is a decision plus the platform's reasoning:
 `sdk:aegis_sdk.TrustVerificationResult` carries `allowed` and `reason`, and the
@@ -217,7 +217,7 @@ constraints, never against anything the request asserts about itself.
 `sdk:aegis_sdk.modules.GovernanceExplainModule` — returns the same decision as a
 trace rather than a verdict: whether it was allowed, the reason, **the step the
 evaluation reached**, and the access path taken. That step name is the useful
-field on a refusal, because it tells you *where* the chain stopped.
+field on a refusal, because it tells you _where_ the chain stopped.
 
 Read its two subject modes carefully, because they are not the same kind of
 answer. A **knowledge item** subject is a dry run: nothing is accessed, nothing
@@ -225,14 +225,14 @@ is recorded, and the verdict is only as good as the item description you passed
 — it is not evidence that a real access would be permitted. A **tool** subject is
 the opposite: it reads the refusals that were actually persisted for that tool's
 work unit, so the step and reason are that gate's own words rather than a
-recomputation. And a tool subject with no refusal on record reports the *absence
-of a record*, which is not the same as a determination that the tool is
+recomputation. And a tool subject with no refusal on record reports the _absence
+of a record_, which is not the same as a determination that the tool is
 permitted. That distinction is stated in the response itself; believe it.
 
 ### One question worth asking on a schedule
 
-`api:GET /api/v1/governance/envelope-coverage` answers not *"do envelopes
-exist"* but *"would they stop anything"*. It is the closest thing here to a
+`api:GET /api/v1/governance/envelope-coverage` answers not _"do envelopes
+exist"_ but _"would they stop anything"_. It is the closest thing here to a
 readiness check on the governance layer, and it is honest in a way that makes it
 usable: an envelope that resolves to allow-all is counted in its own bucket
 rather than as coverage, and the report carries a **completeness flag** —
@@ -252,12 +252,12 @@ which is why it has its own read.
 Two questions, and both have a precise answer that is shorter than people expect.
 
 **To which object?** **To two, and the division is the important part.** The
-bounds split by *whose* they are:
+bounds split by _whose_ they are:
 
-| attached to | what it carries | why there |
-| --- | --- | --- |
-| the **role** | envelope, clearance | they describe the *seat*, so they survive whoever occupies it |
-| the **agent** | trust chain, posture | they describe the *occupant* — its lineage, and how far it may go unaided |
+| attached to   | what it carries      | why there                                                                 |
+| ------------- | -------------------- | ------------------------------------------------------------------------- |
+| the **role**  | envelope, clearance  | they describe the _seat_, so they survive whoever occupies it             |
+| the **agent** | trust chain, posture | they describe the _occupant_ — its lineage, and how far it may go unaided |
 
 Both are consulted at the same decision (Gate 2 below), and the split is what
 makes the two facts independent: **swapping the agent in a role changes the
@@ -265,13 +265,13 @@ agent's standing and leaves the role's bounds untouched**, which is exactly what
 makes a seat reusable and a re-org survivable. It is also why linking an agent
 to a role grants nothing — the role's bounds were already there and the agent
 brings only its own. The organisation and the unit sit above both and contribute
-*ceilings* that propagate down; neither carries a value that is consulted
+_ceilings_ that propagate down; neither carries a value that is consulted
 directly.
 
 **At which moment?** **At the decision — not at the declaration.** Every
 authority object has a declared state and a consulted state, and they are not
 the same moment and are frequently not the same value. An envelope that exists in
-`draft` is *declared* in every listing you will read and is *consulted* by
+`draft` is _declared_ in every listing you will read and is _consulted_ by
 nothing. A clearance awaiting vetting is declared and is not consulted. That gap
 is the single most common way a governance design ends up looking complete and
 enforcing nothing, and the diagram below is the whole of it.
@@ -324,7 +324,7 @@ refusal at Gate 1 is a statement about your credential, and a refusal at Gate 2 
 a statement about the agent — they arrive with overlapping status codes and have
 completely different remedies, which is [06.1](01-what-core-and-the-sdk-are.md)'s point about
 plane-versus-door made concrete. And the second list is not a list of bugs. Each of those objects is in
-the state it is in by design; they are simply *not* part of the decision, and a
+the state it is in by design; they are simply _not_ part of the decision, and a
 design that treats their existence as coverage has misread which half of the
 system it is looking at.
 
@@ -333,7 +333,7 @@ system it is looking at.
 > decision in front of the tool call is the `claude_agent_sdk` runtime. The
 > default agent runtime has **no pre-execution gate**, and the platform warns at
 > boot that it does not. The decision still exists and is still recorded — what
-> changes is whether anything *stops*. Establish which runtime your deployment
+> changes is whether anything _stops_. Establish which runtime your deployment
 > runs before you design a control that depends on a refusal happening.
 
 ## What is enforced, and what is only recorded
@@ -341,18 +341,18 @@ system it is looking at.
 This is the table to design against, because treating a recording surface as an
 enforcement surface is how a system ends up governed on paper only.
 
-| surface | enforced? | what that means for you |
-| --- | --- | --- |
-| `verify` — the trust decision | **enforced** | the path the runtime calls; a refusal stops the action |
-| envelope resolution | **enforced** | bounds what a delegate may do; fail-closed on a skip |
-| posture materialisation | **enforced** | the agent's own permission set is written from it |
-| clearance vs classification | **enforced** | gates reads; failure presents as "cannot see" |
-| trust score / CARE budget reads | **not enforced — display only** | the enforcement path does not consult them |
-| posture progression *metrics* | **inputs, not a verdict** | they are what eligibility is computed *from* |
-| pipeline pre-flight validation | **partial** | constraints are not evaluated on that route today |
-| audit log | **a record** | it tells you what happened; it does not prevent it |
+| surface                         | enforced?                       | what that means for you                                |
+| ------------------------------- | ------------------------------- | ------------------------------------------------------ |
+| `verify` — the trust decision   | **enforced**                    | the path the runtime calls; a refusal stops the action |
+| envelope resolution             | **enforced**                    | bounds what a delegate may do; fail-closed on a skip   |
+| posture materialisation         | **enforced**                    | the agent's own permission set is written from it      |
+| clearance vs classification     | **enforced**                    | gates reads; failure presents as "cannot see"          |
+| trust score / CARE budget reads | **not enforced — display only** | the enforcement path does not consult them             |
+| posture progression _metrics_   | **inputs, not a verdict**       | they are what eligibility is computed _from_           |
+| pipeline pre-flight validation  | **partial**                     | constraints are not evaluated on that route today      |
+| audit log                       | **a record**                    | it tells you what happened; it does not prevent it     |
 
-> ⚠ **Read the middle column as what each surface is *for*, not as a measurement
+> ⚠ **Read the middle column as what each surface is _for_, not as a measurement
 > this chapter took.** Every row rests on what the surface says about itself and
 > on what you can observe when a call is refused — but **no client can
 > demonstrate that a control actually stops an action.** An anchor proves a
@@ -368,8 +368,8 @@ stronger than it is.
 **The scoring reads are display-only, and the module says so.** The A–F grade and
 the five-dimension CARE budget (`api:GET /api/v1/trust/agents/{id}/trust-score`,
 `/care-budget`) are projections for humans. The platform's enforcement path does
-not consult them. **design intent, not observable:** a score that gates an action
-is a score an attacker optimises against, so it is kept out of the decision path.
+not consult them: a score that gates an action is a score an attacker optimises
+against, so it is kept out of the decision path.
 Design accordingly — never gate your own logic on a grade.
 
 **Pipeline validation checks less than its name suggests.** Pre-flight validation
@@ -377,7 +377,7 @@ across a multi-agent pipeline (`api:POST /api/v1/trust/pipeline/validate`,
 `sdk:aegis_sdk.trust.PipelineTrustModule`) confirms every agent holds an active
 chain carrying the capabilities its step requires. Its `violated_constraints`
 field is **always empty because constraints are not evaluated on that route** —
-so an empty list there means *not checked*, not *none violated*. Read
+so an empty list there means _not checked_, not _none violated_. Read
 `all_valid` as a statement about chains and capabilities only.
 
 **Trust metrics are a sample on a large tenant.**
@@ -385,8 +385,8 @@ so an empty list there means *not checked*, not *none violated*. Read
 a bounded page of records, and the response carries **no marker distinguishing a
 sample from a total**. For an organisation with more chains than that page holds,
 every figure is the most recent slice rather than the population. The compliance
-report (`api:GET /api/v1/trust/compliance/{id}`) scans further and *declares when
-it could not* — so when a number has to be defensible, that is the surface to
+report (`api:GET /api/v1/trust/compliance/{id}`) scans further and _declares when
+it could not_ — so when a number has to be defensible, that is the surface to
 reach for, and the honest move is to say which one you used.
 
 ## Withdrawal — revocation, and the shapes that confuse people
@@ -418,7 +418,7 @@ a particular person, which is what you want when someone leaves;
 **The reversible brake is a posture, not a chain state.** There is no operation
 that suspends a trust chain; the methods that appear to be one exist only as
 deprecation shims and always raise. If you need to stop an agent acting without
-permanently ending its lineage, the honest tool is a *downward* posture override
+permanently ending its lineage, the honest tool is a _downward_ posture override
 — `api:PUT /api/v1/agents/{id}/trust-posture` — which applies immediately rather
 than waiting on approval, and which you can lift afterwards. Use revocation for
 the decision you mean to be permanent.
@@ -429,12 +429,12 @@ There are two distinct audit surfaces, they are written by different subsystems,
 and conflating them is how an evidence request gets answered with the wrong
 document.
 
-| | platform audit | trust audit |
-| --- | --- | --- |
-| read at | `api:GET /api/v1/audit/logs` | `api:GET /api/v1/trust/audit` |
-| records | user actions, resource changes | trust decisions — who delegated what, on what basis |
-| module | `sdk:aegis_sdk.modules.ObserveAuditModule` | `sdk:aegis_sdk.trust.AuditModule` |
-| answers | "who changed this?" | "why was this agent allowed?" |
+|         | platform audit                             | trust audit                                         |
+| ------- | ------------------------------------------ | --------------------------------------------------- |
+| read at | `api:GET /api/v1/audit/logs`               | `api:GET /api/v1/trust/audit`                       |
+| records | user actions, resource changes             | trust decisions — who delegated what, on what basis |
+| module  | `sdk:aegis_sdk.modules.ObserveAuditModule` | `sdk:aegis_sdk.trust.AuditModule`                   |
+| answers | "who changed this?"                        | "why was this agent allowed?"                       |
 
 Both are queryable and exportable — `api:GET /api/v1/audit/export` for the
 platform log, and per-human filtering on the trust side at
@@ -451,8 +451,8 @@ descended from.
 
 > ⛔ **Read the `verified` flag on a trace with its own warning in hand.** That
 > field reports signature verification but **defaults to true for an entry that
-> carries no signature at all**. It therefore means *"no signature check
-> failed"*, not *"this entry is cryptographically verified"* — an unsigned entry
+> carries no signature at all**. It therefore means _"no signature check
+> failed"_, not _"this entry is cryptographically verified"_ — an unsigned entry
 > and a validly signed one are indistinguishable on that field alone. Check
 > whether the record carries a signature before treating the flag as evidence,
 > and do not report a trace as cryptographically verified on the strength of it.
@@ -462,22 +462,36 @@ descended from.
 The audit log is presented as tamper-evident, and there are two different reads
 for that claim. `api:GET /api/v1/compliance/audit/verify` performs the
 verification walk — a cryptographic hash-chain check with optional start and end
-bounds — and returns whether it was valid, how many entries were checked, and
-the id of the first invalid entry if tampering was found. That is an
-**on-demand** check you run.
+bounds — and returns its `status`, how many entries were checked, and the id of
+the first invalid entry if tampering was found. That is an **on-demand** check
+you run.
 
-`api:GET /api/v1/compliance/chain/integrity` is the *other* half: it reads the
+> ⚠ **The walk checks hashes and links, not signatures.** It recomputes each
+> entry's hash and follows the chain, which establishes that the stored rows are
+> **internally consistent** — not who wrote them, because anyone who can write a
+> row can recompute a hash over it. So a clean walk reports
+> `hash-consistent, not signature-verified`, whose customer-facing reading is
+> *internally consistent, not independently verified*. The word `verified` is
+> reserved for a walk that actually checked the entries' signatures, and
+> `signatures_verified` says how many it checked. **Branch on `status`, never on
+> the `valid` boolean** — `valid` is `True` for both pass states and cannot tell
+> them apart.
+
+`api:GET /api/v1/compliance/chain/integrity` is the _other_ half: it reads the
 result of the platform's own periodic verification sweep. It does not trigger a
-sweep. And it has a cold-start trap worth knowing — **check the last-verified
-timestamp before reading the ok flag**, because a deployment that has not yet run
-a sweep reports *not ok*, which is a "nothing has been checked yet" finding and
-not a "something is broken" one. Those two produce the same boolean and opposite
-alarms.
+sweep. It carries the same `status` for the same reason, and — because `ok` is a
+single boolean trying to hold several outcomes — a second trap worth knowing:
+**check the last-verified timestamp before reading the ok flag**, because a
+deployment that has not yet run a sweep reports _not ok_, which is a "nothing
+has been checked yet" finding and not a "something is broken" one. Those two
+produce the same boolean and opposite alarms. (`status` disambiguates them:
+`null` means no sweep has completed; `unverified` is a verdict about a chain
+that could not be walked.)
 
 ## Reconstructing an action, end to end
 
-The decision diagram earlier answered *where a bound is consulted*. This one
-answers a different question — *what happens when* — and the gap between the two
+The decision diagram earlier answered _where a bound is consulted_. This one
+answers a different question — _what happens when_ — and the gap between the two
 halves of it is the whole reason an audit spine exists.
 
 ```text
@@ -528,16 +542,17 @@ written after. Neither substitutes for the other, and a system that can produce
 one and not the other cannot answer the question an auditor will actually ask,
 which is not "was something enforced" but "show me that it was".
 
-## What this spine does not establish
+## Reading the spine correctly
 
-Stated as plainly as the rest, because these are the places a design goes wrong
-by assuming more than is there.
+Five distinctions decide whether a design built on this evidence holds. Each is
+a property of the model, and each is a place a design goes wrong by assuming
+more than the control claims.
 
 - **A permitted decision is a decision about an intent, not a guarantee about an
   outcome.** No response body exists when the verdict is made.
 - **A green governance check is not a statement about your configuration being
   correct.** Coverage reports readiness; they do not know what you meant.
-- **The audit log records; it does not prevent.** Tamper-*evidence* is a property
+- **The audit log records; it does not prevent.** Tamper-_evidence_ is a property
   of the hash chain, not a claim that nothing can be changed before it is
   verified.
 - **The trust registry's discovery surface reads chains, not agents** — see
@@ -549,14 +564,13 @@ by assuming more than is there.
   record was not altered; it says nothing about whether the authority that signed
   it should have.
 
-**UNVERIFIED** in this edition: the precise conditions under which the platform
-runs its periodic chain-verification sweep — interval, trigger and whether an
-operator can schedule one — could not be settled from what is reachable here.
-`api:GET /api/v1/compliance/chain/integrity` reports the *result* of a sweep; it
-does not describe the schedule. If the freshness of that verification matters to
-your controls, read `last_verified_at` on a schedule of your own and alarm on
-staleness, rather than assuming a cadence.
+**The sweep's cadence belongs to the deployment, not to the client.**
+`api:GET /api/v1/compliance/chain/integrity` reports the _result_ of the
+platform's periodic chain-verification sweep; it does not describe when the next
+one runs. If the freshness of that verification matters to your controls, read
+`last_verified_at` on a schedule of your own and alarm on staleness, rather than
+assuming a cadence.
 
 ---
 
-*Next: [06.5 — The execution model](05-the-execution-model.md)*
+_Next: [06.5 — The execution model](05-the-execution-model.md)_

@@ -15,7 +15,7 @@ Nodes are cattle, not pets: they are created, drained and destroyed as the pools
 autoscale. Anything stored only on a node's local disk is therefore coupled to
 that node's lifetime. So the stateful components are **managed services outside
 the cluster** — the database, the cache, and object storage are reached
-*over the network* by the services that use them, rather than running as pods
+_over the network_ by the services that use them, rather than running as pods
 alongside them.
 
 The practical consequences you will meet:
@@ -32,7 +32,7 @@ The practical consequences you will meet:
 This is where the organisation's state lives: its structure, its roles and their
 envelopes, its clearance model, its objectives and their history, and the record
 of what was permitted. **Managed** means the platform operates it — engine
-version, patching, replication, backup — and you do not. You own what is *in* it.
+version, patching, replication, backup — and you do not. You own what is _in_ it.
 
 ### Embeddings live in the database
 
@@ -45,10 +45,10 @@ lookup, that lookup runs against the same database that holds the organisation's
 records, with the same transactional and backup characteristics as everything
 else.
 
-The operation this shows up in is `api:GET /api/v1/knowledge/search`. That this
-client declares it is something you can check from your own machine. *Design
-intent, not observable:* which store the embeddings actually live in is a
-property of the deployment, and nothing available to you establishes it.
+The operation this shows up in is `api:GET /api/v1/knowledge/search`, and that
+this client declares it is something you confirm from your own machine. Which
+store holds the embeddings is a property of the deployment, and your operator is
+who confirms it for yours.
 
 Three consequences worth planning around:
 
@@ -58,9 +58,8 @@ Three consequences worth planning around:
 - **The engine is constrained.** You cannot move this deployment onto an
   arbitrary relational engine or an arbitrary major version. The engine must be
   one that supports the vector extension, and a version upgrade is gated on that
-  extension being available for the new version. *Design intent, not observable:*
-  this constraint is real, and which engines satisfy it is a question for your
-  operator rather than something inferable from here.
+  extension being available for the new version. Which engines satisfy that is a
+  question for your operator, and it is the one that governs your upgrade path.
 - **Embedding cost is storage cost.** As the corpus grows, so does the database.
   Capacity planning for knowledge is database capacity planning, not a separate
   line item.
@@ -80,8 +79,8 @@ That is the honest general statement, and it comes with an honest caveat:
 here.** A cache that holds anything authoritative — a rate-limit counter, a
 session that is not also persisted, a lock — is no longer merely an optimisation,
 and losing it changes behaviour rather than speed. The reference shape keeps
-authoritative state out of the cache, but *design intent, not observable* applies:
-you cannot verify from outside what a given deployment actually stores there.
+authoritative state out of the cache, and what a given deployment stores there is
+your operator's to confirm.
 
 **If you are designing for failure, this is worth one direct question to your
 operator:** does losing the cache lose anything that is not reconstructible? A
@@ -155,12 +154,13 @@ understandable one — the configuration looks right, the job reports success, t
 storage has bytes in it — and none of those observations distinguishes a working
 backup from an unusable one. The only instrument that settles it is a restore
 that produces a usable database. Until that has happened, the correct description
-of your disaster-recovery posture is *untested*, which is not the same as *bad*
-but must not be reported as *good*.
+of your disaster-recovery posture is _untested_, which is not the same as _bad_
+but must not be reported as _good_.
 
-*Design intent, not observable:* all of it, from your position. This is the
-chapter where the gap between what a reference architecture describes and what
-you can check is widest, and it is why the next section exists.
+Backup schedules, retention windows and recovery objectives are your operator's
+to set and to state. This is the chapter with the most of those in it, which is
+why [07.7](07-operating-the-deployment.md) collects them into a list you can put
+in front of whoever runs your deployment.
 
 ## Encryption
 
@@ -179,14 +179,13 @@ customer-managed keys so that the keys protecting your data are held in your
 control rather than the platform's, which changes who can read the data at the
 storage layer. That is a genuine control with real operational consequences —
 losing such a key is a different class of incident — and whether it is in place
-is a question of policy, not something visible from your integration.
+is a matter of policy your operator sets.
 
-**UNVERIFIED — and marked deliberately:** the specific encryption configuration,
-key custody arrangements, and recovery objectives of any particular deployment.
-Every claim in this section is about construction. The reader who checks them by
-asking has done the right thing; the reader who treats them as established
-because they appear in a reference architecture has not.
+**Three things to have your operator state for your deployment:** the encryption
+configuration, the key custody arrangement, and the recovery objectives. Each is
+a policy decision rather than a platform default, and each belongs in writing
+before a security review asks for it.
 
 ---
 
-*Next: [07.6 — Identity and secrets](06-identity-and-secrets.md)*
+_Next: [07.6 — Identity and secrets](06-identity-and-secrets.md)_

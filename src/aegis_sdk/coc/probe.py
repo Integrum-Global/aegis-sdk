@@ -2,20 +2,18 @@
 
 WHY THIS EXISTS
 ---------------
-The handbook records that an API key cannot reach a persona-gated route, that no
-scope configuration changes that, and then marks the *size* of that surface
-**UNVERIFIED** — three different counting units give three different numbers and
-the route-level enumeration had not been done.
+The handbook records that an API key cannot reach a persona-gated route and that
+no scope configuration changes that. The *size* of that surface is a property of
+your deployment rather than of the documentation.
 
-It could not be done there, and that is worth saying plainly rather than
-treating as an omission. A route-level enumeration derived from the platform's
-own source would be a list you cannot open, checked by a gate you cannot run,
-about a build that is not necessarily the one you were given. It would be an
-assertion with a decoration on it.
+A route-level enumeration derived from the platform's own source would be a list
+you cannot open, checked by a gate you cannot run, about a build that is not
+necessarily the one you were given. It would be an assertion with a decoration
+on it.
 
-So this probe answers the same question from the other side: it asks **your**
+So this probe answers the question from the other side: it asks **your**
 deployment, with **your** credentials, and reports the routes where the two
-disagree. That answer is narrower than the source-derived one — it covers only
+disagree. That answer is narrower than a source-derived one — it covers only
 what this client declares and only what is safe to call — and it is an answer
 you obtained yourself, about the system you actually have.
 
@@ -97,9 +95,7 @@ def probeable_operations() -> list[str]:
     from aegis_sdk.handbook.check import declared_operations
 
     return sorted(
-        path
-        for method, path in declared_operations()
-        if method == "GET" and "{}" not in path
+        path for method, path in declared_operations() if method == "GET" and "{}" not in path
     )
 
 
@@ -128,9 +124,9 @@ def _is_transport_name(name: str) -> bool:
     """A method that carries a request to a server, not a hook that observes one.
 
     ``on_request`` is the case this excludes and the reason the test is not a
-    substring match: a plugin hook named for the request it is *told about* was
-    the first thing an earlier version of this flagged, while missing the real
-    stub entirely. Both errors came from the same loose matcher.
+    substring match: a plugin hook named for the request it is *told about* does
+    not carry that request, so a loose matcher flags the observer and misses the
+    transport.
     """
     if name.startswith("on_"):
         return False
@@ -255,8 +251,7 @@ async def run_probe(base_url: str, api_key: str | None, token: str | None) -> in
         results: dict[str, dict[str, int]] = {}
         for path in paths:
             results[path] = {
-                name: await _status(http, base_url, path, header)
-                for name, header in creds.items()
+                name: await _status(http, base_url, path, header) for name, header in creds.items()
             }
 
     if len(creds) < 2:
@@ -272,9 +267,7 @@ async def run_probe(base_url: str, api_key: str | None, token: str | None) -> in
         return EXIT_FINDINGS if denied else EXIT_CLEAN
 
     trapped = sorted(
-        p
-        for p, r in results.items()
-        if r.get("key") == 403 and r.get("session") in (200, 204)
+        p for p, r in results.items() if r.get("key") == 403 and r.get("session") in (200, 204)
     )
     both_ok = sum(1 for r in results.values() if r.get("key") in (200, 204))
     ambiguous = sorted(p for p, r in results.items() if 404 in r.values() or -1 in r.values())

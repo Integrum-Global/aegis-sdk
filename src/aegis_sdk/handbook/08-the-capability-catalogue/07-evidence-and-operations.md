@@ -162,8 +162,19 @@ Retention and reports: `api:GET /api/v1/compliance/retention/policies` ·
 
 ```python
 integrity = await client.compliance.get_chain_integrity()
-if not integrity["valid"]:
+
+# Read `status`, not `ok`.  `ok=True` means the sweep found no break -- it is
+# NOT a statement that the chain was independently verified.
+if integrity.status == "verified":
+    print("walked, and the entries' signatures were checked")
+elif integrity.status == "hash-consistent, not signature-verified":
+    # The ordinary clean result: the stored rows are internally consistent.
+    # A hash is a public function, so this says nothing about WHO wrote them.
+    print("internally consistent, not independently verified")
+elif integrity.status == "broken":
     raise RuntimeError("audit chain integrity check failed")
+else:  # "unverified", or None when no sweep has completed yet
+    raise RuntimeError("audit chain state could not be established")
 
 await client.compliance.run_assessment(framework="soc2")
 evidence = await client.compliance.generate_soc2_evidence(
@@ -171,6 +182,18 @@ evidence = await client.compliance.generate_soc2_evidence(
     period_end="2026-09-30",
 )
 ```
+
+> ⛔ **`verified` is a claim about signatures, and most clean chains are not
+> made of them.** The platform's integrity walk recomputes each entry's hash
+> and follows the links between entries. That establishes that the stored rows
+> are **internally consistent**; it does not establish who wrote them, because
+> anyone able to write a row can recompute a hash over it. So the honest
+> reading of a clean walk is `hash-consistent, not signature-verified` —
+> customer-facing, *internally consistent, not independently verified* — and
+> the word `verified` is reserved for a walk that actually checked the
+> entries' signatures. `signatures_verified` tells you how many were checked.
+> A caller that branches on `valid` alone sees `True` for both pass states and
+> cannot tell them apart.
 
 > ⛔ **Verify the chain before you present the evidence, not after.**
 > `api:GET /api/v1/compliance/chain/integrity` is what makes an evidence pack

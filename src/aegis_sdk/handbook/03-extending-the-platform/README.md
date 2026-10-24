@@ -95,7 +95,13 @@ Each is documented where it lives; collected here because a default nobody chose
 still a default you own.
 
 - **A task agent's `posture_ceiling` defaults to `delegated`** — the _most_
-  autonomous posture. Nearly every other default in this book is restrictive. 03.6.
+  autonomous posture, and the only default here that the record may not be able to
+  act on: an agent created with no `human_role_id` holds no trust chain and is
+  refused at execution, so its stored ceiling is a claim nothing honours. **Read
+  the coupling before "fixing" this by defaulting to `pseudo`:** `pseudo` is a
+  MEMBER of `agent_service._NO_TRUST_CHAIN_POSTURES`, so that default does not
+  merely lower a label — it stops trust-chain minting for every role-bearing
+  agent that omits the field. Open as issue #486. 03.6.
 - **An external agent's four budget and rate limits default to `-1`, meaning
   unlimited** — and `-1` compares as smaller than every threshold, so a naive
   numeric check fires loudest on the agent that has no limit at all. 03.6.

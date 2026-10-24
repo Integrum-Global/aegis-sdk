@@ -31,6 +31,20 @@ from .llm_providers import LlmProvidersModule
 from .mcp import McpBinding, McpModule, McpRegistration
 from .metrics import MetricsModule
 from .notifications import NotificationsModule
+from .objective_workspaces import (
+    ObjectiveWorkspace,
+    ObjectiveWorkspacesModule,
+    WorkspaceAgentSession,
+    WorkspaceAuditTrail,
+    WorkspaceCondensePreview,
+    WorkspaceHierarchy,
+    WorkspaceProgress,
+    WorkspaceReply,
+    WorkspaceThread,
+    WorkspaceThreadList,
+    WorkspaceThreadMessage,
+    WorkspaceThreadMessageList,
+)
 from .observe_audit import ObserveAuditModule
 from .org_standup import OrgStandupModule
 from .pools import PoolsModule
@@ -65,6 +79,18 @@ from .workspaces import (
 
 __all__ = [
     "A2AModule",
+    "ObjectiveWorkspace",
+    "ObjectiveWorkspacesModule",
+    "WorkspaceAgentSession",
+    "WorkspaceAuditTrail",
+    "WorkspaceCondensePreview",
+    "WorkspaceHierarchy",
+    "WorkspaceProgress",
+    "WorkspaceReply",
+    "WorkspaceThread",
+    "WorkspaceThreadList",
+    "WorkspaceThreadMessage",
+    "WorkspaceThreadMessageList",
     "AdHocBridgesModule",
     "BridgesModule",
     "ScopedBridgesModule",

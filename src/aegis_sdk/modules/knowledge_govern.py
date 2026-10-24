@@ -483,12 +483,30 @@ class KnowledgeGovernModule:
 
         Server: ``POST /api/v1/knowledge/{knowledge_id}/assign-reviewer``.
 
+        The assigned reviewer must be a DIFFERENT human from whoever
+        submitted the review — the server resolves both sides to the acting
+        human (an API key resolves to its *owner*, so naming your own key's
+        owner as reviewer is still a self-assignment) and refuses
+        unconditionally when they match. A review whose submitter has no
+        resolvable human behind it (a non-key MACHINE submission — e.g. an
+        automated ingestion pipeline) SKIPS the comparison rather than
+        refusing, since there is no human to compare against; a submitter
+        recorded only as an un-pinned ``api_key:`` principal (a row written
+        before the server pinned the acting human at submit time) is
+        REFUSED for every candidate reviewer, because distinctness cannot be
+        verified either way.
+
         Args:
             knowledge_id: Knowledge item ID
             reviewer_id: ID of the reviewer to assign
 
         Returns:
             KnowledgeReviewResult: review_id + status
+
+        Raises:
+            AuthorizationError: ``403`` — the named reviewer resolves to the
+                same human as the submitter, or the submitter is recorded
+                only as an un-pinned API-key principal.
         """
         response = await self._http.request(
             "POST",
@@ -503,12 +521,38 @@ class KnowledgeGovernModule:
 
         Server: ``POST /api/v1/knowledge/{knowledge_id}/approve``.
 
+        Self-approval prevention on TWO independent axes: the decider must
+        differ from BOTH whoever submitted the review AND whoever authored
+        the knowledge item itself (a colleague submitting on the author's
+        behalf does not clear the author to approve their own content). Both
+        sides of each comparison resolve to the acting human — an API key
+        resolves to its *owner*, so submitting or authoring and then
+        deciding through your own key is still a self-decision — and the
+        decider itself must resolve to an established human: a machine
+        principal cannot exercise this decision at all.
+
+        A submitter or author with no resolvable human behind it (a
+        non-key MACHINE identity — e.g. an automated ingestion pipeline)
+        SKIPS that one comparison rather than refusing, since there is no
+        human to compare against; one recorded only as an un-pinned
+        ``api_key:`` principal (a row written before the server pinned the
+        acting human) is REFUSED for every decider, because distinctness
+        cannot be verified either way. The remedy for an un-pinned row is to
+        reject it and resubmit (or, for authorship, create a fresh revision)
+        so a resolvable human is captured.
+
         Args:
             knowledge_id: Knowledge item ID
             decision_comment: Required reviewer comment (non-empty)
 
         Returns:
             KnowledgeReviewResult: review_id + status
+
+        Raises:
+            AuthorizationError: ``403`` — the decider resolves to the same
+                human as the submitter or the author, the decider is not an
+                established human, or the submitter/author is recorded only
+                as an un-pinned API-key principal.
         """
         response = await self._http.request(
             "POST",
@@ -523,12 +567,24 @@ class KnowledgeGovernModule:
 
         Server: ``POST /api/v1/knowledge/{knowledge_id}/reject``.
 
+        Same distinct-decider requirement as :meth:`approve` on the
+        SUBMITTER axis (rejecting your own submission through your own key
+        is still refused), and the same machine-decider refusal. See
+        :meth:`approve` for the full contract, including the un-pinned-row
+        and non-key-machine-submitter dispositions.
+
         Args:
             knowledge_id: Knowledge item ID
             decision_comment: Required reviewer comment (non-empty)
 
         Returns:
             KnowledgeReviewResult: review_id + status
+
+        Raises:
+            AuthorizationError: ``403`` — the decider resolves to the same
+                human as the submitter, the decider is not an established
+                human, or the submitter is recorded only as an un-pinned
+                API-key principal.
         """
         response = await self._http.request(
             "POST",
@@ -545,12 +601,22 @@ class KnowledgeGovernModule:
 
         Server: ``POST /api/v1/knowledge/{knowledge_id}/request-changes``.
 
+        Same distinct-decider requirement as :meth:`approve` on the
+        SUBMITTER axis, and the same machine-decider refusal. See
+        :meth:`approve` for the full contract.
+
         Args:
             knowledge_id: Knowledge item ID
             decision_comment: Required reviewer comment (non-empty)
 
         Returns:
             KnowledgeReviewResult: review_id + status
+
+        Raises:
+            AuthorizationError: ``403`` — the decider resolves to the same
+                human as the submitter, the decider is not an established
+                human, or the submitter is recorded only as an un-pinned
+                API-key principal.
         """
         response = await self._http.request(
             "POST",
@@ -618,7 +684,9 @@ class KnowledgeGovernModule:
         params: dict[str, Any] = {}
         if status:
             params["status"] = status
-        response: list[dict[str, Any]] = await self._http.request("GET", "/api/v1/knowledge-reviews", params=params)
+        response: list[dict[str, Any]] = await self._http.request(
+            "GET", "/api/v1/knowledge-reviews", params=params
+        )
         return response
 
     # ------------------------------------------------------------------
@@ -1022,12 +1090,33 @@ class KnowledgeGovernModule:
 
         Server: ``POST /api/v1/content-reviews/{review_id}/approve``.
 
+        The decider must be a DIFFERENT human from whoever submitted the
+        review — the server resolves both sides to the acting human (an API
+        key resolves to its *owner*, so submitting and then approving through
+        your own key is still a self-decision) and refuses unconditionally
+        when they match, with no role exception. A review whose submitter
+        cannot be established at all — no recorded submitter, or a submitter
+        recorded only as an un-pinned ``api_key:`` principal (a row written
+        before the server pinned the acting human at submit time) — is
+        refused for *every* decider, including one who never touched it,
+        because distinctness cannot be verified either way. The remedy is the
+        same in both cases: :meth:`reopen_content_review` the review, then
+        :meth:`submit_content_review` it again so a resolvable human
+        submitter is captured, and have someone else decide it.
+
         Args:
             review_id: Content review ID
             comment: Optional reviewer comment
 
         Returns:
             dict: Content review record with updated state
+
+        Raises:
+            AuthorizationError: ``403`` — the decider resolves to the same
+                human as the submitter, or the submitter cannot be resolved
+                to a human at all (missing, or an un-pinned API-key row).
+            AgenticOSError: ``409`` — the review is not in ``in_review``.
+            NotFoundError: ``404`` — no such review in this organization.
         """
         data = {"comment": comment} if comment is not None else None
         response: dict[str, Any] = await self._http.request(
@@ -1045,12 +1134,25 @@ class KnowledgeGovernModule:
 
         Server: ``POST /api/v1/content-reviews/{review_id}/reject``.
 
+        Same distinct-decider requirement as :meth:`approve_content_review` —
+        the decider must resolve to a different human from the submitter
+        (an API key resolves to its owner), and a review with no resolvable
+        human submitter is refused for every decider. Reopen and resubmit to
+        recover; see :meth:`approve_content_review` for the full contract.
+
         Args:
             review_id: Content review ID
             comment: Optional reviewer comment
 
         Returns:
             dict: Content review record with updated state
+
+        Raises:
+            AuthorizationError: ``403`` — the decider resolves to the same
+                human as the submitter, or the submitter cannot be resolved
+                to a human at all (missing, or an un-pinned API-key row).
+            AgenticOSError: ``409`` — the review is not in ``in_review``.
+            NotFoundError: ``404`` — no such review in this organization.
         """
         data = {"comment": comment} if comment is not None else None
         response: dict[str, Any] = await self._http.request(

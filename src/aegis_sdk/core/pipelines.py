@@ -35,6 +35,41 @@ if TYPE_CHECKING:
 _EXECUTION_SCAN_PAGE_SIZE = 100
 
 
+
+def _execution_from_status_response(payload: Any) -> dict[str, Any]:
+    """Normalize the public execution response without inventing a run state."""
+    if not isinstance(payload, dict):
+        raise ServiceError("Execution response must be an object")
+    execution_id = payload.get("id")
+    pipeline_id = payload.get("pipelineId", payload.get("pipeline_id"))
+    if not isinstance(execution_id, str) or not execution_id:
+        raise ServiceError("Execution response has no execution id")
+    if not isinstance(pipeline_id, str) or not pipeline_id:
+        raise ServiceError("Execution response has no pipeline id")
+    nodes = payload.get("nodeExecutions", payload.get("node_results")) or []
+    return {
+        "id": execution_id,
+        "pipeline_id": pipeline_id,
+        "status": payload.get("status") or ExecutionStatus.UNKNOWN,
+        "inputs": payload.get("inputs") or {},
+        "outputs": payload.get("outputs"),
+        "error": payload.get("error"),
+        "node_results": [
+            {
+                "node_id": node.get("nodeId", node.get("node_id", "")),
+                "status": node.get("status") or ExecutionStatus.UNKNOWN.value,
+                "start_time": node.get("startTime", node.get("start_time")),
+                "end_time": node.get("endTime", node.get("end_time")),
+                "error": node.get("error"),
+                "output": node.get("output"),
+            }
+            for node in nodes if isinstance(node, dict)
+        ],
+        "started_at": payload.get("startTime", payload.get("started_at")),
+        "completed_at": payload.get("endTime", payload.get("completed_at")),
+    }
+
+
 class PipelinesModule:
     """
     Pipeline management operations.
@@ -458,202 +493,94 @@ class PipelinesModule:
         inputs: dict[str, Any] | None = None,
         wait: bool | None = None,
     ) -> PipelineExecution:
+        """Start a pipeline; optionally read its reported result.
+
+        POST /api/v1/executions/start is synchronous and returns an execution id.
+        Omit ``wait`` (or pass True) to fetch status and outputs afterwards.
+        False skips only that read: the returned status is UNKNOWN, because the
+        start response reports no status. False does not make the server async.
         """
-        Run a pipeline with inputs and return the finished run record.
-
-        Two requests, both to routes the platform serves:
-        ``POST /api/v1/executions/start`` (``{pipelineId, inputs}`` ->
-        ``{executionId}``), which answers only once the run has completed or
-        failed, then ``GET /api/v1/pipelines/{pipeline_id}/executions/{execution_id}``
-        for the run record. Starting a run requires write authority on agents
-        (``agents:execute`` for a person, the ``agents:write`` scope for an API
-        key).
-
-        This method previously POSTed ``/api/v1/pipelines/{id}/execute``, which no
-        router declares, so every call raised ``NotFoundError``.
-
-        Args:
-            pipeline_id: Pipeline ID
-            inputs: Input values for the pipeline
-            wait: DEPRECATED, and has no effect. The server has no asynchronous
-                start, so the run has always finished by the time this returns.
-                Passing any value emits ``DeprecationWarning``; it will be
-                removed in the next minor release.
-
-        Returns:
-            PipelineExecution: the run record. ``status`` is ``completed`` or
-            ``failed``; a failed run carries ``error``.
-
-        Raises:
-            NotFoundError: If the pipeline doesn't exist or belongs to another org
-            ValidationError: If the pipeline graph is invalid (the server
-                validates before it starts the run)
-            AuthorizationError: If the caller lacks write authority on agents
-            ServiceError: If the start response carries no ``executionId``
-
-        Example:
-            >>> result = await client.pipelines.execute(
-            ...     "pipeline_abc123",
-            ...     inputs={"topic": "AI Safety", "depth": "detailed"}
-            ... )
-            >>> print(f"Status: {result.status}")
-            >>> print(f"Outputs: {result.outputs}")
-        """
-        if wait is not None:
-            warnings.warn(
-                "PipelinesModule.execute(wait=...) is deprecated and has no effect: "
-                "the server has no asynchronous start, so the run has already "
-                "finished when execute() returns. Omit `wait`; it will be removed "
-                "in the next minor release.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
         started = await self._http.request(
-            "POST",
-            "/api/v1/executions/start",
+            "POST", "/api/v1/executions/start",
             json_data={"pipelineId": pipeline_id, "inputs": inputs or {}},
         )
         execution_id = started.get("executionId") if isinstance(started, dict) else None
-        if not execution_id:
-            raise ServiceError(
-                "POST /api/v1/executions/start answered without an executionId, "
-                "so the run record cannot be read back",
-                details={"response": started},
+        if not isinstance(execution_id, str) or not execution_id:
+            raise ServiceError("Start response has no executionId", details={"response": started})
+        if wait is False:
+            return PipelineExecution(
+                id=execution_id, pipeline_id=pipeline_id,
+                status=ExecutionStatus.UNKNOWN, inputs=inputs or {},
             )
         return await self.get_execution(pipeline_id, execution_id)
 
     async def get_execution(self, pipeline_id: str, execution_id: str) -> PipelineExecution:
-        """
-        Get execution status/result by ID.
-
-        Args:
-            pipeline_id: Pipeline ID
-            execution_id: Execution ID
-
-        Returns:
-            PipelineExecution with status and result
-
-        Raises:
-            NotFoundError: If execution doesn't exist
-        """
+        """Read a public execution record and verify its requested pipeline/id pair."""
         response = await self._http.request(
-            "GET",
-            f"/api/v1/pipelines/{encode_path_param(pipeline_id)}/executions/{encode_path_param(execution_id)}",
+            "GET", f"/api/v1/executions/{encode_path_param(execution_id)}",
         )
-        return PipelineExecution(**response)
+        execution = _execution_from_status_response(response)
+        if execution["id"] != execution_id or execution["pipeline_id"] != pipeline_id:
+            raise ValueError("Execution response does not match the requested pipeline/id pair")
+        return PipelineExecution(**execution)
 
     async def list_executions(
-        self,
-        pipeline_id: str,
-        status: str | None = None,
-        page: int = 1,
-        page_size: int = 50,
+        self, pipeline_id: str, status: str | None = None,
+        page: int = 1, page_size: int = 50,
     ) -> PaginatedResponse[PipelineExecution]:
-        """
-        List executions for a pipeline.
+        """List execution history, retaining SDK-wide status filtering and totals.
 
-        ``status`` is applied by the SDK, not by the server: the route refuses a
-        ``status`` parameter with 400. Filtering one server page would report a
-        ``total`` that disagrees with its items, so when ``status`` is given the
-        SDK reads EVERY page of the pipeline's runs, filters them, and pages the
-        filtered set -- ``total`` and ``has_next`` then describe the filtered
-        runs. That costs one request per 100 runs; omit ``status`` for a single
-        request.
-
-        Args:
-            pipeline_id: Pipeline ID
-            status: Filter by status -- one of ``pending``, ``running``,
-                ``completed``, ``failed``, ``cancelled`` (a string or an
-                ``ExecutionStatus``)
-            page: Page number (1-indexed)
-            page_size: Items per page
-
-        Returns:
-            PaginatedResponse of PipelineExecution objects
-
-        Raises:
-            ValueError: If ``status`` is not a known execution status, or
-                ``page``/``page_size`` is below 1 -- raised before any request
+        The server history endpoint accepts page/page_size. A status filter is
+        applied across every page by the SDK, never sent as an ignored parameter.
         """
         if page < 1 or page_size < 1:
             raise ValueError(f"page and page_size must be >= 1; got {page}, {page_size}")
         if status is not None:
             return await self._list_executions_with_status(pipeline_id, status, page, page_size)
-
-        params: dict[str, Any] = {"page": page, "page_size": page_size}
         response = await self._http.request(
-            "GET",
-            f"/api/v1/pipelines/{encode_path_param(pipeline_id)}/executions",
-            params=params,
+            "GET", f"/api/v1/executions/history/{encode_path_param(pipeline_id)}",
+            params={"page": page, "page_size": page_size},
         )
-
+        items = [PipelineExecution(**_execution_from_status_response(item))
+                 for item in response.get("executions", response.get("items", []))]
+        if any(item.pipeline_id != pipeline_id for item in items):
+            raise ValueError("Execution history contains a different pipeline")
+        total = response.get("total", 0)
         return PaginatedResponse[PipelineExecution](
-            items=[PipelineExecution(**item) for item in response.get("items", [])],
-            total=response.get("total", 0),
-            page=response.get("page", page),
-            page_size=response.get("page_size", page_size),
-            has_next=response.get("has_next", False),
+            items=items, total=total, page=response.get("page", page),
+            page_size=response.get("page_size", page_size), has_next=page * page_size < total,
         )
 
     async def _list_executions_with_status(
-        self,
-        pipeline_id: str,
-        status: str,
-        page: int,
-        page_size: int,
+        self, pipeline_id: str, status: str, page: int, page_size: int,
     ) -> PaginatedResponse[PipelineExecution]:
-        """Filter a pipeline's runs by status across every server page."""
-        # ``ExecutionStatus`` is a str-Enum whose hash is its NAME, not its
-        # value, so a member is normalised to its value before any comparison.
+        """Filter all public history pages before computing the caller's page."""
         wanted = status.value if isinstance(status, ExecutionStatus) else status
         known = {s.value for s in ExecutionStatus}
         if wanted not in known:
             raise ValueError(f"status must be one of {sorted(known)}; got {status!r}")
-
-        matching = []
+        matching: list[PipelineExecution] = []
         server_page = 1
         while True:
-            response = await self._http.request(
-                "GET",
-                f"/api/v1/pipelines/{encode_path_param(pipeline_id)}/executions",
-                params={"page": server_page, "page_size": _EXECUTION_SCAN_PAGE_SIZE},
+            result = await self.list_executions(
+                pipeline_id, page=server_page, page_size=_EXECUTION_SCAN_PAGE_SIZE,
             )
-            items = response.get("items", [])
-            matching.extend(item for item in items if item.get("status") == wanted)
-            read_so_far = server_page * _EXECUTION_SCAN_PAGE_SIZE
-            if (
-                not items
-                or not response.get("has_next", False)
-                or read_so_far >= response.get("total", 0)
-            ):
+            matching.extend(item for item in result.items if item.status.value == wanted)
+            if not result.items or not result.has_next:
                 break
             server_page += 1
-
         start = (page - 1) * page_size
-        window = matching[start : start + page_size]
+        window = matching[start:start + page_size]
         return PaginatedResponse[PipelineExecution](
-            items=[PipelineExecution(**item) for item in window],
-            total=len(matching),
-            page=page,
-            page_size=page_size,
+            items=window, total=len(matching), page=page, page_size=page_size,
             has_next=start + len(window) < len(matching),
         )
 
     async def cancel_execution(self, pipeline_id: str, execution_id: str) -> None:
-        """
-        Cancel a running execution.
-
-        Args:
-            pipeline_id: Pipeline ID
-            execution_id: Execution ID to cancel
-
-        Raises:
-            NotFoundError: If execution doesn't exist
-            ValidationError: If execution already completed
-        """
+        """Verify the pipeline/id pair before asking the public execution endpoint to stop."""
+        await self.get_execution(pipeline_id, execution_id)
         await self._http.request(
-            "POST",
-            f"/api/v1/pipelines/{encode_path_param(pipeline_id)}/executions/{encode_path_param(execution_id)}/cancel",
+            "POST", f"/api/v1/executions/{encode_path_param(execution_id)}/stop",
         )
 
     # -------------------------------------------------------------------------

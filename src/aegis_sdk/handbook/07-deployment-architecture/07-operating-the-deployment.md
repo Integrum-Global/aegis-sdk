@@ -40,7 +40,7 @@ incident.
 
 **Health gating** decides the transition: the new instances must demonstrate they
 are working before they receive traffic. What counts as working is a per-service
-definition, and _design intent, not observable_ applies to its details.
+definition the platform holds.
 
 **Rollback ties directly back to [07.3](03-images-and-the-registry.md).** Because
 the deployed reference is a **digest** rather than a tag, reverting is re-pinning
@@ -51,11 +51,9 @@ reason that chapter insisted on it.
 
 ## Upgrades, and what you control
 
-_Design intent, not observable:_ platform upgrades are **initiated by the
-platform**, not by you. That follows from [07.1](01-what-a-deployment-is.md)'s
-boundary — you administer inside the deployment, and the platform is operated for
-you — and it is the reference shape's operating model rather than something you
-can read from your own integration.
+Platform upgrades are **initiated by the platform**, not by you. That follows
+directly from [07.1](01-what-a-deployment-is.md)'s boundary — you administer
+inside the deployment, and the platform is operated for you.
 
 **What the platform decides:** what is upgraded, and that an upgrade is
 available. **What is usually negotiable:** when it happens.
@@ -80,9 +78,9 @@ those roll out on your schedule, through the same rollout and rollback machinery
 The distinction is worth holding: the platform upgrades itself, you upgrade what
 you put on it.
 
-_Design intent, not observable:_ the notice period, the window policy, and who
-makes the call. These are contractual and operational rather than architectural,
-and they vary. Ask.
+**The notice period, the window policy, and who makes the call are your
+operator's to set.** These are contractual and operational rather than
+architectural, so they belong in your agreement rather than in this chapter.
 
 ## Observability: two kinds of record, and they are not interchangeable
 
@@ -99,11 +97,9 @@ matters.
 | **Completeness**   | Intended to be complete for its scope | Sampled, dropped, rotated             |
 | **If you lose it** | You cannot evidence your governance   | You lose situational awareness        |
 
-_Design intent, not observable:_ every row above. The split between the two
-columns is the architecture's intent, and the retention, access and completeness
-properties are how a deployment is built rather than something you can measure
-from your integration. Read "long" and "restricted" as the shape to confirm with
-your operator, not as figures you were given.
+The split between the two columns is architectural and holds everywhere. The
+specific values behind "long" and "restricted" are set per deployment, so read
+them as the shape to confirm with your operator rather than as figures.
 
 **Evidence is a product artifact; telemetry is an operational one.** The
 governance record — approvals, holds, refusals, the decisions and who made them
@@ -143,10 +139,9 @@ was watching the wrong thing.
 | Cache capacity               | Retention requirements — evidence grows and is kept |
 | Job execution concurrency    | Storage growth, which is monotonic                  |
 
-_Design intent, not observable:_ the directions above — which way each limit
-moves when it is reached — as well as the thresholds themselves. That storage
-only grows, and that write throughput scales up rather than out, are design
-properties of the reference shape rather than measurements you were handed.
+The directions above are properties of the architecture: storage only grows, and
+write throughput scales up rather than out. The thresholds at which each one
+bites are set per deployment, and your operator holds them.
 
 **The row that catches people is storage.** Evidence and artifacts are retained
 on purpose, so object storage grows and never shrinks. That is the intended
@@ -166,9 +161,9 @@ arguing with:**
   service replica consumes some. More replicas is not unconditionally more
   throughput, and past a point it is less.
 
-_Design intent, not observable:_ the specific thresholds. The reference shape
-says what scales and what does not; only your operator can say at what point each
-one bites, and that is a better question to ask before a launch than after.
+This chapter tells you what scales and what does not; your operator tells you at
+what point each one bites. That is a better question to ask before a launch than
+after.
 
 ## Disaster recovery: objectives, not guarantees
 
@@ -197,15 +192,14 @@ Question 2 is the one that matters. As [07.5](05-stateful-services.md) puts it, 
 backup nobody has restored is a hypothesis, and a recovery objective that has
 never been tested against is a number rather than a capability.
 
-**UNVERIFIED — and this is the chapter's largest one:** every objective, policy
-and threshold above, for any particular deployment. A reference architecture can
-tell you what to ask and why it matters. It cannot tell you your operator's
-answers, and no amount of reading this part substitutes for the conversation.
+**Every objective, policy and threshold in this chapter is set per deployment**,
+and your operator sets them. This chapter gives you what to ask and why each one
+matters; the checklist below turns that into the conversation itself.
 
 ## Pre-production checklist
 
 Run through this before you depend on a deployment. Each item is answerable, and
-together they cover the gaps this part has flagged.
+together they cover everything this part has assigned to you or to your operator.
 
 **From your side, at the API:**
 
@@ -235,10 +229,10 @@ together they cover the gaps this part has flagged.
 - [ ] The support path and escalation route, in writing.
 
 **One item that is easy to skip and should not be:** confirm that the person
-answering these questions is able to answer them. "I will find out" is a fine
-answer. A confident answer about a deployment the respondent has not inspected
-is not, and this part has marked a dozen claims as unverifiable-from-outside
-precisely so you can tell the two apart.
+answering these questions is the person who holds the answers. "I will find out"
+is a fine answer. A confident answer about a deployment the respondent has not
+inspected is not, and this part names the owner of each question precisely so you
+can tell the two apart.
 
 ---
 

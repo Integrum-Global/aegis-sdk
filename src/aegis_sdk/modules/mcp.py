@@ -74,17 +74,40 @@ if TYPE_CHECKING:
 #: must not depend on the platform's source.
 MCP_SERVER_REF_KEY = "mcpServerId"
 
+#: Config key naming an ENVIRONMENT VARIABLE that holds the connection URL,
+#: instead of storing the URL inline. Mirrors the server's own key, for the
+#: same standalone-package reason :data:`MCP_SERVER_REF_KEY` gives.
+#:
+#: It exists because an MCP URL can BE the credential: an endpoint carrying its
+#: token in the URL is a secret, and an inline one lands in an exportable
+#: agent-tool row. With this key the row holds a NAME and the value is read when
+#: the binding connects.
+MCP_URL_SECRET_REF_KEY = "url_secret_ref"
+
 #: The keys a reference inherits from its registration, mirroring the server's
 #: own connection-key set. Deliberately
 #: CONNECTION-ONLY: the per-tool grant (``allowed_tools`` / ``allow_all_tools``)
 #: is not inheritable, so a reference can never widen its own authorization by
 #: pointing at a permissively-granted registration. A binding's grant is its
 #: own, which is why :meth:`McpModule.bind` takes one.
-MCP_CONNECTION_KEYS = ("url", "transport", "type", "headers", "command")
+MCP_CONNECTION_KEYS = (
+    "url",
+    MCP_URL_SECRET_REF_KEY,
+    "transport",
+    "type",
+    "headers",
+    "command",
+)
 
 #: Connection keys that are also DESTINATIONS. A config has to name one of
 #: these or there is nothing to connect to.
-_DESTINATION_KEYS = ("url", "command")
+#:
+#: ``url_secret_ref`` is one: it NAMES the destination as surely as an inline
+#: url does, and it is how a binding stores an endpoint whose URL is itself the
+#: credential. Without it here, ``register_server`` / ``bind_inline`` reject the
+#: indirection with "requires url= or command=" — a client-side refusal of the
+#: very form that keeps a secret out of the row.
+_DESTINATION_KEYS = ("url", MCP_URL_SECRET_REF_KEY, "command")
 
 #: The fields ``AgentToolResponse`` emits for every agent-tool row, in its own
 #: order. Both models below carry exactly these, which a paired test derives

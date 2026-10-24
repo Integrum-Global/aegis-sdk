@@ -9,11 +9,11 @@ deploy** — and that is the whole point of the architect tier.
 
 ## The three tiers, and which one you are in
 
-| Tier | Who | What they change |
-| --- | --- | --- |
+| Tier                   | Who                                  | What they change                                        |
+| ---------------------- | ------------------------------------ | ------------------------------------------------------- |
 | Primitives and engines | a developer, through the Kailash SDK | nodes, data models, HTTP, agents, governance primitives |
-| The platform | a developer, in platform code | the governed object model and its enforcement |
-| **Architect** | **you, at runtime, no deploy** | **org composition and domain surfaces** |
+| The platform           | a developer, in platform code        | the governed object model and its enforcement           |
+| **Architect**          | **you, at runtime, no deploy**       | **org composition and domain surfaces**                 |
 
 Domain needs belong in the architect layer rather than the developer layer. If
 you find yourself asking for a code change to add a domain view, you are in the
@@ -27,7 +27,7 @@ principal** — it is not an internal consistency property.
 
 You are that principal. So is every architect at every other tenant on the
 deployment you are working against. Nothing below is a style rule; each is a
-security boundary, and the constraints exist because *your* input is the
+security boundary, and the constraints exist because _your_ input is the
 untrusted input.
 
 ## MUST — the five invariants
@@ -56,22 +56,22 @@ is exactly what they are.
 Every architect-supplied value comes from a **closed vocabulary**. You choose
 from a list; you do not invent a member of it.
 
-| field | you choose from |
-| --- | --- |
-| navigation section | the four fixed sections: BUILD, WORK, GOVERN, OBSERVE |
-| personas | the five known personas: architect, user, admin, executive, operator |
-| view kind | the enumerated kinds; today, a record list |
-| icon | the bundled icon allowlist |
-| required permission | the existing permission catalogue |
+| field               | you choose from                                                      |
+| ------------------- | -------------------------------------------------------------------- |
+| navigation section  | the four fixed sections: BUILD, WORK, GOVERN, OBSERVE                |
+| personas            | the five known personas: architect, user, admin, executive, operator |
+| view kind           | the enumerated kinds; today, a record list                           |
+| icon                | the bundled icon allowlist                                           |
+| required permission | the existing permission catalogue                                    |
 
-**There is no route-path field, deliberately.** You supply a surface *key*; the
+**There is no route-path field, deliberately.** You supply a surface _key_; the
 path is **derived** from it. The key is constrained to lowercase letters, digits
 and underscores, must begin with a letter, and is between three and sixty-four
 characters.
 
 Read that as a design property rather than as validation: path traversal, a
 `javascript:` scheme, a protocol-relative `//host` and a key that shadows an
-existing route are not *filtered out* — they are **unrepresentable**. A filter can
+existing route are not _filtered out_ — they are **unrepresentable**. A filter can
 be bypassed by an input its author did not imagine. A value that cannot be
 expressed in the field's grammar has nothing to bypass.
 
@@ -106,25 +106,21 @@ The menu and the router cannot diverge on this: the route resolver reads through
 the same visibility path, so a surface hidden from the navigation is not reachable
 by typing its address either.
 
-⚠ **This changed.** An earlier revision of this guardrail said the field was
-declarative and gated nothing, and told you to rely on persona and permission
-instead. That advice was correct when written and is now wrong. Persona and
-permission still gate — classification is an additional constraint, not a
-replacement — but a surface you classified above your readers' clearance will now
-disappear for them, which the earlier text told you would not happen.
+**Persona and permission still gate — classification is an additional
+constraint, not a replacement.** A surface you classify above your readers'
+clearance disappears for them, so classification is a design decision about
+audience, not a label.
 
-## ⛔ One thing that is NOT true, however it reads
+## The governed-object record layer [immediate roadmap]
 
-**The governed-object layer beneath a surface is not reachable yet.**
+Two sibling models sit beneath a surface — the domain object _type_ (the shape)
+and the governed object _record_ (its rows). The type is what a surface composes
+against today.
 
-Two sibling models — the domain object *type* (the shape) and the governed object
-*record* (its rows) — ship as **schema only**. No handler, no service, no route,
-no frontend. Their own definitions carry explicit named-absence notices.
-
-The consequence for you is concrete: **you can register a surface today; you
-cannot yet populate it with governed domain records through a supported API.**
-Plan for a surface as a composition primitive that is arriving in stages, and do
-not design a client delivery on the assumption that the record layer is there.
+**What this means for your design:** you register a surface today and compose it
+against the type. Populating it with governed domain records through a supported
+API is on the immediate roadmap, so treat a surface as a composition primitive
+arriving in stages and sequence a client delivery accordingly.
 
 ## ⛔ This client cannot register a surface
 
@@ -149,15 +145,16 @@ python -c "from aegis_sdk.handbook.check import declared_operations as d; print(
 Those return `['tool_agents']` and a non-zero count. Only with that pair in hand
 is the first pair's emptiness a measurement.
 
-Note `declared_operations()` yields `(method, path)` **tuples**, not strings —
-hence `str(o)`. A version of this check written against strings raises
-`AttributeError` rather than printing a misleading empty list, which is the
-better failure of the two, but is still not the check you wanted to run.
+Note `sdk:aegis_sdk.handbook.check.declared_operations` yields `(method, path)`
+**tuples**, not strings — hence `str(o)`. A version of this check written against
+strings raises `AttributeError` rather than printing a misleading empty list,
+which is the better failure of the two, but is still not the check you wanted to
+run.
 
 So a surface is composed through the console and the platform's own API, not
 through this client, and any workflow you build on this SDK must treat surface
-registration as an out-of-band step. If a later release of this package adds the
-module, the commands above are how you will know.
+registration as an out-of-band step. If a later release of this package adds it
+to `sdk:aegis_sdk.modules`, the commands above are how you will know.
 
 ## The honest status of this capability
 
@@ -166,7 +163,7 @@ converged**: multiple adversarial review rounds, none clean, with open critical
 findings outstanding — even though the registration model itself has shipped and
 is live.
 
-That is a fact about *this documentation*, and you are better served knowing it
+That is a fact about _this documentation_, and you are better served knowing it
 than discovering it. Compose surfaces; do not build a client commitment on the
 parts marked absent above until the absences are closed.
 
@@ -175,4 +172,4 @@ parts marked absent above until the absences are closed.
 That a surface you can see is a surface you should be able to see. Visibility
 resolves on tenant, status, vocabulary, persona and permission — and a
 misconfiguration in any of those renders a surface without any error. Reading a
-surface list tells you what resolved, never what was *intended* to resolve.
+surface list tells you what resolved, never what was _intended_ to resolve.

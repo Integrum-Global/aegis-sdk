@@ -33,6 +33,7 @@ from .modules import (
     McpModule,
     MetricsModule,
     NotificationsModule,
+    ObjectiveWorkspacesModule,
     ObserveAuditModule,
     OrgStandupModule,
     PoolsModule,
@@ -333,6 +334,11 @@ class AgenticOSClient:
         # endpoint and credential once, then attach it to agents by reference.
         self.mcp = McpModule(self._http)
         self.workspaces = WorkspacesModule(self._http)
+        # Objective workspaces (/api/v1/objective-workspaces) — the container an
+        # OBJECTIVE runs in. A DIFFERENT surface from self.workspaces above
+        # (/api/v1/workspaces): different route prefix and different wire casing
+        # (this one is snake_case), so their models are not interchangeable.
+        self.objective_workspaces = ObjectiveWorkspacesModule(self._http)
         self.pseudo_agents = PseudoAgentsModule(self._http)
 
         # Governance decision surfaces (write methods need a user session,

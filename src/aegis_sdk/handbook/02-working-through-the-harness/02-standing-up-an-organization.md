@@ -168,7 +168,8 @@ it gets its own section.
 expose `create` and `get` and nothing else.** There is no `client.units.list()`.
 Reaching for one is the obvious move and it raises `AttributeError`.
 
-The list operations live on `client.org_standup`:
+The list operations live on `client.org_standup` — with one exception, and it is
+the one people guess wrong:
 
 | you want | you call | you get back |
 | --- | --- | --- |
@@ -178,6 +179,14 @@ The list operations live on `client.org_standup`:
 | list roles | `client.org_standup.list_roles(...)` | a model with `.records` |
 | list teams | `client.org_standup.list_teams(...)` | a model with `.records` |
 | list organisations | `client.org_standup.list_organizations(...)` | a model with `.records` |
+| **list role envelopes** | `client.trust_posture.list_role_envelopes(defining_role_id=...)` | a model with `.records` |
+
+**Role envelopes are the exception.** `client.org_standup` has no envelope verb
+at all, so `client.org_standup.list_role_envelopes()` raises `AttributeError`.
+The envelope lifecycle lives on `client.trust_posture`, where every name carries
+a `_role_envelope` suffix — `list_`, `get_`, `update_`, `delete_`, `activate_`,
+`suspend_` — while `client.role_envelopes` keeps to `create` and `get` like
+every other typed module here. 02.3 uses all of them.
 
 So the write returns a dictionary and the read returns a Pydantic model, and the
 two are accessed differently: `unit["id"]` on the way in, `unit.id` on the way
@@ -203,10 +212,15 @@ from aegis_sdk import AgenticOSClient
 
 
 async def all_units(client):
-    """Every unit, paged — list_units caps at 50 per call."""
+    """Every unit, paged — list_units caps at 50 per call.
+
+    order_by="id" pages in a unique order; the default (hierarchy level) has
+    many ties, and a limit/offset walk over tied rows can skip one unit and
+    repeat another.
+    """
     out, offset = [], 0
     while True:
-        page = await client.org_standup.list_units(limit=200, offset=offset)
+        page = await client.org_standup.list_units(limit=200, offset=offset, order_by="id")
         out.extend(page.records)            # models: attribute access
         if len(out) >= page.total or not page.records:
             return out

@@ -10,7 +10,7 @@
     "`source_sha256_16` is the digest of the SOURCE at projection time, so a source",
     "edit that was never re-projected is visible here rather than only in a diff."
   ],
-  "projected_on": "2026-10-08",
+  "projected_on": "2026-10-24",
   "counts": {
     "agents": 2,
     "skills": 6,
@@ -211,7 +211,7 @@
     {
       "dest": ".claude/skills/billing-integrity/SKILL.md",
       "source": "src/aegis_sdk/coc/guardrails/billing-integrity.md",
-      "source_sha256_16": "aefceaccade793b9"
+      "source_sha256_16": "897491228db28c23"
     },
     {
       "dest": ".claude/skills/client-model-fidelity/SKILL.md",
@@ -221,7 +221,7 @@
     {
       "dest": ".claude/skills/credential-reachability/SKILL.md",
       "source": "src/aegis_sdk/coc/guardrails/credential-reachability.md",
-      "source_sha256_16": "3ed65aedc17b4e85"
+      "source_sha256_16": "c30bb24936ace70a"
     },
     {
       "dest": ".claude/skills/day-two-operations/SKILL.md",
@@ -236,7 +236,7 @@
     {
       "dest": ".claude/skills/domain-surfaces/SKILL.md",
       "source": "src/aegis_sdk/coc/guardrails/domain-surfaces.md",
-      "source_sha256_16": "6d8a1aa8e430bd60"
+      "source_sha256_16": "8c77c1fb4f0b02ad"
     },
     {
       "dest": ".claude/skills/error-taxonomy/SKILL.md",
@@ -331,7 +331,7 @@
     {
       "dest": ".codex/skills/billing-integrity/SKILL.md",
       "source": "src/aegis_sdk/coc/guardrails/billing-integrity.md",
-      "source_sha256_16": "aefceaccade793b9"
+      "source_sha256_16": "897491228db28c23"
     },
     {
       "dest": ".codex/skills/client-model-fidelity/SKILL.md",
@@ -341,7 +341,7 @@
     {
       "dest": ".codex/skills/credential-reachability/SKILL.md",
       "source": "src/aegis_sdk/coc/guardrails/credential-reachability.md",
-      "source_sha256_16": "3ed65aedc17b4e85"
+      "source_sha256_16": "c30bb24936ace70a"
     },
     {
       "dest": ".codex/skills/day-two-operations/SKILL.md",
@@ -356,7 +356,7 @@
     {
       "dest": ".codex/skills/domain-surfaces/SKILL.md",
       "source": "src/aegis_sdk/coc/guardrails/domain-surfaces.md",
-      "source_sha256_16": "6d8a1aa8e430bd60"
+      "source_sha256_16": "8c77c1fb4f0b02ad"
     },
     {
       "dest": ".codex/skills/error-taxonomy/SKILL.md",
@@ -451,7 +451,7 @@
     {
       "dest": ".gemini/skills/billing-integrity/SKILL.md",
       "source": "src/aegis_sdk/coc/guardrails/billing-integrity.md",
-      "source_sha256_16": "aefceaccade793b9"
+      "source_sha256_16": "897491228db28c23"
     },
     {
       "dest": ".gemini/skills/client-model-fidelity/SKILL.md",
@@ -461,7 +461,7 @@
     {
       "dest": ".gemini/skills/credential-reachability/SKILL.md",
       "source": "src/aegis_sdk/coc/guardrails/credential-reachability.md",
-      "source_sha256_16": "3ed65aedc17b4e85"
+      "source_sha256_16": "c30bb24936ace70a"
     },
     {
       "dest": ".gemini/skills/day-two-operations/SKILL.md",
@@ -476,7 +476,7 @@
     {
       "dest": ".gemini/skills/domain-surfaces/SKILL.md",
       "source": "src/aegis_sdk/coc/guardrails/domain-surfaces.md",
-      "source_sha256_16": "6d8a1aa8e430bd60"
+      "source_sha256_16": "8c77c1fb4f0b02ad"
     },
     {
       "dest": ".gemini/skills/error-taxonomy/SKILL.md",

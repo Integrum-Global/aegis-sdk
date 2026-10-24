@@ -41,7 +41,35 @@ from .._tolerant import TolerantModel
 
 
 class AuditVerificationResult(TolerantModel):
-    """Audit log verification result."""
+    """Audit log verification result.
+
+    ⚠ ``valid`` IS NOT THE VERDICT. It answers one narrow question -- did the
+    check that ran find a break? -- and it is ``True`` for two states with
+    very different meanings. Read ``status``.
+
+    ``status`` is FOUR-valued, and the one you will normally see is the one
+    this SDK's own model did not carry at all until now, which meant a
+    partner could not read the verdict:
+
+    * ``"verified"`` — the chain was walked, every hash and link held, AND
+      the entries' signatures were actually checked. **Reserved for that last
+      condition.**
+    * ``"hash-consistent, not signature-verified"`` — the chain was walked and
+      every hash and link held, but no signature was checked. This is what the
+      server's own integrity walk reports: it recomputes hashes and follows
+      links. Customer-facing reading: *internally consistent, not
+      independently verified.* A hash is a public function, so this state
+      does not establish WHO wrote the rows — only that they are internally
+      consistent. ``status_label`` carries that sentence verbatim.
+    * ``"broken"`` — a break or tamper was found. ``first_invalid_id`` locates
+      it.
+    * ``"unverified"`` — the check could not be performed at all (nothing in
+      scope, an unresolvable range anchor, an unreadable store). ZERO
+      EVIDENCE: neither a pass nor a tamper claim.
+
+    ``signatures_verified`` is the work behind the label — ``0`` on any
+    hash-only walk. Branch on ``status``, never on ``valid``.
+    """
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -49,6 +77,21 @@ class AuditVerificationResult(TolerantModel):
     entries_checked: int = Field(alias="entriesChecked")
     first_invalid_id: str | None = Field(None, alias="firstInvalidId")
     error: str | None = None
+    #: The authoritative verdict. ``valid`` cannot carry four outcomes.
+    #: ``None`` means the server did not send one (an older deployment);
+    #: treat that as UNKNOWN, never as a pass.
+    status: str | None = None
+    #: The customer-facing rendering of ``status``, supplied by the
+    #: server so no caller has to reconstruct it. For
+    #: ``"hash-consistent, not signature-verified"`` this is
+    #: ``"internally consistent, not independently verified"``.
+    status_label: str | None = Field(None, alias="statusLabel")
+    #: False means the chain state is UNKNOWN (nothing checked), NOT broken.
+    verification_ran: bool | None = Field(None, alias="verificationRan")
+    #: Why the check could not run, when ``status`` is ``"unverified"``.
+    unverified_reason: str | None = Field(None, alias="unverifiedReason")
+    #: How many entries had their SIGNATURE checked. ``0`` on a hash-only walk.
+    signatures_verified: int | None = Field(None, alias="signaturesVerified")
 
 
 class AuditEntry(TolerantModel):
@@ -237,11 +280,29 @@ class ChainIntegrity(TolerantModel):
 
     This surface is READ-ONLY and does not trigger a sweep. Use
     :meth:`ComplianceModule.verify_audit` for an on-demand walk.
+
+    ⚠ ``ok=True`` does **not** mean the chain was independently verified. It
+    means the sweep completed and found no break. Read ``status`` for WHICH
+    no-break state it is — see :class:`AuditVerificationResult` for the four
+    values. The sweep's walk is hash-only, so a clean chain reports
+    ``"hash-consistent, not signature-verified"``.
     """
 
     model_config = ConfigDict(populate_by_name=True)
 
     ok: bool
+    #: The sweep's own verdict: ``"verified"`` (signatures checked),
+    #: ``"hash-consistent, not signature-verified"`` (internally consistent
+    #: only), ``"broken"``, or ``"unverified"``. ``None`` when no verdict was
+    #: reached at all (a verifier that has not completed a sweep yet) — which
+    #: is not ``"unverified"`` and must not be read as one.
+    status: str | None = None
+    #: The customer-facing rendering of ``status``, supplied by the server so
+    #: no caller has to reconstruct it. For
+    #: ``"hash-consistent, not signature-verified"`` this is
+    #: ``"internally consistent, not independently verified"``. ``None`` when
+    #: no verdict was reached.
+    status_label: str | None = Field(None, alias="statusLabel")
     broken_at: str | None = None
     total_entries: int = 0
     last_verified_at: str | None = None
@@ -313,6 +374,13 @@ class ComplianceModule:
 
         Uses cryptographic hash chain verification to detect tampering.
 
+        ⚠ Read ``result.status``, not ``result.valid``. A clean walk reports
+        ``"hash-consistent, not signature-verified"`` — the chain is internally
+        consistent, and NO signature was checked, so this is not a statement
+        that anyone signed it. ``"verified"`` is reserved for a walk whose
+        entries' signatures were actually checked. See
+        :class:`AuditVerificationResult` for all four values.
+
         Args:
             start_id: Starting entry ID (optional)
             end_id: Ending entry ID (optional)
@@ -322,10 +390,15 @@ class ComplianceModule:
 
         Example:
             >>> result = await client.compliance.verify_audit()
-            >>> if result.valid:
-            ...     print(f"Verified {result.entries_checked} entries")
-            ... else:
+            >>> if result.status == "verified":
+            ...     print(f"{result.signatures_verified} signatures checked")
+            >>> elif result.status == "hash-consistent, not signature-verified":
+            ...     print(result.status_label)   # "internally consistent, not
+            ...                                  #  independently verified"
+            >>> elif result.status == "broken":
             ...     print(f"Tampering detected at {result.first_invalid_id}")
+            ... else:
+            ...     print(f"could not check: {result.unverified_reason}")
         """
         params: dict[str, Any] = {}
         if start_id:
@@ -783,10 +856,17 @@ class ComplianceModule:
             ``ok``** — a cold start reports ``ok=False`` because nothing has run
             yet, which is not the same finding as a detected break.
 
+            And check ``status`` before reading ``ok`` as a pass: ``ok=True``
+            means the sweep found no break, not that the chain was
+            independently verified. A clean chain normally reports
+            ``"hash-consistent, not signature-verified"``.
+
         Example:
             >>> chain = await client.compliance.get_chain_integrity()
-            >>> if not chain.ok and chain.last_verified_at is None:
+            >>> if chain.status is None and chain.last_verified_at is None:
             ...     print("not yet verified — no finding either way")
+            >>> elif chain.status == "hash-consistent, not signature-verified":
+            ...     print("internally consistent, not independently verified")
         """
         response = await self._http.request("GET", "/api/v1/compliance/chain/integrity")
         return ChainIntegrity(**response)
@@ -1055,11 +1135,14 @@ class ComplianceModule:
             dict aggregating chain integrity, entry counts, retention state and
             per-policy violation counts.
 
-            ⚠ ``chain_integrity`` here is THREE-valued —
-            ``verified`` / ``broken`` / ``unverified``. An unwalked chain
-            reports ``unverified``, which is neither a pass nor a failure.
-            Any code branching on ``== "verified"`` else "broken" will
-            mis-report the third case.
+            ⚠ ``chain_integrity`` here is FOUR-valued — ``verified`` (the
+            signatures were checked) / ``hash-consistent, not
+            signature-verified`` (internally consistent only — the state a
+            clean hash-only walk reports) / ``broken`` / ``unverified``. An
+            unwalked chain reports ``unverified``, which is neither a pass nor
+            a failure. Any code branching on ``== "verified"`` else "broken"
+            will mis-report BOTH of the other cases, and on a clean chain it
+            will now take the "broken" leg.
 
         Example:
             >>> summary = await client.compliance.get_report_summary(period="2026-Q1")

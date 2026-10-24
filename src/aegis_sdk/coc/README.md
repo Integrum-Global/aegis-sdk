@@ -45,6 +45,7 @@ it.
 | [`guardrails/sentinels-and-defaults.md`](guardrails/sentinels-and-defaults.md)   | a value indistinguishable from an intention is a defect, not a convenience             |
 | [`guardrails/billing-integrity.md`](guardrails/billing-integrity.md)             | the errors on this surface are commercial and surface at reconciliation                |
 | [`guardrails/client-model-fidelity.md`](guardrails/client-model-fidelity.md)     | what the client omits you never see; some endpoints must not be wrapped                |
+| [`guardrails/domain-surfaces.md`](guardrails/domain-surfaces.md)                 | the architect tier composes at runtime; every bound is enforced against your own input |
 
 ## Start here
 
@@ -61,12 +62,11 @@ python -m aegis_sdk.coc.probe --base-url "$AGENTIC_OS_BASE_URL" \
     --api-key "$KEY" --token "$SESSION_TOKEN"
 ```
 
-That last one answers, for your deployment, a question the handbook explicitly
-marks **UNVERIFIED**: which routes your API key cannot reach at all. It could not
-be answered there — a route list derived from source you cannot open, checked by
-a gate you cannot run, about a build that is not necessarily yours, is an
-assertion with a decoration on it. Measured against your own deployment it is an
-answer you hold.
+That last one — `sdk:aegis_sdk.coc.probe` — answers, for your deployment, which
+routes your API key cannot reach at all. A route list derived from source you
+cannot open, checked by a gate you cannot run, about a build that is not
+necessarily yours, would be an assertion with a decoration on it. Measured
+against your own deployment it is an answer you hold.
 
 ## The three habits all of this exists to install
 
@@ -78,9 +78,9 @@ opposite remedies.
 **2. Name what would have proved you wrong.** Before citing any check as
 evidence, say what it would have printed had the claim been false. A probe run
 with an expired token refuses everything and reports nothing — byte-identical to
-a healthy result. That is why `probe.py` verifies its credentials against a
-control operation first and exits `3` UNDETERMINED rather than `0` when it
-cannot tell. A green that could not have been red is not a green.
+a healthy result. That is why `sdk:aegis_sdk.coc.probe` verifies its credentials
+against a control operation first and exits `3` UNDETERMINED rather than `0` when
+it cannot tell. A green that could not have been red is not a green.
 
 **3. Separate what you observed from what you inferred.** "This client declares
 the operation" and "the deployment serves the operation" are different claims,
@@ -90,23 +90,25 @@ direction as anything derived from it.
 
 ## Verify this material against your own build
 
-Every count, field name and method name here was true of one build. Two commands
-re-derive the ground truth in seconds, and they are the right response to any
-sentence in this directory you are about to rely on:
+Every count, field name and method name here describes one build. Two commands
+re-derive the ground truth in seconds — `sdk:aegis_sdk.handbook.check` and
+`sdk:aegis_sdk.handbook.check.declared_operations` — and they are the right
+response to any sentence in this directory you are about to rely on:
 
 ```bash
 python -m aegis_sdk.handbook.check
 python -c "from aegis_sdk.handbook.check import declared_operations as d; print(len(d()))"
 ```
 
-Where a claim could not be settled from inside this package, the text says
-**UNVERIFIED** rather than guessing.
+Where a claim is a property of your deployment rather than of this package, the
+text says so and names the question to put to your operator.
 
-## What none of this establishes
+## Reachability is admission, not correctness
 
-That a route you can reach is doing what you think. Reachability is admission,
-not correctness, and not enforcement — a route that admits you when it should not
-returns `200`, and nothing here can see that. Read every gate in this package for
+A route you can reach is not thereby doing what you think. Reachability is
+admission — not correctness, and not enforcement. A route that admits you when it
+should not returns `200`, and that is a question for the governance surfaces in
+part 09 rather than for a reachability check. Read every gate in this package for
 what it says it checks, not for the reassurance it produces.
 
 ## Accountability
