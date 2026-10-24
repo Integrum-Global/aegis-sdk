@@ -538,6 +538,7 @@ class PipelinesModule:
     ) -> PaginatedResponse[PipelineExecution]:
         """List execution history, retaining SDK-wide status filtering and totals.
 
+        page must be >= 1; page_size must be between 1 and 100, inclusive.
         The server history endpoint accepts page/page_size. A status filter is
         applied across every page by the SDK, never sent as an ignored parameter.
         """
@@ -585,7 +586,11 @@ class PipelinesModule:
         )
 
     async def cancel_execution(self, pipeline_id: str, execution_id: str) -> None:
-        """Verify the pipeline/id pair before asking the public execution endpoint to stop."""
+        """Read the run with GET before sending POST to the stop endpoint.
+
+        A mismatched execution or pipeline id raises ValueError before the
+        stop request; cancellation therefore makes an additional read request.
+        """
         await self.get_execution(pipeline_id, execution_id)
         await self._http.request(
             "POST", f"/api/v1/executions/{encode_path_param(execution_id)}/stop",

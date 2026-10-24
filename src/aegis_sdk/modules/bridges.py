@@ -78,8 +78,89 @@ class StandingBridge(TolerantModel):
     created_at: str
     updated_at: str
     bridge_trust_chain_id: str | None = None
-    # Optional field from the canonical API. The current platform does not
-    # emit or enforce it; its presence is not verification by this client.
+    # COMPUTED SERVER-SIDE, never accepted from a caller. A bridge with
+    # status="active" and no trust delegations behind it reads False here
+    # instead of presenting as healthy — read it before treating an active
+    # bridge as one that actually carries trust.
+    trust_consistent: bool = True
+
+
+class StandingBridgeList(TolerantModel):
+    """A page of standing bridges."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    records: list[StandingBridge] = Field(default_factory=list)
+    total: int = 0
+
+
+class OverdueBridge(TolerantModel):
+    """A standing bridge past its periodic-review date."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    bridge_id: str
+    name: str
+    organization_id: str
+    last_reviewed_at: str | None = None
+    review_interval_days: int | None = None
+    days_overdue: int | None = None
+
+
+class InteractionCheck(TolerantModel):
+    """Whether one interaction type is permitted over a standing bridge."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    allowed: bool
+    bridge_id: str
+    interaction_type: str
+    # A denial with no reason is unactionable; the server populates this.
+    reason: str | None = None
+
+
+class BridgeReview(TolerantModel):
+    """The recorded outcome of a periodic bridge review."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    bridge_id: str
+    reviewer_role_id: str
+    approved: bool
+    notes: str
+    reviewed_at: str
+
+
+class ScopedBridge(TolerantModel):
+    """A temporary channel bounded by a workspace or an objective."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    id: str
+    organization_id: str
+    # Response-side widening — see aegis_sdk.types.Agent.workspace_id.
+    workspace_id: str | None = None
+    name: str
+    objective_id: str | None = None
+    objective: str
+    participants_json: str
+    owner_unit_id: str
+    purpose: str
+    scope_description: str
+    active_from: str
+    active_until: str
+    starts_at: str
+    expires_at: str | None = None
+    created_by_user_id: str | None = None
+    allowed_interactions_json: str = "[]"
+    shared_knowledge_paths_json: str = "[]"
+    auto_expire_on_objective_completion: bool
+    status: str
+    metadata_json: str = "{}"
+    created_at: str
+    updated_at: str
+    # Optional canonical API field; the current platform does not emit or
+    # enforce the reviewed-state check. The SDK does not verify this digest.
     scope_digest: str | None = None
 
 
