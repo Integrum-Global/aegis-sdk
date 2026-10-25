@@ -51,7 +51,7 @@ integration that works and one that quietly measures the wrong machine.
 
 This is the single most load-bearing idea in the part, so it is worth stating
 plainly: **the deployment is organised into two planes with different
-responsibilities, and the distinction is about what each one is *for*, not about
+responsibilities, and the distinction is about what each one is _for_, not about
 where either one runs.**
 
 **The Trust Plane decides.** Its subject is authority: whether a given agent may
@@ -59,7 +59,7 @@ take a given action, and whether that can be established at all. It owns the
 attestation that made the agent, the chain that shows where its authority came
 from, and the posture that says how much of that authority it may use
 unsupervised. When it decides, it judges the action against the envelope that
-bounds what the role's delegate may do — a bound the *structure* authors and
+bounds what the role's delegate may do — a bound the _structure_ authors and
 this plane consults. Its **product is a verdict and a record**:
 `api:POST /api/v1/trust/verify` is the decision as a call,
 `api:GET /api/v1/trust/audit` is the record afterwards, and
@@ -120,13 +120,13 @@ Three consequences follow, and each is a design decision rather than trivia.
 
 **The two planes fail differently, and only one of them fails closed.** When
 the Trust Plane cannot be reached, there is no verdict to give — and a governance
-system that permitted on *no answer* would be worthless, so the refusal is the
+system that permitted on _no answer_ would be worthless, so the refusal is the
 safe reading. What you observe is a refusal. What actually happened is an
 outage, and it is retryable, where a real refusal is not. That distinction is
 [04.2](../04-the-api-surface/02-errors-and-refusals.md)'s, and it is the one
 place this architecture can cost you a day: read a refusal on a governed action
-as *the apparatus could not be consulted* before you read it as *the platform
-decided about you*.
+as _the apparatus could not be consulted_ before you read it as _the platform
+decided about you_.
 
 **The two products are different evidence, and you need both.** The record is
 the Trust Plane's — what was decided, on what basis, in what order. The work
@@ -136,17 +136,16 @@ only from decisions has nothing to show for the work. Design for both from the
 start, because the record is not reconstructible after the fact.
 
 **A refusal at a plane is not the same as a refusal at the door.** Access
-control decides whether your *call* is admitted. The Trust Plane decides whether
-an *agent's action* is permitted. They produce overlapping statuses and have
+control decides whether your _call_ is admitted. The Trust Plane decides whether
+an _agent's action_ is permitted. They produce overlapping statuses and have
 completely different remedies. [06.2](02-the-request-path.md) puts both on one
 path so you can tell which one you are looking at.
 
-> ⚠ **The split is a split of responsibility. Whether it is a split of
-> machines is not observable from here.** The two planes may be one process,
-> two services, or two clusters; nothing you can reach distinguishes those, and
-> nothing in your design should depend on the answer. What you *can* rely on is
-> the direction of asking and the shape of what each one produces — and that is
-> the part that binds you.
+> ⚠ **The split is one of responsibility, not of machines.** The two planes may
+> be one process, two services, or two clusters; that is the deployment's choice
+> rather than a property of the model, and nothing in your design should depend
+> on the answer. What binds you is the direction of asking and the shape of what
+> each one produces.
 
 The Trust Plane gets a chapter of its own — [06.4](04-trust-and-the-audit-spine.md)
 is the decision mechanism and the audit spine; the execution lifecycle is
@@ -168,16 +167,16 @@ organisation                        the tenant root
                        └── posture        how much it may use unsupervised
 ```
 
-| object | the question it answers | plane | read it at |
-| --- | --- | --- | --- |
-| **organisation**, **unit**, **role** | what the structure is | neither — it is the context both planes read | `sdk:aegis_sdk.standup.OrganizationsModule`, `sdk:aegis_sdk.standup.OrganizationRolesModule` |
-| **envelope** | what may this role's delegate do? | authored in the structure; **consulted** by the Trust Plane when it decides | `sdk:aegis_sdk.RoleEnvelopesModule` |
-| **agent** | who is the delegate? | acted by the Execution Plane, bounded by the Trust Plane | `sdk:aegis_sdk.core.AgentsModule` |
-| **authority** | who attested this agent? | Trust Plane | `sdk:aegis_sdk.trust.AuthoritiesModule` |
-| **chain** | where did its authority come from? | Trust Plane | `sdk:aegis_sdk.trust.ChainsModule` |
-| **posture** | how much may it do unaided, now? | Trust Plane | `sdk:aegis_sdk.TrustPosture` |
-| **decision** | was *this* action permitted? | Trust Plane — and it is a record, not a setting | `api:GET /api/v1/trust/audit` |
-| **objective**, **request**, **session**, **artifact** | what work was asked for, and what came out | Execution Plane | `sdk:aegis_sdk.execution.ObjectivesModule` |
+| object                                                | the question it answers                    | plane                                                                       | read it at                                                                                   |
+| ----------------------------------------------------- | ------------------------------------------ | --------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| **organisation**, **unit**, **role**                  | what the structure is                      | neither — it is the context both planes read                                | `sdk:aegis_sdk.standup.OrganizationsModule`, `sdk:aegis_sdk.standup.OrganizationRolesModule` |
+| **envelope**                                          | what may this role's delegate do?          | authored in the structure; **consulted** by the Trust Plane when it decides | `sdk:aegis_sdk.RoleEnvelopesModule`                                                          |
+| **agent**                                             | who is the delegate?                       | acted by the Execution Plane, bounded by the Trust Plane                    | `sdk:aegis_sdk.core.AgentsModule`                                                            |
+| **authority**                                         | who attested this agent?                   | Trust Plane                                                                 | `sdk:aegis_sdk.trust.AuthoritiesModule`                                                      |
+| **chain**                                             | where did its authority come from?         | Trust Plane                                                                 | `sdk:aegis_sdk.trust.ChainsModule`                                                           |
+| **posture**                                           | how much may it do unaided, now?           | Trust Plane                                                                 | `sdk:aegis_sdk.TrustPosture`                                                                 |
+| **decision**                                          | was _this_ action permitted?               | Trust Plane — and it is a record, not a setting                             | `api:GET /api/v1/trust/audit`                                                                |
+| **objective**, **request**, **session**, **artifact** | what work was asked for, and what came out | Execution Plane                                                             | `sdk:aegis_sdk.execution.ObjectivesModule`                                                   |
 
 Two things about that table are worth carrying before you meet the chapters that
 develop it.
@@ -196,15 +195,15 @@ you can go back and read.
 
 Three non-identities, each of which someone assumes at least once.
 
-**It is not the deployment's source code.** The package contains no server.
-Measured: no HTTP framework is imported anywhere in it, by any form of import —
-every occurrence of one is a comment *about* the shape core answers with. You
-were not given core, and nothing here is a copy of it.
+**It is not the deployment's source code.** The package contains no server. No
+HTTP framework is imported anywhere in it, by any form of import — every
+occurrence of one is a comment _about_ the shape core answers with. You were not
+given core, and nothing here is a copy of it.
 
 **It is not an evaluator.** No plane runs in your process. Nothing here decides
 whether a call is allowed, resolves an envelope, evaluates a clearance, or
 consults a chain. When you read a verdict, you are reading a response. That is
-why `sdk:aegis_sdk.modules.GovernanceExplainModule` is a set of *calls* —
+why `sdk:aegis_sdk.modules.GovernanceExplainModule` is a set of _calls_ —
 `api:POST /api/v1/governance/explain-access` and its siblings — rather than a
 local reasoning step: explaining a decision is itself a request to the plane
 that made it.
@@ -212,7 +211,7 @@ that made it.
 **It is not a place to keep the truth.** Every read is a round trip, and a value
 you read is a snapshot from the moment core answered.
 
-The client caches nothing — measured: no response cache, no memoised read
+The client caches nothing: there is no response cache and no memoised read
 anywhere in the transport or the modules. That removes one class of bug
 entirely: there is no local copy that can disagree with the server, and nothing
 to invalidate. **But it does not make a read fresh**, because the deployment
@@ -228,7 +227,7 @@ and where it does not, treat the read as a snapshot with no guarantee about its
 age, because you have nothing to check.
 
 > ⛔ **The client's route table is a belief, not a specification.** Every `api:`
-> anchor in this book resolves against *the calls this package makes*. If the
+> anchor in this book resolves against _the calls this package makes_. If the
 > client and the deployment disagree about a path, the client is wrong in the
 > same direction and nothing here notices. The check that ships with this book
 > verifies existence, never enforcement — an operation can exist and check
@@ -237,17 +236,17 @@ age, because you have nothing to check.
 
 ## What you reach, and how
 
-The client presents **59 namespaces carrying 828 public members between them**.
-The number is measured, and it is large enough that the useful question is not
-what exists but which plane a namespace serves.
+The client presents **59 namespaces carrying 828 public members between them** —
+large enough that the useful question is not what exists but which plane a
+namespace serves.
 
-| family | reaches | plane | examples |
-| --- | --- | --- | --- |
-| **trust** | whether an action is permitted, and the record | Trust Plane | `sdk:aegis_sdk.trust.ChainsModule`, `sdk:aegis_sdk.trust.AgentTrustModule` |
-| **structure** | the organisation the planes read | neither | `sdk:aegis_sdk.standup.OrganizationRolesModule`, `sdk:aegis_sdk.RoleEnvelopesModule` |
-| **work** | what runs, and what it produced | Execution Plane | `sdk:aegis_sdk.execution.ObjectivesModule`, `sdk:aegis_sdk.execution.SessionsModule` |
-| **lineage** | what produced what, and from what | neither — it observes both | `sdk:aegis_sdk.dataflow.DataFlowModules` |
-| **commercial** | subscription, quota, license | neither — it bounds the tenant | `sdk:aegis_sdk.revenue.SubscriptionsModule` |
+| family         | reaches                                        | plane                          | examples                                                                             |
+| -------------- | ---------------------------------------------- | ------------------------------ | ------------------------------------------------------------------------------------ |
+| **trust**      | whether an action is permitted, and the record | Trust Plane                    | `sdk:aegis_sdk.trust.ChainsModule`, `sdk:aegis_sdk.trust.AgentTrustModule`           |
+| **structure**  | the organisation the planes read               | neither                        | `sdk:aegis_sdk.standup.OrganizationRolesModule`, `sdk:aegis_sdk.RoleEnvelopesModule` |
+| **work**       | what runs, and what it produced                | Execution Plane                | `sdk:aegis_sdk.execution.ObjectivesModule`, `sdk:aegis_sdk.execution.SessionsModule` |
+| **lineage**    | what produced what, and from what              | neither — it observes both     | `sdk:aegis_sdk.dataflow.DataFlowModules`                                             |
+| **commercial** | subscription, quota, license                   | neither — it bounds the tenant | `sdk:aegis_sdk.revenue.SubscriptionsModule`                                          |
 
 Four details of the surface's shape will save you time.
 
@@ -266,7 +265,7 @@ alias.
 modules — `sdk:aegis_sdk.modules.CredentialsModule`,
 `sdk:aegis_sdk.modules.EmergencyBypassModule`,
 `sdk:aegis_sdk.modules.KillSwitchModule` and
-`sdk:aegis_sdk.modules.PromotionsModule` — refuse an API key on *every* route,
+`sdk:aegis_sdk.modules.PromotionsModule` — refuse an API key on _every_ route,
 reads included. That is not a scope problem and no scope fixes it.
 
 **`client.trust.observability` is the plane looking at itself.** It aggregates
@@ -289,30 +288,26 @@ how you lose a day. Beside the client the package ships:
 That last one is the one to be careful with, and it is worth stating exactly.
 
 > ⛔ **`sdk:aegis_sdk.nexus` does not touch your deployment — and its most
-> convincing-looking verb returns success without doing anything.** Measured:
-> the subpackage imports no HTTP client, no socket, no subprocess, and no
-> container or cluster tooling anywhere. `sdk:aegis_sdk.nexus.DeploymentManager`'s
+> convincing-looking verb returns success without doing anything.** The
+> subpackage imports no HTTP client, no socket, no subprocess, and no container
+> or cluster tooling anywhere. `sdk:aegis_sdk.nexus.DeploymentManager`'s
 > `deploy()` validates a configuration object, then returns a
 > `sdk:aegis_sdk.nexus.DeploymentResult` with `success=True` and a set of
 > endpoints synthesised as `http://localhost:<port>` from the manifest. It
-> deploys nothing. Its own source says the real implementation would talk to
-> Kubernetes or Docker; the shipped one does not.
+> models a deployment shape locally; it reaches no cluster and no container
+> runtime.
 >
-> Nothing is broken relative to what that code claims internally. The hazard is
-> entirely in the reading: a method called `deploy()`, returning a result
-> object, next to configuration models named for production tiers, invites the
-> conclusion that you have a deployment tool. You have a **configuration
-> model**. Use it to *describe* a shape — and do not build a workflow on the
-> belief that calling it changed anything anywhere.
->
-> **UNVERIFIED:** whether this subpackage is intended for partners at all, or is
-> an internal library that happened to travel in the wheel. Nothing in the
-> package says, and the question is not answerable from what you were given.
+> The behaviour is correct for what the subpackage is. The hazard is entirely in
+> the reading: a method called `deploy()`, returning a result object, next to
+> configuration models named for production tiers, invites the conclusion that
+> you have a deployment tool. You have a **configuration model**. Use it to
+> _describe_ a shape — and do not build a workflow on the belief that calling it
+> changed anything anywhere.
 
 The handbook, the working artifacts and the probe are in the same band: they are
-things you *read and run locally*. None of them is a client for core, and none
+things you _read and run locally_. None of them is a client for core, and none
 of them makes a governance decision. A hook running in your session can refuse
-what *your tooling* does — that is a real control and it is worth wiring — but it
+what _your tooling_ does — that is a real control and it is worth wiring — but it
 is not the deployment's enforcement, and it does not bind an agent that is
 already running somewhere else.
 
@@ -325,14 +320,14 @@ a client for the implementation rather than a home for the specifications.
 The vocabulary is not decoration — it is how you predict names, and the plane
 split itself is one of the four standards' central claims.
 
-| specification | what it contributes | where it shows up |
-| --- | --- | --- |
-| **CARE** | the dual plane — Trust Plane and Execution Plane — with the posture ladder and the four-zone verdict | the split itself; `sdk:aegis_sdk.TrustPosture` |
-| **PACT** | the organisation model: units, roles, D/T/R addressing, envelopes, clearance | `sdk:aegis_sdk.standup.OrganizationRolesModule`, `sdk:aegis_sdk.RoleEnvelopesModule` |
-| **EATP** | the trust protocol: attestation, chains, delegation, revocation, the trust verdicts | `sdk:aegis_sdk.TrustChain`, `api:POST /api/v1/trust/establish` |
-| **CO** | the method — *how* to work with the system, including this book | the working artifacts beside this handbook |
+| specification | what it contributes                                                                                  | where it shows up                                                                    |
+| ------------- | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| **CARE**      | the dual plane — Trust Plane and Execution Plane — with the posture ladder and the four-zone verdict | the split itself; `sdk:aegis_sdk.TrustPosture`                                       |
+| **PACT**      | the organisation model: units, roles, D/T/R addressing, envelopes, clearance                         | `sdk:aegis_sdk.standup.OrganizationRolesModule`, `sdk:aegis_sdk.RoleEnvelopesModule` |
+| **EATP**      | the trust protocol: attestation, chains, delegation, revocation, the trust verdicts                  | `sdk:aegis_sdk.TrustChain`, `api:POST /api/v1/trust/establish`                       |
+| **CO**        | the method — _how_ to work with the system, including this book                                      | the working artifacts beside this handbook                                           |
 
-Read the third column as naming where the vocabulary is *expressed*, never where
+Read the third column as naming where the vocabulary is _expressed_, never where
 it is enforced. A module named for a concept means core implements that concept
 and this client can reach it. Enforcement is the deployment's — the same fact as
 everything else on this page, arrived at from a different direction.
@@ -345,11 +340,11 @@ typed error. You can read the state core holds and change it to the extent the
 governance on it permits; you can read a decision the Trust Plane made, and ask
 it to explain one. You cannot evaluate a governance decision locally, boot a
 copy of core, read core's source, or reach anything the API does not expose. And
-you cannot, from this position, see *which* component refused you — only that
+you cannot, from this position, see _which_ component refused you — only that
 something did, and with what status. Where the two halves disagree, core is
 right: the client is a belief about it, and this book is a belief about the
 client, both re-checkable against the build in your hands.
 
 ---
 
-*Next: [06.2 — The request path](02-the-request-path.md)*
+_Next: [06.2 — The request path](02-the-request-path.md)_

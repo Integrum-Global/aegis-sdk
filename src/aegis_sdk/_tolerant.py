@@ -141,14 +141,30 @@ def _inbound_names(alias: Any) -> set[str]:
 def annotation_admits_none(annotation: Any) -> bool:
     """True when ``annotation`` accepts ``None`` as a legitimate value.
 
-    Covers ``X | None``, ``Optional[X]``, ``Union[..., None]``, bare ``None`` and
-    ``Any``. Anything unrecognised is treated as NOT admitting None, which here
-    means "do not touch it" — the conservative direction, since the field will
-    then simply keep raising as it did before.
+    Covers ``X | None``, ``Optional[X]``, ``Union[..., None]``, bare ``None``,
+    ``Any`` and ``object``.
+
+    ⚠ WHY ``object`` IS HERE, and why an "unrecognised means leave it alone"
+    reading of anything else is WRONG. This helper is only ever consulted for a
+    field that is ALREADY MARKED (the caller checks ``_declared_tolerant``
+    first), so returning False does not make the field keep raising — it makes
+    the null be DROPPED and the field's default substituted. So a False here is
+    the fail-open direction, and it must be reserved for annotations that
+    genuinely reject ``None``.
+
+    ``object`` genuinely accepts it: pydantic's schema generator branches on
+    ``obj is object`` in the same clause as ``is_any``, so an ``object``-annotated
+    field validates a null. Returning False for it made a marked ``object`` field
+    silently replace a server null with its default — the exact fail-open this
+    base exists to prevent, aimed at the annotation most likely to carry an
+    opaque payload. Measured: ``BaseModel`` accepts ``payload=None`` for
+    ``payload: object``, and the marked twin returned ``{}`` instead of ``None``.
     """
     if annotation is None or annotation is type(None):
         return True
     if annotation is Any:
+        return True
+    if annotation is object:
         return True
     origin = typing.get_origin(annotation)
     if origin is typing.Union or origin is _pytypes.UnionType:
@@ -174,6 +190,13 @@ class TolerantModel(BaseModel):
         if cached is not None:
             return cached
         keys: set[str] = set()
+        # Whether pydantic will accept a field's PYTHON NAME as input. With an
+        # alias set and this off, it will not — the name is neither an input nor
+        # an output name. pydantic renamed the flag; accept either spelling.
+        config = cls.model_config or {}
+        accepts_by_name = bool(
+            config.get("populate_by_name") or config.get("validate_by_name")
+        )
         for name, field in cls.model_fields.items():
             if not _declared_tolerant(field):
                 continue
@@ -181,12 +204,17 @@ class TolerantModel(BaseModel):
                 continue
             if annotation_admits_none(field.annotation):
                 continue
-            keys.add(name)
-            # Only INPUT names belong in an input-matching set. ``alias`` is what
-            # the server sends when one is set; ``validation_alias`` may override
-            # it. ``serialization_alias`` is an OUTPUT name, which pydantic does
-            # not accept as input — including it would let a null-valued key
-            # carrying an output-only name be swallowed instead of rejected.
+            # Only names pydantic ACCEPTS AS INPUT belong in an input-matching
+            # set. ``alias`` is what the server sends when one is set;
+            # ``validation_alias`` may override it. ``serialization_alias`` is an
+            # OUTPUT name — and the python field name is not an input name while
+            # an alias is set and ``populate_by_name`` is off. Including either
+            # lets a null-valued key pydantic would have REJECTED
+            # (``extra="forbid"``) or PRESERVED (``extra="allow"``) be swallowed
+            # instead: a rejection becomes a silent default, and a preserved
+            # value is deleted. Both measured on the pre-fix code.
+            if accepts_by_name or (field.alias is None and field.validation_alias is None):
+                keys.add(name)
             keys.update(_inbound_names(field.alias))
             keys.update(_inbound_names(field.validation_alias))
         frozen = frozenset(keys)

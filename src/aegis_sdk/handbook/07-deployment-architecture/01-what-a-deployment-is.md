@@ -2,7 +2,7 @@
 
 Aegis is not something you install on a machine you already own. You are given a
 **deployment** — a running platform at an address someone hands you — and you
-administer *inside* it rather than operating the processes underneath it. The
+administer _inside_ it rather than operating the processes underneath it. The
 distinction is the whole chapter: almost everything that surprises a new
 integrator comes from assuming they are running the software when in fact they
 are using it.
@@ -36,21 +36,21 @@ operating it.
 Names vary between deployments and the ones below are generic roles, not a
 inventory of any particular estate. What does not vary is the job each one does.
 
-| Component | What it is for |
-| --- | --- |
-| **Managed Kubernetes cluster** | Where the platform's own services and yours actually run. Managed means the control plane is not your problem. |
-| **Container registry** | Holds the platform's images. The cluster pulls from it; nothing is built on the cluster. |
-| **Ingress / edge** | Terminates TLS, owns the public hostname, and is the single door into the deployment. |
-| **Application namespace(s)** | Where the running services live, separated from the platform's own controllers. |
-| **Job / agent execution namespace** | Ephemeral, short-lived workloads — the things that run once and exit. |
-| **Managed relational database** | Where your organisation's state lives, permanently. Also where embeddings live. |
-| **Cache** | Makes reads fast. Losing it costs latency, not data. |
-| **Object storage** | Artifacts and evidence — the large, immutable, long-retained things. |
-| **Secret store** | Holds the credentials the platform itself needs, referenced rather than embedded. |
-| **Identity provider** | Who the humans are, and the federation that lets workloads hold identity without holding secrets. |
+| Component                           | What it is for                                                                                                 |
+| ----------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| **Managed Kubernetes cluster**      | Where the platform's own services and yours actually run. Managed means the control plane is not your problem. |
+| **Container registry**              | Holds the platform's images. The cluster pulls from it; nothing is built on the cluster.                       |
+| **Ingress / edge**                  | Terminates TLS, owns the public hostname, and is the single door into the deployment.                          |
+| **Application namespace(s)**        | Where the running services live, separated from the platform's own controllers.                                |
+| **Job / agent execution namespace** | Ephemeral, short-lived workloads — the things that run once and exit.                                          |
+| **Managed relational database**     | Where your organisation's state lives, permanently. Also where embeddings live.                                |
+| **Cache**                           | Makes reads fast. Losing it costs latency, not data.                                                           |
+| **Object storage**                  | Artifacts and evidence — the large, immutable, long-retained things.                                           |
+| **Secret store**                    | Holds the credentials the platform itself needs, referenced rather than embedded.                              |
+| **Identity provider**               | Who the humans are, and the federation that lets workloads hold identity without holding secrets.              |
 
-The ordering matters less than the split: the first five are the *substrate*,
-the last five are *state and identity*. [07.5](05-stateful-services.md) covers the
+The ordering matters less than the split: the first five are the _substrate_,
+the last five are _state and identity_. [07.5](05-stateful-services.md) covers the
 state half and [07.6](06-identity-and-secrets.md) covers identity, because those
 are the two places a design goes wrong quietly.
 
@@ -94,28 +94,28 @@ This is the table to come back to. The honest answer is that ownership is
 **split**, and most integration friction comes from assuming a row is entirely
 one column or the other.
 
-| Thing | Platform owns | You own | Notes |
-| --- | --- | --- | --- |
-| Cluster, node pools, control plane | yes | no | You never schedule pods directly. |
-| Namespaces and their quotas | creates them | works inside them | Quota values are usually negotiable; the boundary is not. |
-| Platform images and their digests | yes | no | You do not build or pin these — see [07.3](03-images-and-the-registry.md). |
-| **Your** images, if you run any | registry, pull path | build and publish | Only if your deployment runs custom workloads at all. |
-| Database engine, version, backup policy | yes | no | You choose what to store and how to index it. |
-| Your organisation's schema and data | no | yes | Entirely yours, including retention decisions. |
-| Network boundary and egress policy | default posture | requests for change | See [07.4](04-the-network-boundary.md) — this is where real deployments differ most. |
-| Identity provider | runs it | configures your users | Federation into it is usually a shared task. |
-| Your API credential | issues it | holds and rotates it | Scoped by the roles you grant it. |
-| Upgrade timing | proposes and performs | your window preference | See [07.7](07-operating-the-deployment.md). |
-| Audit evidence | produces and retains it | reads it | Retention and access differ from operational logs — [07.7](07-operating-the-deployment.md). |
+| Thing                                   | Platform owns           | You own                | Notes                                                                                       |
+| --------------------------------------- | ----------------------- | ---------------------- | ------------------------------------------------------------------------------------------- |
+| Cluster, node pools, control plane      | yes                     | no                     | You never schedule pods directly.                                                           |
+| Namespaces and their quotas             | creates them            | works inside them      | Quota values are usually negotiable; the boundary is not.                                   |
+| Platform images and their digests       | yes                     | no                     | You do not build or pin these — see [07.3](03-images-and-the-registry.md).                  |
+| **Your** images, if you run any         | registry, pull path     | build and publish      | Only if your deployment runs custom workloads at all.                                       |
+| Database engine, version, backup policy | yes                     | no                     | You choose what to store and how to index it.                                               |
+| Your organisation's schema and data     | no                      | yes                    | Entirely yours, including retention decisions.                                              |
+| Network boundary and egress policy      | default posture         | requests for change    | See [07.4](04-the-network-boundary.md) — this is where real deployments differ most.        |
+| Identity provider                       | runs it                 | configures your users  | Federation into it is usually a shared task.                                                |
+| Your API credential                     | issues it               | holds and rotates it   | Scoped by the roles you grant it.                                                           |
+| Upgrade timing                          | proposes and performs   | your window preference | See [07.7](07-operating-the-deployment.md).                                                 |
+| Audit evidence                          | produces and retains it | reads it               | Retention and access differ from operational logs — [07.7](07-operating-the-deployment.md). |
 
-*Design intent, not observable:* that the third column is exactly what the fourth
-says and no more. You cannot verify the split from outside the deployment; you
-can only verify the parts that surface at the API. The column is written so you
-know what to ask, not so you can act as though it were settled.
+**The parts that surface at the API are the parts you settle yourself**; the rest
+of the split is your operator's to confirm for your deployment. The table is
+written so you know which is which, and so you arrive at that conversation with
+the specific question rather than a general one.
 
-**A working rule for the ambiguous rows:** if it changes what the platform *is*,
+**A working rule for the ambiguous rows:** if it changes what the platform _is_,
 the platform owns it and you request a change. If it changes what your
-organisation *means* — its units, roles, envelopes, knowledge — you own it and
+organisation _means_ — its units, roles, envelopes, knowledge — you own it and
 you do it through the API.
 
 ## Where the SDK attaches
@@ -148,18 +148,17 @@ Three ways to find out which parts of this shape your deployment actually has:
 1. **Ask your operator, and ask specifically.** "Do I get my own namespace, and
    what is its quota?" is answerable. "How does it work?" is not.
 2. **Test what surfaces at the API.** Health operations, your own identity, and
-   the error taxonomy are all observable; `api:GET /api/v1/auth/me` above is the
-   simplest example.
-3. **Read the rest of this part and notice which claims are marked.** Anything
-   marked as design intent is a claim about construction you cannot check from
-   where you sit. Treat those as questions for your operator rather than as
-   facts about your deployment.
+   the error taxonomy all answer directly; `api:GET /api/v1/auth/me` above is
+   the simplest example.
+3. **Read the rest of this part and note where it sends you to your operator.**
+   Those are the points where deployments genuinely differ, and each one comes
+   with the question to ask.
 
-*Design intent, not observable:* the component split above, and the ownership
-boundary that follows from it. The marker is not hedging — a reference
-architecture that presented itself as an inventory would be wrong the moment any
+The component split above, and the ownership boundary that follows from it, are
+the reference shape rather than an inventory of your estate — which is the point
+of writing them as a reference. An inventory would be wrong the moment any
 deployment deviated, and wrong invisibly.
 
 ---
 
-*Next: [07.2 — The cluster and its namespaces](02-the-cluster-and-namespaces.md)*
+_Next: [07.2 — The cluster and its namespaces](02-the-cluster-and-namespaces.md)_

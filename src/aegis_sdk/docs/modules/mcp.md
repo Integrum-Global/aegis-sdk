@@ -20,13 +20,12 @@ async with AgenticOSClient.from_env() as client:
 | `register_server(holder_agent_id, *, name, description, url=None, transport=None, headers=None, command=None, extra=None, is_enabled=False)` | `POST /api/v1/agents/{holder_agent_id}/tools`        | `McpRegistration`       |
 | `list_registrations(holder_agent_id)`                                                                                                        | `GET /api/v1/agents/{holder_agent_id}/tools`         | `list[McpRegistration]` |
 | `get_registration(holder_agent_id, registration_id)`                                                                                         | `GET /api/v1/agents/{holder_agent_id}/tools`         | `McpRegistration`       |
-| `update_registration(holder_agent_id, registration_id, ...)`                                                                                 | `PUT /api/v1/agents/{holder_agent_id}/tools/{id}`  | `McpRegistration`       |
+| `update_registration(holder_agent_id, registration_id, ...)`                                                                                 | `PUT /api/v1/agents/{holder_agent_id}/tools/{id}`    | `McpRegistration`       |
 | `delete_registration(holder_agent_id, registration_id)`                                                                                      | `DELETE /api/v1/agents/{holder_agent_id}/tools/{id}` | `None`                  |
 | `bind(agent_id, registration_id, *, name, description, allowed_tools=None, allow_all_tools=False, is_enabled=True)`                          | `POST /api/v1/agents/{agent_id}/tools`               | `McpBinding`            |
 | `bind_inline(agent_id, *, name, description, url=None, transport=None, headers=None, command=None, ...)`                                     | `POST /api/v1/agents/{agent_id}/tools`               | `McpBinding`            |
 | `list_bindings(agent_id)`                                                                                                                    | `GET /api/v1/agents/{agent_id}/tools`                | `list[McpBinding]`      |
 | `unbind(agent_id, binding_id)`                                                                                                               | `DELETE /api/v1/agents/{agent_id}/tools/{id}`        | `None`                  |
-
 
 There is no by-id read route. `get_registration` is a **filtered list**, and it raises `NotFoundError` when no registration with that id is stored on that agent — it does not return `None`, so a truthiness check is the wrong shape for it.
 
@@ -36,7 +35,9 @@ There is no by-id read route. `get_registration` is a **filtered list**, and it 
 
 **There is deliberately no way to pass `url`, `headers` or `command` to `bind`.** Those parameters do not exist on it. A row carrying a reference _and_ inline connection settings is refused with `422`, so offering them would be offering a body that cannot succeed.
 
-**And an MCP row cannot carry its own connection settings while it is LIVE.** `url`/`headers`/`command` with no `mcpServerId` are refused with `422` unless the row is declared storage — `is_enabled=False`. Connection settings with no reference have no single owner: the endpoint and its credential would be copied onto every row that carries them, and no rotation could reach them together. That is why `bind_inline()` requires `is_enabled=False`, and why enabling a stored row later is refused too.
+**And an MCP row cannot carry its own connection settings while it is LIVE.** `url`/`headers`/`command` with no `mcpServerId` are refused with `422` unless the row is declared storage — `is_enabled=False`. Connection settings with no reference have no single owner: the endpoint and its credential would be copied onto every row that carries them, and no rotation could reach them together. That is why `bind_inline()` requires `is_enabled=False`.
+
+Enabling a stored row later is **not** refused outright — it depends on what that row's stored config turns out to be, which `update_registration()` cannot see. An `is_enabled=True` sent without a config is passed through, and the server refuses it **only when the stored config is inline**. A stored config that names a registration is left alone, so a **reference** row can be enabled — which is the case to attempt when an agent has no tools.
 
 Prefer the reference form. Rotate the credential on the registration once and every referencing agent follows. An inline row is a copy: rotating a registration will never reach it, because it never read one.
 

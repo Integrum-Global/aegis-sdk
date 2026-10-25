@@ -308,18 +308,16 @@ designed and breaks exactly what the impact read would have named.
   `api:GET /api/v1/auth/me` — an API key has no role and no personas, ever, which
   also means a large part of the mutating surface may be closed to it (04.1).
 
-## What is not settled
+## Two things to establish against your own deployment
 
-**UNVERIFIED:** whether a tool agent's `status` is re-checked at invocation time or
-only at grant time. Moving an agent to `suspended` is the documented way to take it
-out of service, and this edition could not establish from the client surface
-whether an in-flight or immediately-subsequent invocation is refused. If you are
-relying on `suspended` as an incident control, test the latency of it against your
-own deployment before you need it.
+**The latency of `suspended` as an incident control.** Moving an agent to
+`suspended` is the way to take it out of service; whether an in-flight or
+immediately-subsequent invocation is refused depends on when your deployment
+re-checks `status`. Test it before you need it, not during the incident.
 
-**UNVERIFIED:** whether a `revoked` or `archived` agent's invocation history remains
-readable. The retention question matters for an audit that outlives the agent, and
-the client surface does not answer it.
+**The retention of a `revoked` or `archived` agent's invocation history.** It is
+a property of your deployment's retention policy rather than of the client, and
+it matters for any audit that outlives the agent.
 
 ---
 

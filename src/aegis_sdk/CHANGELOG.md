@@ -3,7 +3,34 @@
 This SDK is versioned independently of the Aegis platform it talks to. The
 version here is the SDK's own; it is not the server's.
 
-## Unreleased
+## 2.1.0 (unreleased)
+
+### Added — objective workspaces and reconciled public clients
+
+- `client.objective_workspaces` exposes objective workspace, roster, discussion
+  and private-session operations without adding in-process runtime dependencies.
+- Execution statuses now include `UNKNOWN` (not reported) and `IDLE` (reported
+  by the execution endpoint). Status filtering handles stored strings and enums.
+- Audit results retain the server's verification status and signature counts;
+  governance explanations retain gates the explanation did not evaluate.
+- Scoped-bridge reviewed digests are optional keyword arguments. The canonical
+  API defines their server check; the current platform does not enforce it.
+
+### Changed — execution compatibility
+
+- Pipeline reads, history and stop use `/api/v1/executions` routes. Cancellation
+  first reads the run, then sends stop; mismatched execution/pipeline ids raise
+  `ValueError` before stopping anything.
+- History requires `page >= 1` and `1 <= page_size <= 100`; status filtering
+  scans the server pages before deriving its own total and result page.
+- Explicit `execute(wait=...)` retains `DeprecationWarning`. The start remains
+  synchronous; `wait=False` skips the result read and returns `UNKNOWN`, while
+  omitting the argument reads the reported result.
+- MCP connection configuration supports a URL secret reference. Tolerant response
+  parsing preserves legitimate object nulls and respects accepted input aliases.
+- The deprecated session workspace filter warns while preserving its existing
+  request behavior. Client material/projections follow the reconciled contracts.
+
 
 ### Changed — every `409`, on every route, is now `ConflictError` and says what the server said
 

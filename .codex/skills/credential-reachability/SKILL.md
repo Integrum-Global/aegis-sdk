@@ -78,10 +78,9 @@ finding from a 401 or a 403 and points at a different owner. Nothing downstream
 depends on this call succeeding — it is a diagnostic, so a failure to parse it
 does not block your work, it only removes a convenience.
 
-**UNVERIFIED from this side: which of the three your deployment sends.** It
-cannot be settled without calling one, and this package is the wrong place to
-guess. What is settled is that two of the three make the _diagnostic call itself_
-fail for the credential it exists to diagnose.
+**Which of the three your deployment sends is settled by calling one**, and it is
+worth settling before you build on the diagnostic: two of the three make the
+_diagnostic call itself_ fail for the credential it exists to diagnose.
 
 So: if `get_current_user()` raises a validation error naming `role`, **do not
 read that as a broken deployment or a bad key.** It is consistent with a

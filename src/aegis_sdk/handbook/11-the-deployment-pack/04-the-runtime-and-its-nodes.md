@@ -21,7 +21,7 @@ install, and the derivation is two lines.**
 | Fact                   | Value                                                       |
 | ---------------------- | ----------------------------------------------------------- |
 | **Package**            | `kailash-enterprise`                                        |
-| **Version constraint** | `>=4.47.0,<4.48.0`                                          |
+| **Version constraint** | `>=4.47.1,<4.48.0`                                          |
 | **Import name**        | `kailash`                                                   |
 | **Distribution shape** | A single compiled extension, `abi3` from Python 3.10        |
 | **Interpreters**       | Wheels for CPython 3.10 through 3.14                        |

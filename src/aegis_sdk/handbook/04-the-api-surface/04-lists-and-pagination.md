@@ -88,7 +88,7 @@ optional with defaults of `1`, `50` and `False`.** And — this is the part that
 decides whether your paging loop is correct — **the client computes all of them
 itself, differently per module, from whatever the route actually returned.**
 
-Three measured examples, all returning the same type:
+Three examples, all returning the same type:
 
 | method                                          | `total` means               | `has_next` is computed as              |
 | ----------------------------------------------- | --------------------------- | -------------------------------------- |
@@ -151,6 +151,17 @@ Three things that loop does deliberately:
 - **It has an upper bound.** A route that ignores `offset` returns the same page
   forever and the loop never ends. The bound converts a hang into an error you
   can read.
+
+One thing no loop can fix from the client side: **the order the server pages
+in.** If many rows tie on the sort column, the database may return the tied rows
+in a different order on each `limit`/`offset` request, so a walk can skip one row
+and return another twice — and because the count still comes out right, nothing
+looks wrong. Where a list method offers a unique order, ask for it when you page
+through everything. `client.org_standup.list_units`,
+`client.org_standup.list_roles` and `client.bridges.standing.list` all accept
+`order_by="id"` for exactly this; their default orders (hierarchy level,
+authority level, name) are heavily tied. Collect by `id` and compare the number
+of distinct ids to `total` if you want the walk to prove itself.
 
 For a `page`/`page_size` method the same shape applies with `page += 1`. For the
 twenty methods with no offset at all, there is no loop to write: raise the limit

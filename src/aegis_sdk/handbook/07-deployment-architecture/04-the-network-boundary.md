@@ -12,10 +12,9 @@ The public surface is deliberately tiny:
 - **One hostname**, serving the API. This is the address your integration points
   at and the address the web console is served from.
 - **TLS termination at the edge.** Certificates are presented and managed at the
-  boundary, and your connection ends there. *Design intent, not observable:* what
-  the hops behind the edge look like — re-encrypted or not — is a construction
-  property, and [07.5](05-stateful-services.md) covers what the reference shape
-  expects of the data plane specifically.
+  boundary, and your connection ends there. What the hops behind the edge look
+  like is the deployment's construction; [07.5](05-stateful-services.md) covers
+  what the reference shape expects of the data plane specifically.
 - **Nothing else.** There is no public database port, no public storage
   endpoint, no administrative interface on a second hostname.
 
@@ -24,10 +23,10 @@ From your side the entire boundary is one string: the base URL you give
 is worth appreciating as a design statement rather than a convenience — there is
 no second address and no code path in this client that aims at one.
 
-*Design intent, not observable:* that the hostname is the only public entry
-point. You can verify the *client* half of that claim trivially — the SDK has one
-configured base URL and no other route out. You cannot verify from your side that
-no second door exists elsewhere, so the claim stays marked.
+The client half of this is yours to establish in seconds: the SDK has one
+configured base URL and no other route out. That the hostname is the deployment's
+only public entry point is the architecture your operator runs, and it is worth
+having them confirm in writing when a security review asks.
 
 ## What crosses the line
 
@@ -91,10 +90,9 @@ matters is not disruption; it is that someone could alter or read the record
 whose whole purpose is to be trustworthy. That is why the data plane sits behind
 private endpoints rather than behind authentication alone.
 
-*Design intent, not observable:* that private endpoints are the mechanism used,
-rather than a network-level restriction that achieves the same reachability
-outcome. Either satisfies the property; the reference shape uses private
-endpoints, and a specific deployment may achieve it differently.
+The property that matters is the reachability outcome, and more than one
+mechanism satisfies it. The reference shape uses private endpoints; a specific
+deployment may reach the same outcome with a network-level restriction instead.
 
 ## Segmentation inside the private zone
 
@@ -103,15 +101,14 @@ Within the private zone, not everything can reach everything:
 - **Namespace-to-namespace.** Network policy governs which pods may open
   connections to which others. The application services reach the data plane;
   the ephemeral job namespace reaches what its work requires and no more.
-  *Design intent, not observable, and unevenly true in practice:* network policy
-  is frequently present in the reference shape and variably enforced — the same
-  reason [07.2](02-the-cluster-and-namespaces.md) refuses to treat a namespace as
-  a security boundary. Do not design against this without confirming it.
+  Confirm your deployment's policy with your operator before you design against
+  it — for the same reason [07.2](02-the-cluster-and-namespaces.md) treats a
+  namespace as an operational boundary rather than a security one.
 - **Workload-to-data-plane.** Reachability is paired with **identity**: being
   on the network is not the same as being authorised. A service that can open a
   TCP connection to the database still has to authenticate to it — see
-  [07.6](06-identity-and-secrets.md). The network limits who may *try*; identity
-  decides who *succeeds*.
+  [07.6](06-identity-and-secrets.md). The network limits who may _try_; identity
+  decides who _succeeds_.
 
 Hold both, because they fail differently. A network rule that is too permissive
 is a latent exposure. An identity that is too permissive is an immediate one.
@@ -141,11 +138,9 @@ The reference posture:
 
 **Where the reference shape and reality part company:** allowlisting egress is a
 real operational burden. Provider endpoints change, regions differ, and an
-over-tight policy produces outages that look like application failures. Many
-deployments therefore run something looser than the above — sometimes
-substantially looser.
-
-This is exactly why the next section is worth reading rather than skimming.
+over-tight policy produces outages that look like application failures. Each
+deployment settles that trade-off for itself, which is why the posture is a
+question to ask rather than a default to assume.
 
 **What to ask your operator, in this order:**
 
@@ -153,25 +148,19 @@ This is exactly why the next section is worth reading rather than skimming.
 2. Which destinations are on the allowlist, and who changes it?
 3. Is the agent-to-provider path recorded, and where does that record go?
 
-**UNVERIFIED:** the egress posture of any particular deployment. This chapter
-describes the reference shape; it cannot see the policy applied in an estate you
-were handed, and the difference between those two answers is significant enough
-that guessing is not reasonable.
+**Your operator sets the egress posture**, and it is one of the settings that
+differs most between deployments — which is why those three questions are worth
+asking before you write the answer into a security review rather than after.
 
-## What the boundary does not do
+## What the boundary is, and what it is not
 
-Two honest limits, stated so the chapter is not read as more than it is:
-
-- **The boundary is not an authorization model.** It decides what can be
-  *reached*, not what may be *done*. A request that arrives cleanly over the
-  public hostname still faces every check the platform applies — see part 04.
-  Network position is not authority, and no part of this architecture treats it
-  as such.
-- **A boundary you cannot see is a boundary you must ask about.** Everything in
-  this chapter except the single base URL is a claim about construction. The
-  marked claims are not hedging; they are the accurate epistemic status of a
-  reader who was given an endpoint rather than a cluster.
+**The boundary is not an authorization model.** It decides what can be
+_reached_, not what may be _done_. A request that arrives cleanly over the
+public hostname still faces every check the platform applies — see part 04.
+Network position is not authority, and no part of this architecture treats it as
+such. That separation is deliberate: it is what lets the same governance apply
+whether a call arrives from inside the cluster or from your integration.
 
 ---
 
-*Next: [07.5 — Stateful services](05-stateful-services.md)*
+_Next: [07.5 — Stateful services](05-stateful-services.md)_

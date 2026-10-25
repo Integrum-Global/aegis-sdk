@@ -384,15 +384,23 @@ Operations: `api:POST /api/v1/pipelines` · `api:GET /api/v1/pipelines` ·
 `api:POST /api/v1/pipelines/{id}/duplicate` ·
 `api:PUT /api/v1/pipelines/{id}/graph` ·
 `api:GET /api/v1/pipelines/node-types` ·
-`api:POST /api/v1/pipelines/{id}/validate` ·
-`api:GET /api/v1/pipelines/{id}/executions` ·
-`api:GET /api/v1/pipelines/{id}/executions/{execution_id}` ·
-`api:POST /api/v1/pipelines/{id}/executions/{execution_id}/cancel`
+`api:POST /api/v1/pipelines/{id}/validate`.
 
-Standalone execution control sits alongside:
+Execution convenience methods:
+`sdk:aegis_sdk.core.pipelines.PipelinesModule.list_executions` ·
+`sdk:aegis_sdk.core.pipelines.PipelinesModule.get_execution` ·
+`sdk:aegis_sdk.core.pipelines.PipelinesModule.cancel_execution`.
+They use the shared execution-control surface:
 `api:POST /api/v1/executions/start` · `api:GET /api/v1/executions/{id}` ·
 `api:POST /api/v1/executions/{id}/stop` ·
 `api:GET /api/v1/executions/history/{id}`
+
+History is paginated with `page` starting at 1 and `page_size` between 1 and 100;
+the SDK applies a requested status filter across every history page. Reading a
+run checks its execution and pipeline IDs. Canceling adds that read before the
+stop request and raises `ValueError` on a mismatch. `execute` reads the result
+by default; explicit `wait=False` skips the read and returns `UNKNOWN`, while
+still emitting the argument's deprecation warning.
 
 Registered workflows — the named, reusable graphs a deployment publishes — are
 read-only from the client: `api:GET /api/v1/workflows` ·

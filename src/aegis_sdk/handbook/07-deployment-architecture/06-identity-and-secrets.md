@@ -10,14 +10,14 @@ draw for yourself before you finish reading it.
 Keep these apart, because they are conflated constantly and the conflation leads
 to bad reasoning about who can do what.
 
-| | Operator identity | Workload identity |
-| --- | --- | --- |
-| **Whose is it?** | A person's | A workload's |
-| **What is it for?** | Administering the deployment | A service reaching a resource |
+|                               | Operator identity                            | Workload identity                          |
+| ----------------------------- | -------------------------------------------- | ------------------------------------------ |
+| **Whose is it?**              | A person's                                   | A workload's                               |
+| **What is it for?**           | Administering the deployment                 | A service reaching a resource              |
 | **How does it authenticate?** | Interactively, through the identity provider | With a short-lived token issued to the pod |
-| **Lifetime** | As long as the person's access is valid | Minutes, refreshed automatically |
-| **Can it be shared?** | It should not be, and it is attributable | It is not a thing anyone shares |
-| **Blast radius if misused** | Whatever that person's roles allow | Whatever that one workload is permitted |
+| **Lifetime**                  | As long as the person's access is valid      | Minutes, refreshed automatically           |
+| **Can it be shared?**         | It should not be, and it is attributable     | It is not a thing anyone shares            |
+| **Blast radius if misused**   | Whatever that person's roles allow           | Whatever that one workload is permitted    |
 
 Neither is privileged over the other in principle. They are simply **different
 kinds of principal**, and an architecture that keeps them separate can answer
@@ -40,8 +40,8 @@ from, and no automatic end. Anything that can read the container's environment o
 filesystem reads it; anything that can read the image layer reads it forever.
 
 **Workload identity federation** replaces that with a token the pod requests and
-receives at runtime, issued because the platform can attest *which workload is
-asking*. The credential is short-lived, scoped to the resource being reached, and
+receives at runtime, issued because the platform can attest _which workload is
+asking_. The credential is short-lived, scoped to the resource being reached, and
 never written anywhere durable.
 
 ```
@@ -64,21 +64,20 @@ never written anywhere durable.
 └┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┘
 ```
 
-The dashed box at the bottom is the one that is *absent*, and it is drawn
+The dashed box at the bottom is the one that is _absent_, and it is drawn
 deliberately: the contrast between a federated hop and a stored credential is
 the entire argument of this section. If you take one thing from this part, take
 that this box must stay empty.
 
-*Design intent, not observable:* that no workload in a given deployment holds a
-stored credential. This is exactly the kind of claim that is true by construction
-in the reference shape and unverifiable from your integration — you cannot see
-inside a container. It is also, for that reason, one of the most valuable
-questions to put to your operator directly.
+That no workload holds a stored credential is true by construction in the
+reference shape, and it is one of the most valuable things to have your operator
+confirm for your deployment — it is the single question whose answer tells you
+most about how a leaked credential would behave there.
 
 ## The secret store, and what lives in it
 
 A secret store still exists, and that is not a contradiction — federation removes
-the *need* for stored credentials, it does not remove every secret. What actually
+the _need_ for stored credentials, it does not remove every secret. What actually
 lives there:
 
 - **The platform's own credentials** for the resources that genuinely cannot
@@ -97,22 +96,21 @@ stylistic — a secret in an image is in every copy of that image and survives
 every rotation of the original, while a referenced secret is one thing in one
 place, replaceable without rebuilding anything.
 
-*Design intent, not observable:* what your deployment's store actually contains,
-and whether anything in it should have been federated instead. There is no
-outside vantage point for this, and the honest position is that it is a
-construction property you are told about rather than one you check.
+**What your deployment's store holds is your operator's to enumerate**, and the
+useful follow-up is whether anything in it could be federated instead — every
+entry that moves from stored to federated removes a credential that can leak.
 
 ## Rotation, and what it costs a running workload
 
 Rotation is where the two designs above diverge in a way you will feel
 operationally, so it is worth stating as a comparison rather than a list.
 
-| What rotates | Trigger | Effect on a running workload |
-| --- | --- | --- |
-| **Workload identity tokens** | Automatic, continuously | None. The pod asks for the next one. This is the common case. |
-| **Federated identities' trust configuration** | Platform change | A pod restart, at a time the platform chooses. |
-| **Third-party provider keys** | On a schedule, or on suspicion | A restart or a reload, depending on how the workload reads it. |
-| **Your application credential** | You decide | None, if you issue the new one before revoking the old. |
+| What rotates                                  | Trigger                        | Effect on a running workload                                   |
+| --------------------------------------------- | ------------------------------ | -------------------------------------------------------------- |
+| **Workload identity tokens**                  | Automatic, continuously        | None. The pod asks for the next one. This is the common case.  |
+| **Federated identities' trust configuration** | Platform change                | A pod restart, at a time the platform chooses.                 |
+| **Third-party provider keys**                 | On a schedule, or on suspicion | A restart or a reload, depending on how the workload reads it. |
+| **Your application credential**               | You decide                     | None, if you issue the new one before revoking the old.        |
 
 The first row is the payoff of the whole design: **the credential that is used
 most often is the one that never needs a maintenance window**, because it was
@@ -143,30 +141,25 @@ incident: when a call is refused and the reason is not obvious, the first
 question is whether you are who you think you are, and that operation answers it
 directly rather than by inference.
 
-**What you can verify from outside, and what you cannot:**
+**How you establish each of these:**
 
-| Claim | Verifiable by you? |
-| --- | --- |
-| Which principal your credential authenticates as | **Yes** — `api:GET /api/v1/auth/me` |
-| What your credential is permitted to do | **Yes, by trying** — refusals are the evidence |
-| Who else holds a credential for your organisation | **Partly** — ask; it is your organisation's, not the platform's |
-| That no pod holds a stored secret | **No** — take it on trust, and ask |
-| How rotation is performed, and when it last happened | **No** — ask your operator |
+| Claim                                                | How you establish it                                |
+| ---------------------------------------------------- | --------------------------------------------------- |
+| Which principal your credential authenticates as     | `api:GET /api/v1/auth/me`                           |
+| What your credential is permitted to do              | By trying — refusals are the evidence               |
+| Who else holds a credential for your organisation    | Your own records; the roster is your organisation's |
+| That no pod holds a stored secret                    | Your operator confirms it                           |
+| How rotation is performed, and when it last happened | Your operator confirms it                           |
 
-*Design intent, not observable:* the third row rests on the ownership split in
-[07.1](01-what-a-deployment-is.md)'s table, and that table is itself construction.
-Whether your organisation or your operator keeps the credential records is a
-question to put to them, not an answer this book can give you.
+The third row follows the ownership split in
+[07.1](01-what-a-deployment-is.md)'s table: credential records belong to your
+organisation rather than to the platform, so the roster is one you keep.
 
-The bottom two rows are the ones to notice. They are the claims this architecture
-most wants you to believe and the ones you are least able to check, which is
-exactly why they are listed rather than left implicit.
-
-**UNVERIFIED:** every construction claim in this chapter, for any specific
-deployment. The reference shape is described; the estate you were handed may
-differ, and no part of this document can see into it. Asking is not a workaround
-here — for these particular questions, it is the only instrument there is.
+**The bottom two rows are the ones to put in writing.** They are the claims that
+matter most in a security review, and they are your operator's to state — which
+makes them the two questions worth asking before the review rather than during
+it. [07.7](07-operating-the-deployment.md) collects them with the rest.
 
 ---
 
-*Next: [07.7 — Operating the deployment](07-operating-the-deployment.md)*
+_Next: [07.7 — Operating the deployment](07-operating-the-deployment.md)_

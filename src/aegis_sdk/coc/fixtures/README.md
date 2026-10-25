@@ -1,5 +1,7 @@
 # Fixtures for the enforcing hooks
 
+<!-- anchor-floor: ungrammatical (no anchor kind exists for a shipped .js guard or fixture case) -->
+
 ```bash
 node src/aegis_sdk/coc/fixtures/run.mjs                 # every case, then the mutation controls
 node src/aegis_sdk/coc/fixtures/run.mjs --only <hook>   # one hook
@@ -36,11 +38,11 @@ SILENCE. Three are named in the commissioning brief as the false positives that
 would make a delivery partner switch the whole set off, and they are pinned
 hardest:
 
-| must stay silent | case |
-| --- | --- |
-| a read-only probe | `SILENT: the probe, live, by name` · `SILENT: the probe, offline` |
+| must stay silent              | case                                                              |
+| ----------------------------- | ----------------------------------------------------------------- |
+| a read-only probe             | `SILENT: the probe, live, by name` · `SILENT: the probe, offline` |
 | a properly-labelled inference | `SILENT: labelled as inference` · `SILENT: hedged with 'appears'` |
-| an already-confirmed target | `SILENT: an already-confirmed target does not re-prompt` |
+| an already-confirmed target   | `SILENT: an already-confirmed target does not re-prompt`          |
 
 **A negative-control corpus, with its denominator printed.**
 `source-absence-boundary` is run over **every shipped prose file in the package**
@@ -83,33 +85,33 @@ caught by fixtures  : 8
 ESCAPED             : 0
 ```
 
-## Two defects these fixtures found in the hooks they test
+## Two design properties these fixtures pin
 
-Recorded because they are the argument for the directory existing, and because
-both were invisible to a reading of the code.
+Both are invisible to a reading of the code, which is why they are pinned here
+rather than left to a comment.
 
-1. **The `setTimeout` fail-open was inert.** A timer cannot preempt synchronous
-   work, and every guard here does its analysis synchronously — so the timer
-   fired only after the decision it was meant to prevent. A fixture asserting
-   fail-open under a tiny budget instead got a full block. Fixed with an inline
-   `budget.spent()` check before each expensive step, so the path is reached by
-   code rather than by a scheduler that never gets a turn.
+1. **The budget check is inline, not a timer.** A `setTimeout` cannot preempt
+   synchronous work, and every guard here does its analysis synchronously — a
+   timer would fire only after the decision it exists to bound. Each guard calls
+   `budget.spent()` before every expensive step, so the fail-open path is reached
+   by code rather than by a scheduler that never gets a turn.
 
-2. **The exhausted-budget branch was untestable by construction.** No positive
-   budget a fixture can name is reliably exceeded by a sub-millisecond hook, so
-   `budgetMs` now accepts a non-positive value meaning ALREADY EXHAUSTED.
-   Production never sets the variable and is byte-identical either way.
+2. **`budgetMs` accepts a non-positive value meaning ALREADY EXHAUSTED.** No
+   positive budget a fixture can name is reliably exceeded by a sub-millisecond
+   hook, so this is how the exhausted branch is driven. Production never sets the
+   variable and is byte-identical either way.
 
-## What this suite does NOT establish
+## What this suite covers, and where its edges are
 
-- **That the guards are correctly calibrated for a real partner's prose.** The
-  corpus is this package's own writing. A partner writes differently, and the
-  first real false positive is evidence no fixture here can supply.
-- **That the Codex and Gemini overlays behave identically.** Every case runs the
-  script directly. The registrations are checked by `project_coc.mjs --check`,
-  which proves they are IN SYNC, not that each CLI honours them — and Codex's
-  Bash-only event surface means two of these guards are structurally partial
-  there, which `hooks.manifest.json` records per hook.
-- **That a guard is right to fire.** `source-absence-boundary` and
-  `probe-before-claim` read prose. Both are `halt-and-report` for exactly that
-  reason, and both say so where a reader will meet them.
+- **The corpus is this package's own writing.** It is the hardest silence case
+  available here, and it is not a substitute for your own prose. As you write
+  against your deployment, add your own cases to the corpus — that is the
+  intended way to calibrate these guards for how your team writes.
+- **Every case runs the script directly.** The Codex and Gemini registrations are
+  checked by `project_coc.mjs --check`, which proves they are IN SYNC; Codex's
+  Bash-only event surface makes two of these guards structurally partial there,
+  and `hooks.manifest.json` records which per hook.
+- **Whether a guard is right to fire is a judgment, by design.**
+  `source-absence-boundary` and `probe-before-claim` read prose, which is exactly
+  why both are `halt-and-report` rather than `block`, and both say so where a
+  reader will meet them.

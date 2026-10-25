@@ -84,9 +84,8 @@ if not me.personas:
 >
 > **A validation error here means the request was ANSWERED, not refused.** It is
 > a different finding from a `401` or a `403` and it points at a different owner.
-> **UNVERIFIED:** which shape a real deployment sends. Settling it needs a live
-> call, and this edition could not make one, so do not read either answer out of
-> this book — make the call and read the body:
+> Which of the shapes your deployment sends is a property of that deployment, so
+> read it off a live call rather than out of this book:
 >
 > ```python
 > raw = await client._http.request("GET", "/api/v1/auth/me")   # api:GET /api/v1/auth/me
@@ -130,10 +129,10 @@ raw = await client._http.request(
 secret = raw.get("key") or raw.get("api_key")    # whichever your deployment emits
 ```
 
-**UNVERIFIED:** which field name a real deployment uses for the secret, or
-whether it returns one at all — that is a property of the deployment and cannot
-be settled from this package. What _is_ settled is that the typed method cannot
-give it to you whatever it is called.
+Which field name your deployment uses for the secret — and whether it returns one
+at all — is a property of that deployment rather than of this package, so read it
+off the raw body the first time you provision. What holds either way is that the
+typed method cannot give it to you, whatever it is called.
 
 Then treat it as a secret. Everything in
 [01.3](../01-orientation/03-your-first-session.md) about environment variables
@@ -181,8 +180,8 @@ cannot tell a live key from a revoked one by reading it. `expires_at` is the onl
 lifetime signal the client exposes, and `None` there means _no expiry_, not
 _expired_. If your deployment revokes a key by deleting the record, absence from
 `api:GET /api/v1/api-keys` is your signal; if it revokes in place, this client
-gives you nothing to see it by. **UNVERIFIED:** which of those your deployment
-does.
+gives you nothing to see it by. Establish which of the two your deployment does
+before you rely on either signal.
 
 **`last_used_at` is the field to build a hygiene check on**, and it is the one
 architects reliably forget they have:
@@ -202,19 +201,19 @@ That is exactly the kind of assertion [02.1](../02-working-through-the-harness/0
 argues the harness is for and the console cannot do. Run it on a schedule.
 
 **Rotation.** `api:POST /api/v1/api-keys/{id}/regenerate` exists on this
-surface. **UNVERIFIED:** whether the old secret stops working immediately or
-overlaps — that decides whether you can rotate without a maintenance window, and
-it cannot be settled from the client. Establish it in a staging deployment
-before you need it in production. Retiring a key outright is
+surface. Whether the old secret stops working immediately or overlaps is the
+deployment's behaviour rather than the client's, and it decides whether you can
+rotate without a maintenance window. Establish it in a staging deployment before
+you need it in production. Retiring a key outright is
 `api:DELETE /api/v1/api-keys/{id}`; `sdk:aegis_sdk.auth.AuthModule.revoke_api_key`
 is an alias for the delete, not a separate softer operation.
 
 **Expiry is opt-in on this side.** `expires_in_days` is optional at creation,
 the client supplies no default, and it is **omitted from the request body
 entirely** when you do not pass it — so whether an unexpiring key results is the
-deployment's decision, not the client's. **UNVERIFIED:** what yours does with the
-field absent. Pass it explicitly for anything living in CI, and set the rotation
-reminder in the same change; then you do not need to know.
+deployment's decision, not the client's. Pass it explicitly for anything living
+in CI, and set the rotation reminder in the same change; then what yours does
+with the field absent never becomes your problem.
 
 ## When a permission failure arrives
 

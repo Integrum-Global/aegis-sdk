@@ -125,3 +125,7 @@ administrative reach — in which case the screen you are looking at changes how
 the system behaves rather than how you work inside it, and the corresponding
 harness path is in [part 02](../02-working-through-the-harness/) rather than
 here.
+
+---
+
+_Next: [Part 06 — Architecture](../06-architecture/README.md)_

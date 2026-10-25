@@ -1,7 +1,7 @@
 # Part 06 — Architecture
 
 **Audience: the lead engineer designing a system against Aegis.** Parts 02 to
-05 answer *how do I do this*. This part answers *what is this* — the platform's
+05 answer _how do I do this_. This part answers _what is this_ — the platform's
 internals as you need them in order to design: the split between its Trust Plane
 and its Execution Plane, the governance objects and how they relate, what a
 request and a run actually pass through, where enforcement happens, and what
@@ -14,8 +14,8 @@ that evidence runs out, the chapter says so rather than filling the gap.
 
 ## The chapters
 
-| #    | Chapter                                                                | You leave able to                                                                              |
-| ---- | ---------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| #    | Chapter                                                                | You leave able to                                                                               |
+| ---- | ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
 | 06.1 | [What core and the SDK are](01-what-core-and-the-sdk-are.md)           | Say where the boundary is, and which half of the system a given responsibility belongs to       |
 | 06.2 | [The request path](02-the-request-path.md)                             | Trace a call through the platform, and predict which layer will refuse it                       |
 | 06.3 | [The governed organisation](03-the-governed-organization.md)           | Design the structure your agents live in, and know what each object constrains                  |
@@ -116,10 +116,10 @@ the system those steps operate on — the reason they come in that order, the
 reason the shapes are those shapes, and the reason some of them cannot be
 rearranged. That is what you need when no recipe covers your case.
 
-The practical test is the question you are asking. *"How do I establish a trust
-chain?"* is part 02. *"Why does authority have to originate with a person at
-all?"* is part 06, and the answer changes what you can design. *"Why did this
-call come back refused?"* starts at part 04, which carries the error taxonomy;
+The practical test is the question you are asking. _"How do I establish a trust
+chain?"_ is part 02. _"Why does authority have to originate with a person at
+all?"_ is part 06, and the answer changes what you can design. _"Why did this
+call come back refused?"_ starts at part 04, which carries the error taxonomy;
 06.2 explains what the call passed through on its way to the refusal, which is
 what tells you whether the answer is to change the credential or to change the
 design.
@@ -152,50 +152,31 @@ anything is checked when you call it. The distinction sounds pedantic until you
 apply it: this client declares `api:GET /api/v1/agents`, and that declaration
 tells you the operation is part of the surface. It cannot tell you what the
 server checked before answering, and it would read identically if the answer
-were *nothing*. This is the one architectural claim that gets made wrongly most
+were _nothing_. This is the one architectural claim that gets made wrongly most
 often, because a route that resolves, a field that is accepted and a status that
-appears in an enum all *look* like guarantees. They are not. Where a chapter
+appears in an enum all _look_ like guarantees. They are not. Where a chapter
 claims something is enforced, it rests on observed behaviour or it is labelled —
 never on the mere existence of the surface.
 
-## How this part knows what it knows
+## What this part describes, and what sits outside it
 
-This part describes the platform's internals, and it is worth being precise
-about how — because the source is not part of what you were given.
+This part describes the platform at its boundary: the operations the client
+performs, the symbols the package exports, the shapes calls return, and how a
+running deployment responds. That boundary is the architecture you design
+against, and it is the one these chapters are written to.
 
-Architecture is normally read from the inside: open the tree, follow the call,
-see which component ends up holding the state. None of that is available here.
-What is available is the outside — the operations this client performs, the
-symbols the package exports, the shapes calls return, and the behaviour you can
-observe against a running deployment. Everything this part says about the plane
-split, about the governance objects and their relationships, and about where
-enforcement happens is written against that evidence and bounded by it. Where a
-claim about the deployment's internals outruns what an outside read can reach —
-and some do, because the split between the planes is a split of responsibility
-and not an observable boundary — the chapter marks it as a reading rather than
-asserting it in the same voice. Three things in particular do not come with it:
+Three things sit outside it, and each changes what you should build:
 
 - **Which line enforces a rule.** You can establish the layering, and this part
-  does. You cannot open it and read the check — and a rule that is declared and
-  never consulted looks identical from outside to one that is enforced, because
-  both are simply operations that exist.
+  does. A rule that is declared and one that is enforced look the same from
+  outside, because both are simply operations that exist — so treat "this route
+  is declared" and "this route checks something" as two separate claims.
 - **Why a boundary falls where it does.** Some boundaries are load-bearing and
-  some are historical. The behaviour is the same either way, so no amount of
-  observation separates them. Where a chapter offers a reason, it is a reading.
+  some are historical. The behaviour is the same either way, so design to the
+  behaviour rather than to the reason for it.
 - **Anything on a path with no surface.** A capability with no operation behind
-  it is invisible from here — not absent, just unreachable, and the two are
-  indistinguishable in what you can measure.
-
-So the markers matter more in this part than anywhere else in the book. Where a
-claim rests on observed behaviour it is stated as observation. Where it explains
-intent it is marked _design intent, not observable_. Where it could not be
-settled from what is reachable it says **UNVERIFIED**. And where the shipped
-behaviour is wrong it says **open defect** and describes the symptom, because a
-structural explanation of a system that does not match the running one is worse
-than no explanation: it will be believed.
-
-A chapter in this part that uses none of those markers should be read as
-claiming more than an outside read can support.
+  it is unreachable from here — not absent, just unreachable, and the two are
+  indistinguishable from outside.
 
 ---
 

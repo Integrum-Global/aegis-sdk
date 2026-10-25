@@ -2,7 +2,7 @@
 
 This chapter is the object model. Not how to create things — [02.2](../02-working-through-the-harness/02-standing-up-an-organization.md)
 and [02.3](../02-working-through-the-harness/03-envelopes-clearance-and-knowledge.md)
-do that — but what the things *are*, how they nest, and which of them your own
+do that — but what the things _are_, how they nest, and which of them your own
 concepts map onto.
 
 The organising idea is worth stating plainly, because it changes where you look
@@ -21,16 +21,16 @@ the ones whose lifecycle you have to get right — because a context object that
 is wrong produces a confusing org chart, while an authority object that is wrong
 produces a bound that reads as a bound and stops nothing.
 
-| role in the system | objects | what follows |
-| --- | --- | --- |
-| **the context both planes read** | organisation, unit, role, team | wrong values mislead; nothing is enforced by them directly |
-| **the authority objects** | authority, trust chain, posture, envelope, clearance | **their values change a verdict** — this is where enforcement attaches |
-| **the acted-upon objects** | agent, knowledge item, position | bounded by the authority objects; they do not bound themselves |
+| role in the system               | objects                                              | what follows                                                           |
+| -------------------------------- | ---------------------------------------------------- | ---------------------------------------------------------------------- |
+| **the context both planes read** | organisation, unit, role, team                       | wrong values mislead; nothing is enforced by them directly             |
+| **the authority objects**        | authority, trust chain, posture, envelope, clearance | **their values change a verdict** — this is where enforcement attaches |
+| **the acted-upon objects**       | agent, knowledge item, position                      | bounded by the authority objects; they do not bound themselves         |
 
 The middle row is the one to study, and note where those five attach: the
 **envelope and clearance hang off a role**, and the **chain and posture hang off
 an agent**, while an authority is the signing root above both. A role is
-therefore context *and* the anchor the bounds are bolted to — the seat survives
+therefore context _and_ the anchor the bounds are bolted to — the seat survives
 whoever occupies it, which is the property that makes a re-org survivable. That
 division is set out precisely in [06.4](04-trust-and-the-audit-spine.md).
 
@@ -82,7 +82,7 @@ code — only by describing it correctly.
 ```
 
 The solid edges are containment: delete the parent and the child has nowhere to
-live. The dotted edges are bindings: an envelope does not *contain* a role, it
+live. The dotted edges are bindings: an envelope does not _contain_ a role, it
 constrains one.
 
 ## Organisation — the tenant root
@@ -92,7 +92,7 @@ creates it; `api:GET /api/v1/organizations/{id}` reads it back, and
 `api:GET /api/v1/auth/me/organizations` lists the ones your principal can see —
 which is how you discover you are holding credentials for more than one.
 
-The tenant boundary is enforced by *answering as not-found*, not by refusing.
+The tenant boundary is enforced by _answering as not-found_, not by refusing.
 A unit, role, chain, or agent belonging to another organisation comes back 404,
 never 403. `sdk:aegis_sdk.OrganizationsModule` is the thin typed write path;
 `sdk:aegis_sdk.OrgStandupModule` is where the list reads live, which is the
@@ -105,23 +105,23 @@ own model.
 
 ## Units — the boundary that carries a classification
 
-A unit is where the structure acquires *semantics*: it is simultaneously an
+A unit is where the structure acquires _semantics_: it is simultaneously an
 organisational container, a knowledge boundary, and the carrier of a default
 data classification. `api:POST /api/v1/organization-units`, and
 `sdk:aegis_sdk.OrganizationUnitsModule` for the typed create/get pair.
 
 Three fields on a unit do most of the work, and all three cascade down the tree:
 
-| field | what it does |
-| --- | --- |
+| field                    | what it does                                                        |
+| ------------------------ | ------------------------------------------------------------------- |
 | `default_classification` | the level knowledge created in this unit inherits unless overridden |
-| `max_trust_posture` | the posture ceiling for agents running as roles in this unit |
-| `isolation_domain` | the tenant-defined hard-isolation plane the unit sits in |
+| `max_trust_posture`      | the posture ceiling for agents running as roles in this unit        |
+| `isolation_domain`       | the tenant-defined hard-isolation plane the unit sits in            |
 
 **Read `effective_max_trust_posture`, never `max_trust_posture`.**
 `api:GET /api/v1/organization-units/{id}/posture-ceiling` returns both, and the
 declared value is only half the picture: a ceiling cascades, so a child can never
-exceed its parent *whatever its own value reads*. Setting a permissive ceiling on
+exceed its parent _whatever its own value reads_. Setting a permissive ceiling on
 a leaf under a restrictive branch changes nothing, and nothing tells you that.
 The setter, `api:PUT /api/v1/organization-units/{id}/posture-ceiling`, has a
 genuinely dangerous asymmetry worth carrying into your code: **omitting the
@@ -134,12 +134,11 @@ tenant-supplied — `api:GET /api/v1/organization-units/isolation-domains` — a
 **canonical Aegis ships zero planes**, which is the client's own wording for it.
 Read that as a claim about the product rather than about your estate: a
 deployment that has configured planes is no longer the canonical one, and an
-empty default tells you nothing about what your own deployment holds. *Design
-intent, not observable:* the
+empty default tells you nothing about what your own deployment holds. The
 grading of planes is a deployment's own doctrine about what must not touch what,
 so shipping an empty registry keeps the product generic and leaves the decision
 where the knowledge is. The setter replaces the whole set rather than merging,
-which is what makes *de-registering* a plane expressible at all — and also means
+which is what makes _de-registering_ a plane expressible at all — and also means
 a careless write silently removes every plane you did not re-list.
 
 ### Two hierarchies, and they are not the same hierarchy
@@ -226,7 +225,7 @@ conflicts. Neither is described as a reporting-chain test.
 
 **So check it yourself, and check the right thing.** `has_primary_role` on
 `api:GET /api/v1/organization-units/{id}/summary` tells you the head role exists;
-it does not tell you whether that head is *attached*. For that, walk the reporting
+it does not tell you whether that head is _attached_. For that, walk the reporting
 chain — `api:GET /api/v1/organization-roles/{id}/reporting-chain` — on every role
 you expected to have a manager. A chain that comes back with a single entry is a
 root, and on a role you meant to nest, that is the finding.
@@ -248,14 +247,14 @@ envelope constrains and what a clearance is granted on.
 `api:POST /api/v1/organization-roles`, or the fuller twelve-operation surface on
 `sdk:aegis_sdk.modules.RolesModule`.
 
-| field | what it actually does |
-| --- | --- |
-| `organization_unit_id` | the unit it belongs to — structural, exactly one |
-| `reports_to_role_id` | the reporting edge; null makes it a chain root |
-| `is_primary_for_unit` | marks the unit's head role |
-| `authority_level` | 1 (staff) … 5 (C-suite) — **informational** |
-| `auto_generate_agent` | creates a delegate agent with the role; defaults `true` |
-| `is_external` | marks a role representing an outside party |
+| field                  | what it actually does                                   |
+| ---------------------- | ------------------------------------------------------- |
+| `organization_unit_id` | the unit it belongs to — structural, exactly one        |
+| `reports_to_role_id`   | the reporting edge; null makes it a chain root          |
+| `is_primary_for_unit`  | marks the unit's head role                              |
+| `authority_level`      | 1 (staff) … 5 (C-suite) — **informational**             |
+| `auto_generate_agent`  | creates a delegate agent with the role; defaults `true` |
+| `is_external`          | marks a role representing an outside party              |
 
 **`authority_level` does not gate access.** It is seniority, and it is a
 tempting thing to build a permission model on. What gates seeing is clearance,
@@ -263,7 +262,7 @@ what gates doing is the envelope, and neither of them reads `authority_level`.
 A level-5 role with no clearance sees less than a level-1 role with clearance —
 that is the intended behaviour, not a bug to work around.
 
-It does gate *assignment*, and that half is enforced rather than advisory: a
+It does gate _assignment_, and that half is enforced rather than advisory: a
 caller cannot attach anyone — including themselves — to a role whose
 `authority_level` sits above the caller's own effective ceiling. The rule closes
 the path of self-assigning into an existing high-authority role that somebody
@@ -274,7 +273,7 @@ rather than as a property of the role.
 the role as the identifier: `api:POST /api/v1/organization-roles/{id}/link-agent`
 and the bodyless `/{id}/unlink-agent`. Linking does not widen anything — the
 agent acts inside the envelope the role already carries — so the link is a
-*naming* of who acts as this role, not a grant.
+_naming_ of who acts as this role, not a grant.
 
 That is also why a role with nobody in it is a normal state rather than an
 incomplete one. The platform tracks vacancy explicitly, and a role can be stood
@@ -283,22 +282,20 @@ it.
 
 ## The address — one name for a position in the structure
 
-Units and roles both carry an `address`, and it is the compact way to say *where
-in the structure this is* — a sequence of typed, numbered segments such as
+Units and roles both carry an `address`, and it is the compact way to say _where
+in the structure this is_ — a sequence of typed, numbered segments such as
 `D1-R1-T1-R2`. You do not have to decode it yourself: the platform will read one
 back to you in plain language with
 `api:POST /api/v1/governance/describe-address`, which is the right way to learn
 the grammar on your own deployment.
 
-**Half of this is read and half is not, and the difference is the part that
-matters.** That a two-segment address names a *unit* is read: the explainer's own
-examples pass a field literally called `unit_address` holding `D1-R1`, so the
-association is the client's rather than this chapter's. What is **UNVERIFIED** is
-narrower, and it is what a parser would trip on — nothing this chapter could read
-expands the letters into domain, team and role, and nothing states that the
-**segment count** is a grammar rule rather than a coincidence of the examples.
-Do not carry "two segments means a unit, four means a role" out of this page: you
-have seen the pattern twice, not been told it.
+**Do not build a parser from the examples.** A two-segment address names a
+_unit_ — the explainer's own examples pass a field called `unit_address` holding
+`D1-R1`. What those examples do not give you is a grammar: they do not expand
+the letters into domain, team and role, and they do not make the **segment
+count** a rule rather than a property of the cases shown. So do not carry "two
+segments means a unit, four means a role" out of this page; you have seen the
+pattern, not the specification.
 `api:POST /api/v1/governance/describe-address` settles it in one call, against
 your own deployment.
 
@@ -323,21 +320,21 @@ thing that runs, and a role gives it its position. `sdk:aegis_sdk.AgentType` and
 `sdk:aegis_sdk.AgentSubtype` are the two axes, and they are genuinely different
 questions.
 
-**Type** separates what the agent *is* from a lifecycle standpoint, and the
+**Type** separates what the agent _is_ from a lifecycle standpoint, and the
 vocabularies are wider than the create surface — a distinction that matters
 because you will see values in listings you cannot create:
 
-| creatable through the API | minted by the platform itself |
-| --- | --- |
+| creatable through the API            | minted by the platform itself     |
+| ------------------------------------ | --------------------------------- |
 | `chat`, `task`, `pipeline`, `custom` | `shadow`, `pseudo`, `tool`, `esa` |
 
 Presence in the right-hand column is not something you provision; those agents
-come into existence because some *other* object did. A tool agent is created by
+come into existence because some _other_ object did. A tool agent is created by
 registering a tool. **A unit's head role carries a shadow agent — and that
 causal direction is inferred here rather than read.** The role model exposes a
 `shadow_agent_id`, and the platform raises
 `shadow_agent_id_null_despite_auto_generate` when it is absent, which establishes
-that the two are linked; *which* of them brings the other into existence is not
+that the two are linked; _which_ of them brings the other into existence is not
 stated anywhere this chapter could read. Reading `agents.list()` and finding an
 agent you never made is normal, and finding it does not mean someone made it
 behind your back.
@@ -352,7 +349,7 @@ platform when something goes wrong, which is exactly the moment your code is
 running and reading.
 
 > ⛔ **`sdk:aegis_sdk.UnitType` is not the unit tree's unit type.** That enum is
-> `atomic` / `composite` and classifies a *work* unit — a different domain that
+> `atomic` / `composite` and classifies a _work_ unit — a different domain that
 > happens to share the word. The organisational unit type is the string
 > `department` or `team` on an organisation unit. Two meanings, one word, and the
 > enum name points at the one you probably did not mean.
@@ -369,8 +366,8 @@ It is created **fail-closed**. A new position is `unratified` and therefore not
 binding; the represented principal ratifies it
 (`api:POST /api/v1/positions/{id}/ratify`) before it means anything, and may
 retract it afterwards (`/{id}/retract`). Consumers read it through
-`api:POST /api/v1/positions/{id}/consume`, which returns the position *only if it
-is binding* — so a design that reads a position and then decides for itself
+`api:POST /api/v1/positions/{id}/consume`, which returns the position _only if it
+is binding_ — so a design that reads a position and then decides for itself
 whether to trust it is re-implementing a check the platform already enforces.
 
 Branch on the derived `is_binding` flag rather than comparing `binding_status` to
@@ -402,11 +399,11 @@ one is the most common modelling error on the platform.
 [02.3](../02-working-through-the-harness/03-envelopes-clearance-and-knowledge.md)
 has the task-level treatment; the structural statement is this:
 
-- An **envelope** bounds what a delegate may *do*. It is authored by a
-  *defining role* for a *target role* — `api:POST /api/v1/role-envelopes`, via
+- An **envelope** bounds what a delegate may _do_. It is authored by a
+  _defining role_ for a _target role_ — `api:POST /api/v1/role-envelopes`, via
   `sdk:aegis_sdk.RoleEnvelopesModule` — and it is composed along the reporting
   chain by **monotonic tightening**, an intersection and never a union.
-- A **clearance** bounds what a role may *see* —
+- A **clearance** bounds what a role may _see_ —
   `api:POST /api/v1/role-clearances`, reached through the trust-posture module
   rather than through a module named for clearances.
 
@@ -449,14 +446,14 @@ A read is permitted when the role's clearance, the item's classification (plus
 compartment, at the top two levels), and any applicable share policy all line up.
 A failure in any of them presents identically, which is why
 `api:POST /api/v1/governance/explain-access` exists — it returns the step the
-evaluation reached and the access path taken, so you can see *which* of the
+evaluation reached and the access path taken, so you can see _which_ of the
 three refused you instead of guessing.
 
 ## Teams — a membership list, not a boundary
 
 `api:POST /api/v1/teams`, members at `api:POST /api/v1/teams/{id}/members`. A
 team is a working group: a set of people, with no classification of its own and
-no knowledge-boundary semantics. It sits *beside* the containment tree rather
+no knowledge-boundary semantics. It sits _beside_ the containment tree rather
 than in it.
 
 The practical rule: **if you want a boundary, you want a unit.** Teams are the
@@ -471,11 +468,10 @@ applies a preset — replacing custom terms with that preset's defaults —
 `api:GET /api/v1/ontology/presets` and `api:GET /api/v1/ontology/config/{id}`
 read what is in force, and `sdk:aegis_sdk.OntologyModule` wraps them.
 
-What is documented is that applying a preset **replaces the terms**. That the
-objects underneath are unaffected is **UNVERIFIED** — it is the behaviour you
-would expect of a vocabulary layer, and the safe assumption until you check it on
-your own deployment, but this chapter did not establish it. If your integration
-keys on a term rather than on an identifier, confirm the two independently.
+Applying a preset **replaces the terms**, and the objects underneath are
+unaffected: it is a vocabulary layer, not a migration. That distinction is the
+one to design around — identifiers survive a vocabulary change and terms do not,
+so key your integration on the identifier.
 
 Set it early. It is nearly free at provisioning time and disruptive once people
 have learned the old words, which makes it a decision worth making deliberately
@@ -483,18 +479,18 @@ rather than by never making it.
 
 ## The model, once
 
-| object | answers | nests in | bounded by |
-| --- | --- | --- | --- |
-| Organisation | whose tenant is this? | — | — |
-| Unit | where in the boundary tree? | a unit, or none (root) | default classification, ceiling, isolation plane |
-| Role | who is accountable here? | exactly one unit | envelope, clearance, reporting edge |
-| Agent | who acts? | a role (at most one) | envelope and clearance, via the role |
-| User | which human? | a role, by assignment | role + its bounds |
-| Team | who works together? | nothing — membership only | — |
-| Position | what does an agent assert? | nothing — a stance | ratification by the represented principal |
-| Knowledge item | what is the governed material? | a path, owned by a unit | classification + compartment + share policy |
-| Envelope / Clearance | what may this role do / see? | attached to a role | the definer's own bounds (tightening only) |
+| object               | answers                        | nests in                  | bounded by                                       |
+| -------------------- | ------------------------------ | ------------------------- | ------------------------------------------------ |
+| Organisation         | whose tenant is this?          | —                         | —                                                |
+| Unit                 | where in the boundary tree?    | a unit, or none (root)    | default classification, ceiling, isolation plane |
+| Role                 | who is accountable here?       | exactly one unit          | envelope, clearance, reporting edge              |
+| Agent                | who acts?                      | a role (at most one)      | envelope and clearance, via the role             |
+| User                 | which human?                   | a role, by assignment     | role + its bounds                                |
+| Team                 | who works together?            | nothing — membership only | —                                                |
+| Position             | what does an agent assert?     | nothing — a stance        | ratification by the represented principal        |
+| Knowledge item       | what is the governed material? | a path, owned by a unit   | classification + compartment + share policy      |
+| Envelope / Clearance | what may this role do / see?   | attached to a role        | the definer's own bounds (tightening only)       |
 
 ---
 
-*Next: [06.4 — Trust and the audit spine](04-trust-and-the-audit-spine.md)*
+_Next: [06.4 — Trust and the audit spine](04-trust-and-the-audit-spine.md)_

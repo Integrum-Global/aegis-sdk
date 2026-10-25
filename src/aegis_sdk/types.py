@@ -137,11 +137,14 @@ class PipelinePattern(str, Enum):
 class ExecutionStatus(str, Enum):
     """Execution status."""
 
+    IDLE = "idle"
+
     PENDING = "pending"
     RUNNING = "running"
     COMPLETED = "completed"
     FAILED = "failed"
     CANCELLED = "cancelled"
+    UNKNOWN = "unknown"
 
 
 class ObjectiveStatus(str, Enum):

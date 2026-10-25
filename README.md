@@ -62,7 +62,7 @@ there and re-run `node scripts/project_coc.mjs`; `--check` reds on drift.
 
 | | |
 | --- | --- |
-| `src/aegis_sdk/` | the client — 174 Python modules, version 2.0.0 |
+| `src/aegis_sdk/` | the client — 124 Python modules, version 2.1.0 |
 | `src/aegis_sdk/handbook/` | how the platform **behaves** — 71 chapters in 11 parts, screenshots included |
 | `src/aegis_sdk/coc/` | what to **do** about it — 2 agent briefs, 6 task skills, 7 guardrails, 8 commands, one probe |
 | `src/aegis_sdk/docs/` | reference: quickstart, authentication, configuration, errors, streaming |
@@ -112,7 +112,7 @@ node scripts/project_coc.mjs --check        # CLI overlays match their neutral s
 python -m aegis_sdk.coc.probe --transports-only   # which client paths are real (offline)
 ```
 
-This repository carries **54 test files**, and `harness.py tests` runs them.
+The repository test set is derived from imports, and `harness.py tests` runs it.
 They are the ones that could be published. Others exist that pin this client
 against the platform's own server routes; those name internal source coordinates
 in their assertions and stay behind. **So a green run means the client behaves —

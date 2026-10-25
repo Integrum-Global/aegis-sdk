@@ -234,6 +234,11 @@ class PromotionsModule:
             NotFoundError: ``404`` — no such promotion in this organization.
             ValidationError: ``400`` — the promotion is not ``pending``.
 
+        Policy: API keys decide as their owner on bridges, content reviews
+        and knowledge. A promotion is a production-change surface, so an API
+        key is never treated as its owner here; every approve and reject
+        requires a session-authenticated human.
+
         Example:
             >>> result = await client.promotions.approve("promo-1")
         """
@@ -261,6 +266,11 @@ class PromotionsModule:
             NotFoundError: ``404`` — no such promotion in this organization.
             ValidationError: ``400`` — the promotion is not in a rejectable
                 state.
+
+        Policy: API keys decide as their owner on bridges, content reviews
+        and knowledge. A promotion is a production-change surface, so an API
+        key is never treated as its owner here; every approve and reject
+        requires a session-authenticated human.
 
         Example:
             >>> await client.promotions.reject("promo-1", reason="Failing canary.")

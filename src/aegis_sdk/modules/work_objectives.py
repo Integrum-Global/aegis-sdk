@@ -140,6 +140,7 @@ this module):
 
 from __future__ import annotations
 
+import warnings
 from collections.abc import AsyncIterator
 from typing import TYPE_CHECKING, Any, Literal
 
@@ -1040,12 +1041,45 @@ class WorkObjectivesModule:
 
         Verified route: ``GET /api/v1/sessions``.
 
+        ⚠ ``workspace_id`` IS DEPRECATED AND HAS NO EFFECT. The route dropped the
+        filter deliberately (#656): ``AgenticWorkSession`` stopped declaring a
+        workspace column on 2026-09-02, so there is nothing to filter on. Sending
+        it returns EVERY session the caller can see, which is indistinguishable
+        from a filter that matched everything — the exact silent-no-op shape
+        ``zero-tolerance.md`` Rule 3c names, and the reason the route removed the
+        parameter from its own signature rather than leaving it inert.
+
+        Kept as a deprecation shim per Rule 6a: it warns now and will be REMOVED in
+        a future release. Passing it is not an error, because a caller who already
+        passes it is not doing anything the server rejects — they are simply not
+        getting the filter they asked for, and silence is what this warning exists
+        to end.
+
         Returns:
             ``{"records": [...], "total": int, "page": int, "page_size": int}``
         """
+        if workspace_id:
+            warnings.warn(
+                "work_objectives.list_sessions(workspace_id=...) is deprecated and "
+                "HAS NO EFFECT: GET /api/v1/sessions accepts no workspace_id filter "
+                "(#656 — AgenticWorkSession no longer has a workspace column). The "
+                "call succeeds and returns ALL sessions the caller can see, which is "
+                "indistinguishable from a filter that matched everything. To scope by "
+                "objective, use objective_id. This argument will be removed in a "
+                "future release.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+
         params: dict[str, Any] = {"page": page, "page_size": page_size}
         if status:
             params["status"] = status
+        # STILL FORWARDED, deliberately, so this change is PURELY ADDITIVE. Removing
+        # it now would be removing a public API behaviour with no deprecation cycle,
+        # which is what Rule 6a forbids — and "it never worked" is not an exemption,
+        # because a caller cannot tell the difference between a filter that matched
+        # everything and one that was ignored, so from their side the API did not
+        # change. The warning above is the cycle. A later release removes both.
         if workspace_id:
             params["workspace_id"] = workspace_id
         if objective_id:

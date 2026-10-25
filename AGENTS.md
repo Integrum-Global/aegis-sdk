@@ -19,7 +19,7 @@ inferring, and say what would settle it.
 
 | | |
 | --- | --- |
-| `src/aegis_sdk/` | the Python client — 174 modules, version 2.0.0 |
+| `src/aegis_sdk/` | the Python client — 124 modules, version 2.1.0 |
 | `src/aegis_sdk/handbook/` | how the platform **behaves** — 71 chapters in 11 parts |
 | `src/aegis_sdk/coc/` | what to **do** about it — 2 agent briefs, 6 skills, 7 guardrails |
 | .codex/prompts/ · .codex/skills/ | the same material, projected for Codex |

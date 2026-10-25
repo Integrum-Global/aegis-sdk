@@ -5,11 +5,11 @@ different questions, they are checked at different moments, and a design that
 confuses them fails in a way that is hard to diagnose because each individual
 piece looks correct.
 
-| control | answers | attached to |
-| --- | --- | --- |
-| **envelope** | what may this delegate *do*? | a role, defined by its supervising role |
-| **clearance** | what may this role *see*? | a role |
-| **classification** | how sensitive is this *thing*? | a unit (as a default) and each knowledge item |
+| control            | answers                        | attached to                                   |
+| ------------------ | ------------------------------ | --------------------------------------------- |
+| **envelope**       | what may this delegate _do_?   | a role, defined by its supervising role       |
+| **clearance**      | what may this role _see_?      | a role                                        |
+| **classification** | how sensitive is this _thing_? | a unit (as a default) and each knowledge item |
 
 Access is decided by clearance against classification. **Authority level does not
 enter into it** — a C-suite role with no clearance sees less than a staff role
@@ -36,20 +36,20 @@ envelope = await client.role_envelopes.create(
 
 ⚠ **This write needs the exact scope `roles:write` on an API-key caller.** The
 router admits any key holding SOME `roles:*` scope, but the route itself carries
-`require_scope("roles:write")` -- so `roles:read` does not stand in for it, and
+`require_scope("roles:write")` — so `roles:read` does not stand in for it, and
 the refusal arrives on the call AFTER the role (and any agent auto-generated for
 it) already exists. If you are provisioning with a key, mint it with the set
 `examples/stand_up_a_vertical.py::REQUIRED_SCOPES` names before you start.
 
 The five dimensions come from CARE and are the vocabulary to design in:
 
-| dimension | bounds |
-| --- | --- |
-| **financial** | spend — amounts, currency, budget |
-| **operational** | which actions are permitted or blocked |
-| **temporal** | when, and for how long |
-| **data access** | which data may be reached |
-| **communication** | who or what may be contacted |
+| dimension         | bounds                                 |
+| ----------------- | -------------------------------------- |
+| **financial**     | spend — amounts, currency, budget      |
+| **operational**   | which actions are permitted or blocked |
+| **temporal**      | when, and for how long                 |
+| **data access**   | which data may be reached              |
+| **communication** | who or what may be contacted           |
 
 ### `status` defaults to `draft`, and draft does not enforce
 
@@ -62,6 +62,9 @@ await client.trust_posture.activate_role_envelope(envelope["id"])   # now it enf
 
 `api:POST /api/v1/role-envelopes/{id}/activate`, and
 `api:POST /api/v1/role-envelopes/{id}/suspend` to take it back out of force.
+Both live on `client.trust_posture`. `client.role_envelopes` itself carries only
+`create` and `get` — the same split as every other standup module, and worth
+re-reading in 02.2 before you reach for a third verb here.
 
 **This is the failure mode to design against:** a provisioning script that
 creates envelopes and never activates them produces an organisation that looks
@@ -70,7 +73,9 @@ fully bounded in every listing and enforces nothing. Nothing errors. The
 it:
 
 ```python
-envelopes = await client.trust_posture.list_role_envelopes(head_role_id)
+envelopes = await client.trust_posture.list_role_envelopes(
+    defining_role_id=head_role_id
+)
 for e in envelopes.records:
     assert e.status == "active", f"envelope {e.id} is {e.status}, not enforcing"
 ```
@@ -149,7 +154,7 @@ Four rules the SDK and server enforce, worth knowing before you write the call:
    an error.
 
 The return value of `create_role_clearance` is the **raw persisted row**, in
-which `compartments_json` is a JSON *string* rather than a deserialised list.
+which `compartments_json` is a JSON _string_ rather than a deserialised list.
 Parse it if you need it; do not index it as a list.
 
 ## Knowledge — the governed material itself
@@ -217,9 +222,9 @@ cheapest to confirm.
 
 > **In the console:** clearances and envelopes appear under the governance and
 > admin areas, and a held or refused access shows up in the approvals queue
-> (02.6). The console is where the *reviewer* approves a pending clearance; the
+> (02.6). The console is where the _reviewer_ approves a pending clearance; the
 > harness is where you create the fifty that need reviewing.
 
 ---
 
-*Next: [02.4 — Trust chains and postures](04-trust-chains-and-postures.md)*
+_Next: [02.4 — Trust chains and postures](04-trust-chains-and-postures.md)_

@@ -127,6 +127,44 @@ lifecycle, `/{id}/add-unit` to bring a unit in, and
 `api:GET /api/v1/scoped-bridges/for-workspace/{id}` to find the ones attached to a
 workspace. `sdk:aegis_sdk.modules.ScopedBridgesModule` wraps them.
 
+⛔ **Widening a scoped bridge in any status EXCEPT pending needs a distinct
+approver, the same as approving it in the first place.** `api:PUT
+/api/v1/scoped-bridges/{id}` is a plain field-setter — it does not accept
+`status` at all (`400` on every attempt; the lifecycle verbs above are the
+only way to change it) — but on a non-pending bridge it refuses (`403`) any
+`allowed_interactions` or `shared_knowledge_paths` addition, and
+`/{id}/add-unit` unconditionally, unless the caller resolves to a different
+human from the bridge's creator (an API key resolves to its owner, so the
+creator acting through their own key is still the creator). Gating applies
+to EXPIRED bridges too, not only ACTIVE ones: a distinct approver's
+`/{id}/renew` is the one path back to ACTIVE, carrying forward whatever
+scope the row holds at that moment, so widening it while EXPIRED and
+ungated would resurface as a live, unreviewed widening on the next renewal.
+*Removing* an entry — narrowing an already-approved scope — needs no
+distinct approver PROVIDED at least one entry remains: clearing
+`allowed_interactions` or `shared_knowledge_paths` to `[]` reads,
+server-side, as UNRESTRICTED (a broader grant than any concrete list), so it
+is refused exactly like an addition — and so does clearing a field whose
+STORED value cannot even be parsed, since nothing can then tell whether that
+row was restricting anything at all. Turning `auto_expire_on_objective_completion`
+from `true` to `false` is refused the same way — the bridge would otherwise
+outlive its objective indefinitely — while turning it back to `true` needs
+no approver. The write itself is a single compare-and-swap across every
+column it touches or carries forward unchanged (`status`, `metadata`, both
+scope fields, `auto_expire_on_objective_completion`, and the non-access-bearing
+`name` / `objective` / `purpose` / `scope_description` text fields) — a
+concurrent change to ANY of them between a caller's read and its own write
+is refused (`409`), never silently overwritten with a stale value.
+`sdk:aegis_sdk.modules.ScopedBridgesModule.update`,
+`.add_unit`, and `.remove_unit` document the exact conditions.
+
+`approve`, `renew`, and `extend` accept an optional keyword
+`reviewed_scope_digest` for deployments supporting the canonical API's
+reviewed-state check. The current platform does not emit `scope_digest` or
+enforce that check. The SDK omits the field unless supplied and provides no
+review-consistency guarantee of its own. Existing calls without the keyword
+remain valid; consult the deployment's documented capabilities before using it.
+
 Ad-hoc bridges are the urgent path — a request from one unit to another that the
 target approves and activates, bounded to a duration in minutes.
 `api:GET /api/v1/ad-hoc-bridges/pending-for/{id}` is the inbox,

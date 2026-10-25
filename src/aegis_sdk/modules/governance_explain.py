@@ -51,6 +51,15 @@ class AccessExplanation(TolerantModel):
     reason: str = ""
     step_reached: str = ""
     access_path: str = ""
+    #: #613 — gates this explanation did NOT evaluate. NON-EMPTY means
+    #: ``allowed`` is a statement about the gates the explainer models and
+    #: nothing else: an ``allowed: True`` alongside a populated list does NOT
+    #: mean the call will proceed (the posture-gated approval HOLD is in here,
+    #: and it withholds execution without a human). Mirrors
+    #: ``api.governance_explain.ExplainAccessResponse`` — this file hand-mirrors
+    #: the read model, so a field added there MUST be added here in the same
+    #: change or the SDK silently lags the API.
+    gates_not_evaluated: list[str] = Field(default_factory=list)
 
 
 class EnvelopeExplanation(TolerantModel):

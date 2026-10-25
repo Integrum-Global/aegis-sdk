@@ -45,7 +45,7 @@ against five routers and was true of them; it stopped being true of the whole
 surface when the hierarchy routes were added here.
 """
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 from pydantic import ConfigDict, Field
 
@@ -523,6 +523,7 @@ class OrgStandupModule:
         include_archived: bool = False,
         limit: int = 50,
         offset: int = 0,
+        order_by: Literal["id"] | None = None,
     ) -> OrganizationUnitList:
         """
         List organization units in the current user's organization.
@@ -536,9 +537,14 @@ class OrgStandupModule:
             include_archived: Include archived units.
             limit: Maximum results (1-200).
             offset: Pagination offset.
+            order_by: Pass ``"id"`` when paging through EVERY unit. The default
+                order (hierarchy level) has many ties, and tied rows can come
+                back in a different order on each page, so a limit/offset walk
+                may skip one unit and repeat another. ``"id"`` is unique.
 
         Returns:
-            OrganizationUnitList: records + total.
+            OrganizationUnitList: records + total. ``total`` counts every
+            matching unit, not just this page.
         """
         params: dict[str, Any] = {
             "include_archived": include_archived,
@@ -549,6 +555,8 @@ class OrgStandupModule:
             params["parent_unit_id"] = parent_unit_id
         if unit_type:
             params["unit_type"] = unit_type
+        if order_by is not None:
+            params["order_by"] = order_by
 
         response = await self._http.request("GET", "/api/v1/organization-units", params=params)
         return OrganizationUnitList(
@@ -564,6 +572,7 @@ class OrgStandupModule:
         include_archived: bool = False,
         limit: int = 50,
         offset: int = 0,
+        order_by: Literal["id"] | None = None,
     ) -> OrganizationRoleList:
         """
         List organization roles in the current user's organization.
@@ -578,9 +587,15 @@ class OrgStandupModule:
             include_archived: Include archived roles.
             limit: Maximum results (1-500).
             offset: Pagination offset.
+            order_by: Pass ``"id"`` when paging through EVERY role. The default
+                order (highest authority first) has only five distinct values,
+                and tied rows can come back in a different order on each page,
+                so a limit/offset walk may skip one role and repeat another.
+                ``"id"`` is unique.
 
         Returns:
-            OrganizationRoleList: records + total.
+            OrganizationRoleList: records + total. ``total`` counts every
+            matching role, not just this page.
         """
         params: dict[str, Any] = {
             "include_archived": include_archived,
@@ -593,6 +608,8 @@ class OrgStandupModule:
             params["authority_level"] = authority_level
         if is_vacant is not None:
             params["is_vacant"] = is_vacant
+        if order_by is not None:
+            params["order_by"] = order_by
 
         response = await self._http.request("GET", "/api/v1/organization-roles", params=params)
         return OrganizationRoleList(

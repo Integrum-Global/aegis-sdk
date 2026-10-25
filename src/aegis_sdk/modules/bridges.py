@@ -31,7 +31,7 @@ Example:
 from __future__ import annotations
 
 import builtins
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import ConfigDict, Field
 
@@ -159,6 +159,9 @@ class ScopedBridge(TolerantModel):
     metadata_json: str = "{}"
     created_at: str
     updated_at: str
+    # Optional canonical API field; the current platform does not emit or
+    # enforce the reviewed-state check. The SDK does not verify this digest.
+    scope_digest: str | None = None
 
 
 class Participant(TolerantModel):
@@ -279,8 +282,10 @@ class StandingBridgesModule:
             escalation_triggers: Conditions that escalate over this bridge
             authorization_required: Whether both sides must authorize
             bridge_topology: One of role_to_role, role_to_unit
-            review_at: ISO 8601 date of the next periodic review
-            expires_at: ISO 8601 expiry, if the bridge is time-bounded
+            review_at: ISO 8601 date-time WITH a timezone for the next periodic
+                review (e.g. 2099-06-30T23:59:59Z); a bare date is refused (422)
+            expires_at: ISO 8601 date-time WITH a timezone, if the bridge is
+                time-bounded; a bare date is refused (422)
             metadata: Free-form metadata
 
         Returns:
@@ -330,22 +335,32 @@ class StandingBridgesModule:
         bridge_type: str | None = None,
         limit: int = 100,
         offset: int = 0,
+        order_by: Literal["id"] | None = None,
     ) -> StandingBridgeList:
         """
         List standing bridges in the caller's organization.
 
-        With no ``status`` filter the server excludes archived and deleted
-        bridges — pass one explicitly to see them.
+        With no ``status`` filter the server excludes archived bridges — pass
+        one explicitly to see them.
 
         Args:
-            unit_id: Restrict to bridges with this unit on EITHER side
+            unit_id: Restrict to bridges with this unit on EITHER side. This
+                filter is applied to one page AFTER it is cut, so ``total`` is
+                that filtered page's length, not a count of every match. To
+                read a complete set, page WITHOUT ``unit_id`` and filter
+                yourself.
             status: One of pending, active, suspended, revoked, archived
             bridge_type: One of collaboration, escalation, advisory, approval
             limit: Maximum results (1-200)
             offset: Result offset
+            order_by: Pass ``"id"`` when paging through EVERY bridge. The
+                default order (name) can tie, and tied rows can come back in a
+                different order on each page, so a limit/offset walk may skip
+                one bridge and repeat another. ``"id"`` is unique.
 
         Returns:
-            A page of standing bridges
+            A page of standing bridges. Without ``unit_id``, ``total`` counts
+            every matching bridge, not just this page.
 
         Example:
             >>> page = await client.bridges.standing.list(status="active")
@@ -356,6 +371,7 @@ class StandingBridgesModule:
             ("unit_id", unit_id),
             ("status", status),
             ("bridge_type", bridge_type),
+            ("order_by", order_by),
         ):
             if value is not None:
                 params[key] = value
@@ -415,10 +431,17 @@ class StandingBridgesModule:
             knowledge_sharing_level: One of restricted, partial, full
             requires_approval_above: Replacement approval thresholds
             escalation_triggers: Replacement escalation triggers
-            review_at: New periodic-review date
-            expires_at: New expiry
-            metadata: Replacement metadata
-            status: One of pending, active, suspended, revoked, archived
+            review_at: New periodic-review date-time, ISO 8601 with a timezone
+            expires_at: New expiry, ISO 8601 date-time with a timezone
+            metadata: MERGED into the stored metadata, not a replacement. Keys
+                are added or overwritten; an existing key CANNOT be removed by
+                omitting it (pass an explicit null to clear one). Keys the
+                server owns -- review, suspension, revocation and trust
+                bookkeeping such as ``revoked_at`` or ``last_review`` -- are
+                refused with 400 rather than written.
+            status: Forward moves only -- suspended or revoked (as the state
+                machine allows), or archived once no longer live. 'active' and
+                'pending' are refused: use activate/reactivate endpoints
 
         Returns:
             The updated bridge
@@ -521,6 +544,25 @@ class StandingBridgesModule:
         )
         return StandingBridge(**response)
 
+    async def reactivate(self, bridge_id: str) -> StandingBridge:
+        """
+        Return a SUSPENDED standing bridge to active.
+
+        :meth:`activate` serves pending bridges only. Reactivation re-checks the
+        role anchors, the two recorded authorizations and the trust chains, and
+        refuses a bridge whose expiry has passed or cannot be read.
+
+        Args:
+            bridge_id: Bridge ID
+
+        Returns:
+            The reactivated bridge
+        """
+        response = await self._http.request(
+            "POST", f"/api/v1/standing-bridges/{encode_path_param(bridge_id)}/reactivate"
+        )
+        return StandingBridge(**response)
+
     async def suspend(self, bridge_id: str, reason: str | None = None) -> StandingBridge:
         """
         Suspend an active standing bridge.
@@ -617,9 +659,7 @@ class StandingBridgesModule:
         )
         return InteractionCheck(**response)
 
-    async def submit_review(
-        self, bridge_id: str, approved: bool, notes: str = ""
-    ) -> BridgeReview:
+    async def submit_review(self, bridge_id: str, approved: bool, notes: str = "") -> BridgeReview:
         """
         Submit a completed periodic review for a standing bridge.
 
@@ -767,7 +807,7 @@ class ScopedBridgesModule:
         Args:
             workspace_id: Restrict to one workspace
             objective_id: Restrict to one objective
-            status: One of pending, active, expired, completed, cancelled
+            status: Filter by status: pending, active, expired, completed or cancelled
             limit: Maximum results (1-200)
             offset: Result offset
 
@@ -823,6 +863,37 @@ class ScopedBridgesModule:
         """
         Update a scoped bridge.
 
+        ``status`` is documented on this call only to explain why it is
+        REFUSED: this generic setter cannot change a bridge's lifecycle
+        state — every transition (approve, reject, expire, complete, cancel,
+        renew) has its own dedicated method below, each enforcing its own
+        rules, and the server returns ``400`` if the request body carries a
+        ``status`` field at all, whatever value it holds. Call one of the
+        dedicated methods instead.
+
+        Widening a bridge's scope through this call — adding an
+        entry to ``allowed_interactions`` or ``shared_knowledge_paths`` — is
+        the same authorization decision as approving the bridge in the first
+        place, so it requires a DISTINCT approver from the bridge's creator,
+        exactly like :meth:`approve`. This applies to every bridge that is no
+        longer PENDING (an ACTIVE bridge, and also an EXPIRED one, which
+        :meth:`renew` can bring back to ACTIVE); a PENDING bridge is gated by
+        its own approval instead. A field you did not pass is left unchanged.
+
+        Removing entries (narrowing) is unrestricted, PROVIDED at least one
+        entry remains: an ``allowed_interactions`` or ``shared_knowledge_paths``
+        list of ``[]`` reads, server-side, as UNRESTRICTED rather than as
+        "nothing" — a strictly BROADER grant than any concrete non-empty
+        list — so clearing a restricted field to ``[]`` on a non-PENDING bridge is
+        itself a widening and requires a distinct approver exactly like
+        adding an entry does. Also widening: turning
+        ``auto_expire_on_objective_completion`` from ``True`` to ``False`` on
+        a non-PENDING bridge — this bridge would otherwise outlive the objective
+        it was approved against, indefinitely, until someone manually expires
+        or cancels it, the same lifetime-extension decision :meth:`extend`
+        makes. Turning it back to ``True`` shortens the bridge's life and is
+        unrestricted, like removing a scope entry.
+
         Args:
             bridge_id: Bridge ID
             name: New name
@@ -830,13 +901,40 @@ class ScopedBridgesModule:
             purpose: New purpose
             scope_description: New scope description
             allowed_interactions: Replacement allowed-interaction list
+                (widening a non-PENDING bridge, including clearing to
+                ``[]``, needs a distinct approver)
             shared_knowledge_paths: Replacement shared-knowledge paths
+                (widening a non-PENDING bridge, including clearing to
+                ``[]``, needs a distinct approver)
             auto_expire_on_objective_completion: Replacement auto-expire flag
-            metadata: Replacement metadata
-            status: One of pending, active, expired, completed, cancelled
+                (turning it OFF on a non-PENDING bridge needs a distinct
+                approver)
+            metadata: MERGED into stored metadata. Omitted keys remain;
+                reserved server bookkeeping keys are refused with 400.
+            status: Not a valid update field — always refused with ``400``.
+                Use :meth:`approve`, :meth:`reject`, :meth:`expire`,
+                :meth:`complete`, :meth:`cancel`, or :meth:`renew`.
 
         Returns:
             The updated bridge
+
+        Raises:
+            AuthorizationError: ``403`` — the bridge is not PENDING, the update
+                widens ``allowed_interactions`` or ``shared_knowledge_paths``
+                (including clearing either to ``[]``) or disables
+                ``auto_expire_on_objective_completion``, and the caller
+                resolves to the same human as the bridge's creator (an API
+                key resolves to its owner).
+            ValidationError: ``400`` — the request body includes a ``status``
+                field, or (on a metadata write) a metadata conflict.
+            AgenticOSError: ``409`` — the write is a single compare-and-swap
+                across every column it touches OR carries forward unchanged:
+                a concurrent change to ``status``, ``metadata``, either
+                scope field, ``auto_expire_on_objective_completion``,
+                ``name``, ``objective``, ``purpose``, or
+                ``scope_description`` raced this write; re-read the bridge
+                and retry against fresh state.
+            NotFoundError: ``404`` — no such bridge in this organization.
 
         Example:
             >>> await client.bridges.scoped.update("s-1", purpose="Narrowed scope")
@@ -880,25 +978,20 @@ class ScopedBridgesModule:
         )
         return DeleteResult(**response)
 
-    async def approve(self, bridge_id: str) -> ScopedBridge:
+    async def approve(
+        self, bridge_id: str, *, reviewed_scope_digest: str | None = None,
+    ) -> ScopedBridge:
+        """Approve a pending scoped bridge.
+
+        reviewed_scope_digest is an optional keyword for the canonical API's
+        reviewed-state check. The current platform does not emit or enforce it;
+        no review-consistency guarantee is established by sending this field.
+        Omit it for deployments that do not document support.
         """
-        Approve a pending scoped bridge, promoting it to active.
-
-        The approver is the authenticated principal and must be DISTINCT from
-        the bridge's creator — the server refuses a self-approval, so a caller
-        holding both identities cannot satisfy the gate by calling twice.
-
-        Args:
-            bridge_id: Bridge ID
-
-        Returns:
-            The approved bridge
-
-        Example:
-            >>> bridge = await client.bridges.scoped.approve("scoped-123")
-        """
+        body = {"reviewed_scope_digest": reviewed_scope_digest} if reviewed_scope_digest is not None else None
         response = await self._http.request(
-            "POST", f"/api/v1/scoped-bridges/{encode_path_param(bridge_id)}/approve"
+            "POST", f"/api/v1/scoped-bridges/{encode_path_param(bridge_id)}/approve",
+            json_data=body,
         )
         return ScopedBridge(**response)
 
@@ -936,6 +1029,17 @@ class ScopedBridgesModule:
         Adding a unit widens who the bridge reaches, so ``constraints`` narrows
         what that unit may do over it — it does not widen anything.
 
+        Adding a unit widens whatever the bridge already shares — the new
+        unit's head role gains it unconditionally, with no "narrower"
+        reading the way an update to ``allowed_interactions`` has — so it
+        requires a DISTINCT approver from the bridge's creator, exactly like
+        :meth:`approve` and a widening call to :meth:`update`. This applies
+        to a bridge in ANY status except PENDING (still gated by its own
+        approval): an EXPIRED bridge can become ACTIVE again through exactly
+        one path — a distinct approver's :meth:`renew` — carrying forward
+        whatever participants it holds at that moment, so adding a unit
+        while EXPIRED is gated the same way as while ACTIVE.
+
         Args:
             bridge_id: Bridge ID
             unit_id: Unit to add
@@ -944,6 +1048,18 @@ class ScopedBridgesModule:
 
         Returns:
             The bridge with the participant added
+
+        Raises:
+            AuthorizationError: ``403`` — the bridge is not PENDING and the
+                caller resolves to the same human as the bridge's creator
+                (an API key resolves to its owner).
+            ValidationError: ``400`` — the unit could not be added (invalid
+                unit id, duplicate participant, or similar).
+            AgenticOSError: ``409`` — the write is a compare-and-swap on the
+                bridge's ``status`` and ``participants_json`` exactly as
+                read; a concurrent status or participants change raced this
+                write. Re-read the bridge and retry.
+            NotFoundError: ``404`` — no such bridge in this organization.
 
         Example:
             >>> await client.bridges.scoped.add_unit("s-1", "unit-9", roles=["reviewer"])
@@ -971,6 +1087,15 @@ class ScopedBridgesModule:
 
         Returns:
             The bridge with the participant removed
+
+        Raises:
+            ValidationError: ``400`` — the unit could not be removed (not a
+                participant, or the bridge's owner unit).
+            AgenticOSError: ``409`` — the write is a compare-and-swap on
+                ``participants_json`` exactly as read; a concurrent
+                participants change (another add or remove) raced this
+                write. Re-read the bridge and retry.
+            NotFoundError: ``404`` — no such bridge in this organization.
 
         Example:
             >>> await client.bridges.scoped.remove_unit("s-1", "unit-9")
@@ -1073,48 +1198,39 @@ class ScopedBridgesModule:
         )
         return ScopedBridge(**response)
 
-    async def extend(self, bridge_id: str, expires_at: str) -> ScopedBridge:
+    async def extend(
+        self, bridge_id: str, expires_at: str, *, reviewed_scope_digest: str | None = None,
+    ) -> ScopedBridge:
+        """Extend a scoped bridge using its requested expiry.
+
+        reviewed_scope_digest is optional and forwarded only when supplied. Its
+        server-side reviewed-state check belongs to the canonical API and is not
+        implemented by the current platform; the SDK does not enforce it.
         """
-        Extend an active scoped bridge's expiry.
-
-        Use :meth:`renew` for a bridge that has already expired — extending is
-        for one still running.
-
-        Args:
-            bridge_id: Bridge ID
-            expires_at: New expiry (ISO 8601)
-
-        Returns:
-            The extended bridge
-
-        Example:
-            >>> await client.bridges.scoped.extend("s-1", "2026-12-31")
-        """
+        body = {"expires_at": expires_at}
+        if reviewed_scope_digest is not None:
+            body["reviewed_scope_digest"] = reviewed_scope_digest
         response = await self._http.request(
-            "POST",
-            f"/api/v1/scoped-bridges/{encode_path_param(bridge_id)}/extend",
-            json_data={"expires_at": expires_at},
+            "POST", f"/api/v1/scoped-bridges/{encode_path_param(bridge_id)}/extend",
+            json_data=body,
         )
         return ScopedBridge(**response)
 
-    async def renew(self, bridge_id: str, expires_at: str) -> ScopedBridge:
+    async def renew(
+        self, bridge_id: str, expires_at: str, *, reviewed_scope_digest: str | None = None,
+    ) -> ScopedBridge:
+        """Renew a scoped bridge using its requested expiry.
+
+        reviewed_scope_digest is optional and forwarded only when supplied. Its
+        server-side reviewed-state check belongs to the canonical API and is not
+        implemented by the current platform; the SDK does not enforce it.
         """
-        Renew an EXPIRED scoped bridge, reactivating it with a new expiry.
-
-        Args:
-            bridge_id: Bridge ID
-            expires_at: New expiry (ISO 8601)
-
-        Returns:
-            The reactivated bridge
-
-        Example:
-            >>> await client.bridges.scoped.renew("s-1", "2026-12-31")
-        """
+        body = {"expires_at": expires_at}
+        if reviewed_scope_digest is not None:
+            body["reviewed_scope_digest"] = reviewed_scope_digest
         response = await self._http.request(
-            "POST",
-            f"/api/v1/scoped-bridges/{encode_path_param(bridge_id)}/renew",
-            json_data={"expires_at": expires_at},
+            "POST", f"/api/v1/scoped-bridges/{encode_path_param(bridge_id)}/renew",
+            json_data=body,
         )
         return ScopedBridge(**response)
 

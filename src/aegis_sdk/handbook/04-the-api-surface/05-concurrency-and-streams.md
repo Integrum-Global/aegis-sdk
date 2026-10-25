@@ -71,9 +71,9 @@ Counting HTTP attempts against each failure in turn, at the default
 | a `403` refusal           |         **1** | none              |
 
 ⚠ **No HTTP status is ever retried. Only transport failures are.** This is the
-single most commonly mis-stated property of the client — including, until this
-edition, by parts of this book that described it as handling retries without
-saying which ones. It retries the case where the deployment _did not answer_. It
+single most commonly mis-stated property of the client, and the mis-statement is
+always the same one — "it handles retries", without saying which ones. It
+retries the case where the deployment _did not answer_. It
 does not retry the case where the deployment answered _`503`_.
 
 **`sdk:aegis_sdk.RateLimitError` carries a `retry_after` parsed from the

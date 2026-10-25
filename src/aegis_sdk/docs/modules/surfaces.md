@@ -82,9 +82,9 @@ Disabled registrations are excluded. So are registrations whose stored values no
 
 ```python
 row = await client.surfaces.create_registration(
-    surface_key="finance_exceptions",
+    surface_key="policy_exceptions",
     nav_section="GOVERN",
-    nav_label="Finance Exceptions",
+    nav_label="Policy Exceptions",
     nav_description="Exceptions awaiting review",
     icon_key="Shield",
     sort_order=10,
@@ -99,14 +99,14 @@ row = await client.surfaces.create_registration(
     personas=["architect", "executive"],
 )
 
-print(row.route_path)   # /x/finance_exceptions
+print(row.route_path)   # /x/policy_exceptions
 print(row.status)       # disabled
 ```
 
 **The default is fail-closed.** A registration created without an explicit `status` is `disabled`: it exists, authors can see it, and it contributes nothing to any caller's manifest and mounts no route. Publishing is a separate, deliberate act:
 
 ```python
-await client.surfaces.update_registration("finance_exceptions", status="enabled")
+await client.surfaces.update_registration("policy_exceptions", status="enabled")
 ```
 
 The returned row is read back from storage after the write, not echoed from your request — so what you get is what persisted.
@@ -117,7 +117,7 @@ There is no `route_path` request field, and sending one is refused. A surface mo
 
 This is a security design, not a convenience. Because nothing a caller writes is ever concatenated into a path, path traversal, scheme injection and route shadowing are unrepresentable rather than filtered — there is no denylist that has to stay ahead of an adversary.
 
-`surface_key` must match: a leading lowercase letter, then lowercase letters, digits and underscores, length 3 to 64. It is unique **within** your organization, never globally — two organizations may both register `finance_exceptions` and neither can see the other's.
+`surface_key` must match: a leading lowercase letter, then lowercase letters, digits and underscores, length 3 to 64. It is unique **within** your organization, never globally — two organizations may both register `policy_exceptions` and neither can see the other's.
 
 It is also **immutable**. `update_registration()` addresses a row by key and never sends the key in the body; an attempt to re-point a live URL is refused with 422 rather than silently ignored. To change a key, register a new surface and delete the old one.
 
@@ -164,7 +164,7 @@ result = await client.surfaces.list_registrations()
 for row in result.registrations:
     print(row.surface_key, row.status, row.required_permission)
 
-one = await client.surfaces.get_registration("finance_exceptions")
+one = await client.surfaces.get_registration("policy_exceptions")
 ```
 
 These are the authoring projection: every registration in your organization, any status, including unpublished drafts, with ids and provenance. Scoped server-side to your organization — no argument can widen it.
@@ -221,8 +221,8 @@ Such a row is still shown to its owner so it can be repaired or deleted, and it 
 ## Deleting
 
 ```python
-result = await client.surfaces.delete_registration("finance_exceptions")
-print(result.deleted, result.surface_key)   # True finance_exceptions
+result = await client.surfaces.delete_registration("policy_exceptions")
+print(result.deleted, result.surface_key)   # True policy_exceptions
 ```
 
 The delete is a **soft delete**: the row is retained for compliance and stops appearing in reads, manifests and routing.

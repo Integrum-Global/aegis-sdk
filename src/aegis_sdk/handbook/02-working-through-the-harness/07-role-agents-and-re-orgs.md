@@ -1,10 +1,7 @@
 # 02.7 — Role agents, and surviving a re-org
 
 The sequences that work, in the order the platform requires them, with the traps
-named where they bite. Everything here was derived by working a real deployment
-and then checking each finding against the platform source, because several
-things that *appeared* to be defects turned out to be old builds, and several
-things that appeared to work were doing something other than advertised.
+named where they bite.
 
 **Read 02.2 first** for the org-provisioning order and 02.4 for what a trust chain
 is. This chapter is the step between them: the delegate agent that stands in for a
@@ -16,7 +13,7 @@ human in a role, and what happens to it when the org chart moves.
 
 Once that is in view, most of the surprising behaviour stops being surprising.
 The agent survives an occupant leaving. It survives a new occupant arriving — its
-trust lineage is re-minted for the new seat. It does *not* survive the role being
+trust lineage is re-minted for the new seat. It does _not_ survive the role being
 deleted, because the role is the thing it belonged to.
 
 And the corollary, which is the single most expensive misconception here:
@@ -73,7 +70,7 @@ await client.role_admin.assign_user(role["id"], user_id=user_id)
 ⚠ **Two role surfaces, and this chapter uses both.** `client.roles` carries
 `create`, `get` and `list` on `/api/v1/organization-roles` and returns untyped
 dicts — which is why `role["id"]` works above and would not if you reached for
-the typed client instead. Everything that *administers* a role that already
+the typed client instead. Everything that _administers_ a role that already
 exists — updating it, seating or vacating its occupant, linking or unlinking its
 agent — is on `client.role_admin`, the full `/api/v1/roles` surface, and returns
 typed models. A call written against the wrong one fails with `AttributeError`
@@ -133,11 +130,11 @@ authorization denial — so the natural conclusion is that you lack permission t
 promote, when in fact the gateway never forwarded the request. `"routine upgrade"`
 passes. **Before believing any 403 on this call, check whether the body is HTML.**
 
-⛔ **Do not reach for `request-upgrade`.** It is gated on execution evidence, and
-a newly created agent has none — it cannot produce evidence until it is promoted,
-and cannot be promoted without evidence. For a new agent that gate is circular.
-The update-then-approve path is the one that works: it records the request, routes
-it for human approval, and returns a `202` on the deferred branch.
+⛔ **Do not reach for `request-upgrade` on a new agent.** That path is gated on
+accumulated execution evidence, which an agent that has not run yet does not have.
+The update-then-approve path above is the one to use: it records the request,
+routes it for human approval, and returns a `202` on the deferred branch. Reserve
+`request-upgrade` for an agent with a run history behind it.
 
 **The approval must come from a second principal.** The server derives both
 identities itself and refuses a self-approval, fail-closed, with a `400` naming
@@ -182,33 +179,15 @@ await client.role_admin.unassign_user(role_id, user_id)      # 2. now vacate the
 this area is reached through the role's `shadow_agent_id` pointer; clear that
 pointer and the cascade has no agent to find.
 
-Measured on a live deployment: two re-orgs done in the other order each needed a
-full repair sequence afterwards; the same move done unlink-first needed **zero**.
-It is the single most useful ordering in this chapter.
-
-⚠ **This matters most on a build that predates the vacancy retraction**, where
-vacating actually did suspend the agent and its chain. On a current build the
-vacate step is far gentler (below) and the ordering costs you nothing. **Do it
-this way regardless** — it is correct on both, and you frequently do not know
-which build you are talking to.
-
-⛔ **The one-way door this avoids, on a pre-retraction build.** Once a role has
-been vacated there, the two halves of the repair are **not** equally available:
-
-| repair | on a pre-retraction build |
-| --- | --- |
-| restore the agent's `status` | succeeds (200) |
-| re-establish the trust chain | **refused (422) — the role is vacant** |
-
-So the agent comes back and its authority does not, and the only way to restore
-the chain is to seat a human first. That asymmetry is what makes an un-repaired
-cascade on a vacated role irreversible in practice, and it is why the ordering
-above is worth more than the repair sequence below.
+A re-org done in the other order needs a repair sequence afterwards; done
+unlink-first it needs none. It is the single most useful ordering in this chapter,
+it costs you nothing, and it is correct on every deployment — so use it whether or
+not you know which revision you are talking to.
 
 ### If you must un-assign anyway
 
 Un-assigning clears the occupant from the role and unbinds the agent from the
-departed person — and that is *all* it does on a current build. The agent stays
+departed person — and that is _all_ it does on a current build. The agent stays
 active. Its trust chain stays live. The role keeps pointing at the agent, which is
 correct: the agent belonged to the seat, not to the leaver.
 
@@ -232,7 +211,7 @@ agent remains `active`, and **its trust chain remains live while belonging to no
 role at all.**
 
 That asymmetry is worth stating plainly, because the neighbouring operation
-disagrees with it: deleting a role *refuses* with a `409` rather than leave a live
+disagrees with it: deleting a role _refuses_ with a `409` rather than leave a live
 trust chain orphaned. Un-linking reaches the same state with no refusal and no
 warning. If you un-link deliberately, revoke the chain yourself or re-link the
 agent promptly.
@@ -244,11 +223,12 @@ that looks like a success.
 
 ## 7. Verifying anything — the list endpoint, and both sides
 
-⛔ **The agent detail endpoint omits the binding fields.** `is_shadow_agent`,
+⛔ **Verify against the list endpoint, not the detail endpoint.** `is_shadow_agent`,
 `shadow_for_user_id` and `human_role_id` read as `null` from
-`api:GET /api/v1/delegate-agents/{agent_id}` **whether or not they are set**. It
-is a serializer gap, not a data state, and it bites hardest during verification —
-precisely when you are trying to confirm a link you just made.
+`api:GET /api/v1/delegate-agents/{agent_id}` **whether or not they are set**, so a
+link you just made reads back as absent. The value is stored; it is the detail
+response that does not carry it, and full binding fields on the detail response are
+[immediate roadmap].
 
 **Use the list endpoint. It is the reliable read.**
 
@@ -260,11 +240,11 @@ listing = await client.agents.list_delegate_agents(status="active")
 
 **After every role operation, assert all three of these — not one:**
 
-| assert | why |
-| --- | --- |
-| `agent.human_role_id` points at the role | the agent's side of the link |
-| `role.shadow_agent_id` points at the agent | the role's side — maintained by *different* code |
-| a trust chain exists and is not suspended | a third store, with its own status |
+| assert                                     | why                                              |
+| ------------------------------------------ | ------------------------------------------------ |
+| `agent.human_role_id` points at the role   | the agent's side of the link                     |
+| `role.shadow_agent_id` points at the agent | the role's side — maintained by _different_ code |
+| a trust chain exists and is not suspended  | a third store, with its own status               |
 
 They are three separate records maintained by disjoint code paths with no
 reconciliation between them. Checking one and inferring the others is the single
@@ -280,7 +260,7 @@ establishes trust second fails on its first call.
 
 **Roles are recoverable. Agents are not.**
 
-Deleting a role is a *soft* delete by default: the role still resolves by id, still
+Deleting a role is a _soft_ delete by default: the role still resolves by id, still
 carries its occupant, and can be restored by setting its status back to `active`.
 A genuinely orphaned role id returns `404`, so "it still resolves" is a real
 signal, not a caching artifact.
@@ -297,11 +277,11 @@ role. Plan role deletion accordingly.
 
 ⚠ **Two further traps in the same family:**
 
-- **`deactivate` also archives.** Despite the name, and despite platform-side
-  documentation that has directed operators to it for "temporarily suspending" an
-  agent, it reaches the same terminal state as delete. **There is no supported way
-  to temporarily suspend a delegate agent** — no API route in the platform puts
-  one into `suspended`.
+- **`deactivate` also archives.** Despite the name, it reaches the same terminal
+  state as delete — do not reach for it to pause an agent. To stop a delegate
+  acting without ending it, drop its posture to `pseudo` (02.4), which is
+  reversible and applies immediately. A dedicated suspend-and-resume pair for
+  delegate agents is [immediate roadmap].
 - **Re-pointing `human_role_id` does not detach the agent from its old role.** The
   role's own pointer is untouched, so deleting that old role still archives the
   agent you thought you had moved. Un-link explicitly (§ 6) before deleting.
@@ -325,23 +305,38 @@ them. You do not rebuild it.
 
 ### If your deployment refuses a vacant role
 
-A build that answers `422 "linked role is vacant"` on activation or on trust
-establishment predates the retraction of that rule. On such a build the refusal is
-a **one-way door**: an agent can be created on a vacant seat and never completed,
-sitting `draft` with no chain, indefinitely.
+Vacant roles are supported: creation, trust establishment and activation all work
+on a seat with nobody in it. Current code does not read occupancy as a refusal at
+all, so there is no vacancy rule left to design around.
 
-**Do not work around it by seating a placeholder human** — that writes a
-fictitious person into the audit trail, which is a worse problem than the one it
-solves, and one you will have to unpick later. Upgrade the deployment.
+The activation route _does_ refuse on the linked role, and **its message names
+which question it answered** — read it as the diagnosis it is:
 
-## What this chapter does not tell you
+- `422 … linked role could not be resolved` is current code, and it is about
+  **resolvability, not occupancy**. The role `agent.human_role_id` names did not
+  resolve — the id is orphaned, or the lookup failed. § 8 already establishes that
+  a soft-deleted role still RESOLVES by id, so this is a real signal about the id
+  rather than a hidden deletion. The remedy is to re-link the agent at a role that
+  resolves — `client.role_admin.link_agent(role_id, agent_id)`, un-linking first
+  per § 5's ordering, which is also what that call requires. Seating somebody does
+  not fix it, and a vacant seat is not the cause.
+- `422 … linked role is vacant` is **not a message current code raises.** It names
+  the retracted rule: on that build, vacating a role suspended its delegate and the
+  gate would not bring it back until a human was seated — a genuine one-way door.
+  That is evidence about the **build**, not about your org chart or your calls:
+  nothing you send differently changes it, and it is not a rule to design around.
 
-- **Whether any of it is enforced the way it is described.** These are the
-  sequences that work and the traps that bite, derived from a live deployment and
-  checked against source. A route existing is not a control enforcing — 04.6 is
-  the chapter about reading a response honestly, and it applies to every `200`
-  above.
-- **What your build actually does.** Several behaviours documented here changed
-  recently, and the refusals you meet are evidence about your deployment's
-  revision as much as about the platform. When this chapter and your deployment
-  disagree, establish which revision you are on before concluding either is wrong.
+**Do not work around it by seating a placeholder human.** That writes a fictitious
+person into the audit trail, which is a worse problem than the one it solves and
+one you will have to unpick later.
+
+## Reading the results of all this
+
+Every sequence above ends in a `200`, and a `200` tells you the call was accepted
+rather than that the thing you wanted is now true. That is why § 7 asks you to
+assert all three records rather than one. Chapter 04.6 is about reading a response
+honestly, and it applies to every call in this chapter.
+
+---
+
+_This is the last chapter of part 02. Next: [Part 03 — Extending the platform](../03-extending-the-platform/), or [Part 04 — The API surface](../04-the-api-surface/) if you are debugging a call._

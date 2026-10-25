@@ -33,12 +33,12 @@ Points that are not obvious from the signature:
   it to the server's low/medium/high/urgent tiers. So priority is coarser than it
   looks: 6 and 7 may be the same tier. Do not build scheduling logic on the
   integer.
-- **There is no metadata bag.** Objectives have no persisted metadata field. An
-  earlier client sent one and the server dropped it silently. If you need to
+- **There is no metadata bag.** Objectives have no persisted metadata field, and
+  one sent anyway is dropped silently rather than refused. If you need to
   correlate an objective with something in your own systems, put the correlation
   key in the title or description, where you can search for it.
 - **`selected_posture`** lets the originator choose a posture for this work,
-  bounded by `min(agent, ceiling, selected)` from 02.4. Choosing a *lower*
+  bounded by `min(agent, ceiling, selected)` from 02.4. Choosing a _lower_
   posture than the agent holds is the useful direction — it is how you ask for a
   careful run of something ordinarily routine.
 
@@ -80,12 +80,12 @@ request budget for a worse signal.
 Those four reads answer genuinely different questions, and knowing which one you
 want saves time:
 
-| you want to know | read |
-| --- | --- |
-| how far along is it | progress |
-| what is it broken into, and what is stuck | requests |
-| what judgments were made, and by whom | decisions |
-| what did it produce | artifacts |
+| you want to know                          | read      |
+| ----------------------------------------- | --------- |
+| how far along is it                       | progress  |
+| what is it broken into, and what is stuck | requests  |
+| what judgments were made, and by whom     | decisions |
+| what did it produce                       | artifacts |
 
 `decisions` is the one architects under-use. It is the objective's own account of
 what was decided along the way, and it is where a surprising outcome is usually
@@ -160,4 +160,4 @@ agent is presumably fine and other work depends on it.
 
 ---
 
-*Next: [02.6 — Approvals, holds and evidence](06-approvals-holds-and-evidence.md)*
+_Next: [02.6 — Approvals, holds and evidence](06-approvals-holds-and-evidence.md)_

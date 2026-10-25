@@ -153,8 +153,8 @@ assert history.get("records"), "the call succeeded and the record did not land"
 ```
 
 The history call returns the raw payload rather than a typed model, so read it
-defensively — the assertion above is about the record _existing_, not about a shape
-this edition can pin.
+defensively — the assertion above is about the record _existing_, and the shape
+around it is your deployment's to pin.
 
 Three assertions, and each one is doing distinct work:
 
@@ -225,7 +225,7 @@ me = await client.auth.get_current_user()
 
 `api:GET /api/v1/auth/me`. **If your personas list is empty you are holding an API
 key**, and a large part of the mutating surface is closed to it regardless of
-scopes — a documented open defect covered in 04.1. Register with a session unless
+scopes — the admission model 04.1 covers. Register with a session unless
 you have proven the specific write is key-reachable. Discovering this at the end of
 a provisioning script is the expensive way, and
 [`coc/guardrails/credential-reachability.md`](../../coc/guardrails/credential-reachability.md)
@@ -258,19 +258,19 @@ statement about the day it was set.
 8. **Establish each of the above can fail** — remove the grant and watch step 5 go
    red. A check you have only ever seen pass is a check you have not yet read.
 
-## What is not settled
+## Two things to establish against your own deployment
 
-**UNVERIFIED:** whether `test_draft`'s separate test budget is shared across an
-organisation or is genuinely per-request. "Capped server-side" is stated; the
-sharing scope is not, and it decides whether a colleague iterating in parallel can
-exhaust your ability to test.
+**The sharing scope of `test_draft`'s separate test budget.** It is capped
+server-side; whether that cap is per-request or shared across an organisation
+decides whether a colleague iterating in parallel can exhaust your ability to
+test.
 
-**UNVERIFIED:** whether an invocation refused by governance appears in
-`api:GET /api/v1/tool-agents/{id}/invocations`. If a refusal is recorded, that
-history is your evidence that controls fired; if only successes are recorded, you
-need a different surface for it, and you should find out which before an auditor
-asks. This is the same open question 03.1 records for the in-process side, at the
-registered-agent surface.
+**Whether an invocation refused by governance appears in
+`api:GET /api/v1/tool-agents/{id}/invocations`.** If refusals are recorded, that
+history is your evidence that controls fired; if only successes are, you need a
+different surface for it — and you want to know which before an auditor asks.
+Establish it at the registered-agent surface the same way 03.1 does for the
+in-process side.
 
 ---
 

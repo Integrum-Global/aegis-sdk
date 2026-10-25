@@ -157,11 +157,11 @@ the sentinel hazard
 treats at length — a value in the ordinary range that means something outside it,
 where the ambiguity resolves permissively by default and nothing announces it.
 
-_Design intent, not observable:_ that the policy is intended to be strictly
-narrowing relative to the grant. The narrowing relationship between the application
-ceiling and the grant ceiling **is** server-enforced and stated as such by the SDK;
-whether every policy field is validated against its grant in the same way is not
-established from the client surface. Do not assume a policy cannot widen — check.
+A policy is intended to be strictly narrowing relative to its grant. The
+narrowing relationship between the application ceiling and the grant ceiling
+**is** server-enforced and stated as such by the SDK; whether every policy field
+is validated against its grant the same way is your deployment's behaviour to
+confirm. Do not assume a policy cannot widen — check.
 
 ## Step 4 — Decide what an operator may change, with the delegation matrix
 
@@ -320,20 +320,19 @@ failure. The general procedure for telling one kind of refusal from another is
 [`coc/skills/diagnosing-a-refusal.md`](../../coc/skills/diagnosing-a-refusal.md);
 the list above is its tool-agent-specific case.
 
-## What is not settled
+## Three things to establish against your own deployment
 
-**UNVERIFIED:** whether an invocation policy is validated against its grant the way
-a grant is validated against the application ceiling. The grant-versus-application
-check is stated as server-enforced; the policy-versus-grant relationship is not
-established from the client surface. Until you have tested it on your own
-deployment, do not treat a policy as structurally incapable of widening.
+**Whether an invocation policy is validated against its grant** the way a grant is
+validated against the application ceiling. The grant-versus-application check is
+server-enforced; the policy-versus-grant relationship is yours to confirm. Until
+you have, do not treat a policy as structurally incapable of widening.
 
-**UNVERIFIED:** the semantics of an empty `data_scope_json`. Restrictive and
-permissive readings are both consistent with what is reachable from here, and they
-are opposite. Settle it before you rely on the empty default as a bound.
+**The semantics of an empty `data_scope_json`.** The restrictive and permissive
+readings are opposite, and the difference matters the moment you rely on the empty
+default as a bound. Settle it first.
 
-**UNVERIFIED:** whether revoking a grant terminates an in-flight invocation or only
-prevents new ones. If you need a revocation to be an incident control rather than a
+**Whether revoking a grant terminates an in-flight invocation** or only prevents
+new ones. If you need revocation to be an incident control rather than a
 housekeeping action, measure it before you need it.
 
 ---

@@ -23,7 +23,7 @@ for record in pending.get("records", []):
 asked — the middle answer between yes and no, and the one reviewers reach for
 most once they know it exists.
 
-**`reason` is not decoration.** It is the part of the record that answers *why*,
+**`reason` is not decoration.** It is the part of the record that answers _why_,
 and it is the only part a future auditor cannot reconstruct from anything else.
 "Approved" tells them what happened; it does not tell them whether the decision
 was sound. Write the reason as though the reader is a stranger, because they are.
@@ -33,14 +33,14 @@ was sound. Write the reason as though the reader is a stranger, because they are
 An approval is not the only thing that can be waiting on a person, and the
 different kinds surface in different places:
 
-| waiting on a person | where it is |
-| --- | --- |
-| an action held by the verification gradient | `api:GET /api/v1/approvals/pending` |
-| a posture progression request | `api:GET /api/v1/posture/pending-approvals` |
-| a pending role clearance | the clearance surface (02.3) |
-| an escalated request | `api:GET /api/v1/agent-escalations/pending` |
-| a pseudo-agent request needing a human to act | `api:GET /api/v1/pseudo-requests` |
-| a change request against the organisation | `api:GET /api/v1/change-requests` |
+| waiting on a person                           | where it is                                 |
+| --------------------------------------------- | ------------------------------------------- |
+| an action held by the verification gradient   | `api:GET /api/v1/approvals/pending`         |
+| a posture progression request                 | `api:GET /api/v1/posture/pending-approvals` |
+| a pending role clearance                      | the clearance surface (02.3)                |
+| an escalated request                          | `api:GET /api/v1/agent-escalations/pending` |
+| a pseudo-agent request needing a human to act | `api:GET /api/v1/pseudo-requests`           |
+| a change request against the organisation     | `api:GET /api/v1/change-requests`           |
 
 So **an empty approvals queue does not mean nothing is waiting.** This is a real
 source of confusion for operators, who reasonably read one empty queue as "all
@@ -74,8 +74,8 @@ says "not that, but this" without rejecting outright.
 **Note that approve and apply are separate steps.** An approved change request
 has not changed anything yet. Same shape as draft envelopes, pending clearances
 and unsubmitted objectives — the fourth instance in this part, and by now it
-should read as the platform's consistent habit rather than a quirk: *describing*
-and *effecting* are always two operations.
+should read as the platform's consistent habit rather than a quirk: _describing_
+and _effecting_ are always two operations.
 
 For an architect this is the mechanism that lets org changes be reviewed the way
 code is. It is worth using for anything that touches envelopes or clearances,
@@ -163,4 +163,4 @@ You keep the accountability. This gives you the evidence.
 
 ---
 
-*This is the last chapter of part 02. Next: [Part 03 — Extending the platform](../03-extending-the-platform/), or [Part 04 — The API surface](../04-the-api-surface/) if you are debugging a call.*
+_Next: [02.7 — Role agents, and surviving a re-org](07-role-agents-and-re-orgs.md)_
